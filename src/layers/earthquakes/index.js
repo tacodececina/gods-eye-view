@@ -23,6 +23,28 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
   let _lastUpdate = null;
   let _lastError = null;
   let _enabled = false;
+  let _visibleIds = null;
+  let _overlayEntries = [];
+  function applyVisibility() {
+    if (!_dataSource) return;
+    for (const entity of _dataSource.entities.values)
+      entity.show =
+        !_visibleIds || _visibleIds.has(entity.id.slice('earthquake:'.length));
+    if (_enabled)
+      overlayHost.setEntries(
+        EARTHQUAKE_OVERLAY_SOURCE_ID,
+        selectEarthquakeOverlayCohort(
+          _overlayEntries.filter(
+            (entry) => !_visibleIds || _visibleIds.has(entry.id),
+          ),
+        ),
+        {
+          cohortLimit: EARTHQUAKE_OVERLAY_COHORT_LIMIT,
+          collisionCapacity: EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
+          moving: false,
+        },
+      );
+  }
 
   const layer = {
     id: 'earthquakes',
@@ -30,6 +52,10 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
     icon: '🌋',
     source: 'USGS',
     updateInterval: 60000,
+    setVisibleIds(ids) {
+      _visibleIds = ids === null ? null : new Set(ids);
+      applyVisibility();
+    },
 
     init(viewer) {
       if (_viewer) throw new Error('Earthquake layer is already initialized');
@@ -133,17 +159,8 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
 
         _dataSource.entities.removeAll();
         for (const entity of nextEntities) _dataSource.entities.add(entity);
-        if (_enabled) {
-          overlayHost.setEntries(
-            EARTHQUAKE_OVERLAY_SOURCE_ID,
-            selectEarthquakeOverlayCohort(overlayEntries),
-            {
-              cohortLimit: EARTHQUAKE_OVERLAY_COHORT_LIMIT,
-              collisionCapacity: EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
-              moving: false,
-            },
-          );
-        }
+        _overlayEntries = overlayEntries;
+        applyVisibility();
 
         _count = count;
         _lastUpdate = Date.now();
@@ -166,6 +183,8 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
       _request = null;
       _viewer = null;
       _enabled = false;
+      _overlayEntries = [];
+      _visibleIds = null;
       overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
       overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
       if (_dataSource) {

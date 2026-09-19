@@ -1,0 +1,27 @@
+{
+  "status": "local-preview-ready-for-user-review",
+  "verifiedAt": "2026-09-18T18:39:20.843816-06:00",
+  "url": "http://127.0.0.1:4197/",
+  "publication": "blocked-pending-acceptance",
+  "head": "0d41b6be5490db1f10a171f238be75db4d4ec3b4",
+  "sourceFiles": 1315,
+  "sourceStable": true,
+  "unitTotals": {
+    "tests": 4204,
+    "pass": 4194,
+    "fail": 0,
+    "skipped": 10,
+    "todo": 0
+  },
+  "browser": {
+    "journey": 23,
+    "independent": 16,
+    "adverseCamera": 9,
+    "cockpit": 4,
+    "cockpitMode": "fresh temporary profile, native GPU default"
+  },
+  "phaseScope": "P0-P2 local technical preview; aesthetic acceptance and global upstream parity remain open",
+  "scienceDecision": "Reject the tested lunar approximation for the declared tolerance; precision ephemerides required before P5",
+  "mobileLimit": "Desktop seismic plot hidden in compact mobile layout; signals accessible via Instrumentos",
+  "recordNote": "Initial build p012 artifacts were overwritten by a misdirected RED output; only use the later independent/continuation/final evidence as documented."
+}

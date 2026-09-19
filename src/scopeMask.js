@@ -38,8 +38,26 @@ import { getKeyholeGeometry } from './celestialRing.js';
  * canvas work beyond the single clear on the disable transition.
  */
 
-/** Matches the page background the emergent scope faded into. */
-const SCOPE_OUTSIDE_COLOR = { r: 5, g: 5, b: 8 };
+/** Default upstream appearance. EYEINSKY selects its own preset at install. */
+const DEFAULT_SCOPE_APPEARANCE = Object.freeze({
+  id: 'default',
+  color: Object.freeze({ r: 5, g: 5, b: 8 }),
+  farAlpha: 0.94,
+  nearAlpha: 1,
+});
+
+/** Mineral veil used only by the EYEINSKY standalone composition. */
+export const IRIS_SCOPE_APPEARANCE = Object.freeze({
+  id: 'iris',
+  color: Object.freeze({ r: 14, g: 42, b: 35 }),
+  farAlpha: 0.32,
+  nearAlpha: 0.46,
+});
+
+const SCOPE_APPEARANCES = Object.freeze({
+  default: DEFAULT_SCOPE_APPEARANCE,
+  iris: IRIS_SCOPE_APPEARANCE,
+});
 /**
  * Default edge feather as a fraction of the keyhole radius.
  *
@@ -65,6 +83,13 @@ export const SCOPE_FEATHER_RATIO_DEFAULT = 0.11;
  * faint stars survive in the corners at globe scale.
  */
 export const SCOPE_OUTSIDE_ALPHA = 0.94;
+const SCOPE_DIAGNOSTICS_KEY = Symbol.for('eyeinsky.scope-mask-diagnostics');
+const _sharedDiagnostics = (globalThis[SCOPE_DIAGNOSTICS_KEY] ||= {
+  alpha: SCOPE_OUTSIDE_ALPHA,
+  override: null,
+  repaints: 0,
+  appearance: 'default',
+});
 /**
  * Lowest SUPPORTED terminus opacity, as a share-link percent. The band exists
  * because anything below the globe-scale terminus is not a scope any more —
@@ -103,6 +128,7 @@ let _container = null;
 let _viewer = null;
 let _enabled = true;
 let _featherRatio = SCOPE_FEATHER_RATIO_DEFAULT;
+let _appearance = DEFAULT_SCOPE_APPEARANCE;
 let _resizeObserver = null;
 let _dprQuery = null;
 let _dprListener = null;
@@ -139,6 +165,42 @@ export function scopeTerminusAlpha(heightM) {
   return (
     SCOPE_OUTSIDE_ALPHA +
     (SCOPE_TERMINUS_ALPHA_NEAR - SCOPE_OUTSIDE_ALPHA) * eased
+  );
+}
+
+/** Map the established logical ramp into a visual appearance profile. */
+export function scopeTerminusAlphaForAppearance(
+  heightM,
+  appearance = DEFAULT_SCOPE_APPEARANCE,
+) {
+  const profile = resolveScopeAppearance(appearance);
+  const logical = scopeTerminusAlpha(heightM);
+  const progress =
+    (logical - SCOPE_OUTSIDE_ALPHA) /
+    (SCOPE_TERMINUS_ALPHA_NEAR - SCOPE_OUTSIDE_ALPHA);
+  return profile.farAlpha + (profile.nearAlpha - profile.farAlpha) * progress;
+}
+
+function resolveScopeAppearance(value) {
+  if (typeof value === 'string')
+    return SCOPE_APPEARANCES[value] || DEFAULT_SCOPE_APPEARANCE;
+  if (value === IRIS_SCOPE_APPEARANCE || value === DEFAULT_SCOPE_APPEARANCE)
+    return value;
+  return DEFAULT_SCOPE_APPEARANCE;
+}
+
+function effectiveTerminusAlpha(logicalAlpha) {
+  const progress = Math.max(
+    0,
+    Math.min(
+      1,
+      (logicalAlpha - SCOPE_OUTSIDE_ALPHA) /
+        (SCOPE_TERMINUS_ALPHA_NEAR - SCOPE_OUTSIDE_ALPHA),
+    ),
+  );
+  return (
+    _appearance.farAlpha +
+    (_appearance.nearAlpha - _appearance.farAlpha) * progress
   );
 }
 
@@ -190,11 +252,15 @@ export function clampScopeTerminusPct(value) {
  */
 export function updateScopeTerminusForHeight(heightM) {
   const target = quantizeScopeTerminusAlpha(
-    _terminusOverride == null ? scopeTerminusAlpha(heightM) : _terminusOverride,
+    _terminusOverride == null
+      ? scopeTerminusAlphaForAppearance(heightM, _appearance)
+      : effectiveTerminusAlpha(_terminusOverride),
   );
   if (target === _terminusAlpha) return false; // the whole perf story lives here
   _terminusAlpha = target;
   _terminusRepaints += 1;
+  _sharedDiagnostics.alpha = target;
+  _sharedDiagnostics.repaints = _terminusRepaints;
   draw();
   return true;
 }
@@ -234,8 +300,8 @@ function withCoalescedPaint(fn) {
 function currentTerminusTarget() {
   return quantizeScopeTerminusAlpha(
     _terminusOverride == null
-      ? scopeTerminusAlpha(currentCameraHeightM())
-      : _terminusOverride,
+      ? scopeTerminusAlphaForAppearance(currentCameraHeightM(), _appearance)
+      : effectiveTerminusAlpha(_terminusOverride),
   );
 }
 
@@ -250,29 +316,32 @@ export function setScopeTerminusOverride(alpha) {
       Math.min(1, Number(alpha)),
     );
   }
+  _sharedDiagnostics.override = _terminusOverride;
   // Re-resolve immediately against the live camera so the override is visible
   // without waiting for the next sample.
   const target = currentTerminusTarget();
   if (target !== _terminusAlpha) {
     _terminusAlpha = target;
     _terminusRepaints += 1;
+    _sharedDiagnostics.alpha = target;
+    _sharedDiagnostics.repaints = _terminusRepaints;
   }
   draw();
 }
 
 /** @returns {?number} The pinned terminus alpha, or null when adaptive. */
 export function getScopeTerminusOverride() {
-  return _terminusOverride;
+  return _sharedDiagnostics.override;
 }
 
 /** @returns {number} The terminus alpha currently painted. */
 export function getScopeTerminusAlpha() {
-  return _terminusAlpha;
+  return _sharedDiagnostics.alpha;
 }
 
 /** Test/diagnostics seam: repaints caused by terminus steps since install. */
 export function getScopeTerminusRepaintCount() {
-  return _terminusRepaints;
+  return _sharedDiagnostics.repaints;
 }
 
 /** Backing-store scale actually used by the last draw(). */
@@ -393,7 +462,7 @@ function draw() {
   _painted = false; // resize+clear wiped the surface; ink goes on below
   const geo = scopeMaskGeometry(width, height, _featherRatio);
   if (!geo) return;
-  const { r, g, b } = SCOPE_OUTSIDE_COLOR;
+  const { r, g, b } = _appearance.color;
   if (geo.outerR - geo.innerR < 1) {
     // Zero/near-zero feather: a radial gradient with equal radii is
     // DEGENERATE in Canvas2D (Chromium paints nothing — browser
@@ -426,10 +495,13 @@ function draw() {
 /**
  * Install the scope mask into the viewer container. Idempotent.
  * @param {Cesium.Viewer} viewer
+ * @param {{appearance?: 'default'|'iris'}} [options]
  * @returns {void}
  */
-export function installScopeMask(viewer) {
+export function installScopeMask(viewer, { appearance = 'default' } = {}) {
   if (_canvas || !viewer?.container) return;
+  _appearance = resolveScopeAppearance(appearance);
+  _sharedDiagnostics.appearance = _appearance.id;
   _container = viewer.container;
   _viewer = viewer;
   _canvas = document.createElement('canvas');
@@ -443,6 +515,9 @@ export function installScopeMask(viewer) {
   // Seed from the live camera so the first paint is already correct for the
   // restored/initial altitude instead of flashing the globe-scale terminus.
   _terminusAlpha = currentTerminusTarget();
+  _sharedDiagnostics.alpha = _terminusAlpha;
+  _sharedDiagnostics.override = _terminusOverride;
+  _sharedDiagnostics.repaints = _terminusRepaints;
   draw();
 }
 
@@ -512,6 +587,7 @@ export function setScopeMaskEnabled(enabled) {
     // the next frame resume normal sampling.
     _lastTerminusSampleMs = -Infinity;
     _terminusAlpha = currentTerminusTarget();
+    _sharedDiagnostics.alpha = _terminusAlpha;
   }
   draw();
 }
@@ -563,10 +639,15 @@ export function _resetScopeMaskForTest() {
   _viewer = null;
   _enabled = true;
   _featherRatio = SCOPE_FEATHER_RATIO_DEFAULT;
+  _appearance = DEFAULT_SCOPE_APPEARANCE;
   _terminusAlpha = SCOPE_OUTSIDE_ALPHA;
   _terminusOverride = null;
   _terminusRepaints = 0;
   _painted = false;
   _paintDirty = false;
   _coalescingPaint = false;
+  _sharedDiagnostics.alpha = SCOPE_OUTSIDE_ALPHA;
+  _sharedDiagnostics.override = null;
+  _sharedDiagnostics.repaints = 0;
+  _sharedDiagnostics.appearance = 'default';
 }

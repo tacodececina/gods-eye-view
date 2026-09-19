@@ -91,7 +91,7 @@ export function createSceneSharing(director) {
         dialog.status.textContent =
           error?.name === 'SceneDocumentError'
             ? error.message
-            : 'Could not complete this action. Check the file, references and selected assets.';
+            : 'No se completó la acción. Revisa el archivo, las referencias y los recursos seleccionados.';
     } finally {
       if (alive(owner)) busy = false;
     }
@@ -103,41 +103,42 @@ export function createSceneSharing(director) {
       layerIds: director.dataManager.getAll().map((l) => l.id),
     });
     dialog.text(
-      `${report.scenes} scenes · ${report.shots} shots · ${report.packs.length} data packs`,
+      `${report.scenes} escenas · ${report.shots} tomas · ${report.packs.length} paquetes de datos`,
     );
     for (const pack of report.packs)
       dialog.text(
-        `${pack.scene} / ${pack.id}: ${pack.status}. File: ${pack.path}. ${pack.attribution.text} · ${pack.attribution.license}`,
+        `${pack.scene} / ${pack.id}: ${pack.status}. Archivo: ${pack.path}. ${pack.attribution.text} · ${pack.attribution.license}`,
       );
     if (report.missingLayers.length)
-      dialog.text(`Unavailable layers: ${report.missingLayers.join(', ')}`);
+      dialog.text(`Capas no disponibles: ${report.missingLayers.join(', ')}`);
     if (report.externalContent)
       dialog.text(
-        'This scene uses registered content or linked media. Those external files are not included in a scene bundle. Their original notices still apply.',
+        'Esta escena usa contenido registrado o medios enlazados. Esos archivos externos no se incluyen en el paquete y conservan sus avisos originales.',
       );
     if (report.bundledBytes)
       dialog.text(
-        `${report.bundledBytes} bundled bytes verified. Files stay in memory for this session. Reimport the bundle after reloading the app.`,
+        `${report.bundledBytes} bytes del paquete verificados. Los archivos duran esta sesión. Reimporta el paquete tras recargar.`,
       );
     return report;
   }
   async function preview(file) {
-    const owner = open('Review scene import');
+    const owner = open('Revisar importación de escena');
     if (!owner) return;
     const expected = currentProject();
-    dialog.text('Nothing is loaded or changed until you apply this file.');
+    dialog.text('No se cambiará el proyecto hasta que apliques este archivo.');
     await run(owner, async () => {
       const input = await readSceneShare(file, { signal: owner.signal });
       if (!alive(owner)) return;
       staged = input;
       inventory(input);
-      dialog.status.textContent = 'Ready to import';
+      dialog.status.textContent = 'Listo para importar';
       dialog.text(
-        'Apply replaces the current project. Export your current project first if you want to keep both.',
+        'Aplicar reemplaza el proyecto actual. Expórtalo primero si necesitas conservar ambos.',
       );
-      const apply = dialog.button('Apply import', () =>
+      const apply = dialog.button('Aplicar importación', () =>
         run(owner, async () => {
-          if (expected !== currentProject()) throw new Error('Project changed');
+          if (expected !== currentProject())
+            throw new Error('El proyecto cambió');
           apply.disabled = true;
           const ok = await director.importProjectFile(file, {
             prepared: input,
@@ -149,7 +150,7 @@ export function createSceneSharing(director) {
             else {
               apply.disabled = false;
               dialog.status.textContent =
-                'Import was not applied. The current project may have changed.';
+                'No se aplicó la importación. El proyecto actual puede haber cambiado.';
             }
           }
         }),
@@ -161,37 +162,37 @@ export function createSceneSharing(director) {
     const scene = director._getSelectedScene(),
       shot = scene?.shots.find((s) => s.id === director._selectedShotId);
     if (!scene || !shot) {
-      director._updateStatus('Select a scene and shot first');
+      director._updateStatus('Selecciona primero una escena y una toma');
       return;
     }
-    const owner = open('Edit scene details');
+    const owner = open('Editar detalles de escena');
     if (!owner) return;
     const original = structuredClone(director._project),
       expected = currentProject();
     dialog.text(
-      'Camera positions use degrees and meters above the ellipsoid. Drafts are validated before they replace your saved scene.',
+      'La cámara usa grados y metros sobre el elipsoide. El borrador se valida antes de reemplazar la escena guardada.',
     );
     const sceneText = dialog.input(
-      'Anchors and data packs',
+      'Anclas y paquetes de datos',
       json(subset(scene, sceneKeys)),
       { multiline: true },
     );
     const shotText = dialog.input(
-      'Shot camera, timing, packs and actions',
+      'Cámara, tiempos, paquetes y acciones de la toma',
       json(subset(shot, shotKeys)),
       { multiline: true },
     );
-    const anchorName = dialog.input('New anchor ID', 'anchor-1');
+    const anchorName = dialog.input('ID de la nueva ancla', 'anchor-1');
     dialog.button(
-      'Capture camera as anchor',
+      'Capturar cámara como ancla',
       () =>
         run(owner, async () => {
           const details = JSON.parse(sceneText.value),
             camera = director.styleManager.getCameraState();
-          if (!camera) throw new Error('Camera unavailable');
+          if (!camera) throw new Error('Cámara no disponible');
           const anchors = details.anchors || [];
           if (anchors.some((a) => a.id === anchorName.value))
-            throw new Error('Duplicate anchor');
+            throw new Error('Ancla duplicada');
           details.anchors = [
             ...anchors,
             {
@@ -210,17 +211,17 @@ export function createSceneSharing(director) {
             JSON.parse(shotText.value),
           );
           sceneText.value = json(details);
-          dialog.status.textContent = 'Anchor added to draft';
+          dialog.status.textContent = 'Ancla añadida al borrador';
         }),
       dialog.body,
     );
     dialog.button(
-      'Set move start to current camera',
+      'Iniciar movimiento desde la cámara actual',
       () =>
         run(owner, async () => {
           const details = JSON.parse(shotText.value),
             camera = director.styleManager.getCameraState();
-          if (!camera) throw new Error('Camera unavailable');
+          if (!camera) throw new Error('Cámara no disponible');
           details.move = {
             from: {
               ...subset(camera, [
@@ -247,12 +248,12 @@ export function createSceneSharing(director) {
           );
           shotText.value = json(details);
           dialog.status.textContent =
-            'Move added to draft; destination remains the shot camera';
+            'Movimiento añadido; el destino conserva la cámara de la toma';
         }),
       dialog.body,
     );
     dialog.button(
-      'Use ordinary flight',
+      'Usar vuelo normal',
       () => {
         if (!alive(owner)) return;
         try {
@@ -260,14 +261,15 @@ export function createSceneSharing(director) {
           delete details.move;
           shotText.value = json(details);
         } catch {
-          dialog.status.textContent = 'Invalid shot JSON';
+          dialog.status.textContent = 'JSON de toma inválido';
         }
       },
       dialog.body,
     );
-    const apply = dialog.button('Apply details', () =>
+    const apply = dialog.button('Aplicar detalles', () =>
       run(owner, async () => {
-        if (expected !== currentProject()) throw new Error('Project changed');
+        if (expected !== currentProject())
+          throw new Error('El proyecto cambió');
         const project = editSceneDetails(
           original,
           scene.id,
@@ -300,10 +302,10 @@ export function createSceneSharing(director) {
         director._selectedSceneId,
       );
     } catch {
-      director._updateStatus('Select a scene first');
+      director._updateStatus('Selecciona primero una escena');
       return;
     }
-    const owner = open('Share selected scene');
+    const owner = open('Compartir escena seleccionada');
     if (!owner) return;
     const paths = new Set(
       project.scenes.flatMap((s) =>
@@ -320,19 +322,21 @@ export function createSceneSharing(director) {
     staged = { project, assets: existing };
     inventory(staged);
     dialog.text(
-      'Scene JSON preserves authored settings and attribution. It does not include asset files. Bundles include only pack files you choose here or previously imported bundle files.',
+      'El JSON conserva la configuración de la escena y sus atribuciones. No incluye archivos. Un paquete incorpora sólo los recursos seleccionados aquí o importados previamente.',
     );
-    dialog.button('Download scene JSON', () => {
+    dialog.button('Descargar escena JSON', () => {
       if (alive(owner)) download(stringifySceneDocument(project), 'scene.json');
     });
-    const files = dialog.input('Choose data-pack files', '', { type: 'file' });
+    const files = dialog.input('Seleccionar archivos de datos', '', {
+      type: 'file',
+    });
     files.multiple = true;
-    const folder = dialog.input('Or choose a data-pack folder', '', {
+    const folder = dialog.input('O seleccionar una carpeta de datos', '', {
       type: 'file',
     });
     folder.multiple = true;
     folder.setAttribute('webkitdirectory', '');
-    dialog.button('Download asset bundle', () =>
+    dialog.button('Descargar paquete con recursos', () =>
       run(owner, async () => {
         const selected = [...files.files, ...folder.files];
         const packs = project.scenes.flatMap((s) => s.dataPacks || []);
@@ -360,10 +364,10 @@ export function createSceneSharing(director) {
                 .map((p) => JSON.stringify(p.source)),
             );
             if (matches.length !== 1 || (!exact.length && keys.size > 1))
-              throw new Error('Missing or ambiguous file');
+              throw new Error('Archivo ausente o ambiguo');
             const file = matches[0];
             if (!file.size || file.size > PACK_LIMITS.bytes)
-              throw new Error('Asset size limit');
+              throw new Error('El recurso excede el límite de tamaño');
             const bytes = new Uint8Array(
               await withShareSignal(file.arrayBuffer(), signal),
             );
@@ -374,7 +378,7 @@ export function createSceneSharing(director) {
         );
         if (alive(owner)) {
           download(text, 'scene.gevbundle.json');
-          dialog.status.textContent = 'Asset bundle downloaded';
+          dialog.status.textContent = 'Paquete descargado';
         }
       }),
     );

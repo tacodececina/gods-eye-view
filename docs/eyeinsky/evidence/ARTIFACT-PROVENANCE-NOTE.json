@@ -1,0 +1,17 @@
+{
+  "issue": "The first supervisor RED invocation used ignored environment variables instead of positional arguments. It wrote to the default build artifact directory, not product sources. These current artifacts are preserved here; initial build p012 journey/screenshots must no longer be treated as immutable historical evidence. Audit, continuation and supervisor/final directories are unaffected. Subsequent invocations use explicit positional URL/output.",
+  "startedAt": "2026-09-19T00:18:54.840Z",
+  "artifacts": [
+    "p012-1440x900-catalog.png",
+    "p012-1440x900-home.png",
+    "p012-1920x1080-catalog.png",
+    "p012-1920x1080-home.png",
+    "p012-360x800-catalog.png",
+    "p012-360x800-home.png",
+    "p012-390x844-catalog.png",
+    "p012-390x844-home.png",
+    "p012-844x390-catalog.png",
+    "p012-844x390-home.png",
+    "p012-journey.json"
+  ]
+}

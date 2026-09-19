@@ -140,8 +140,8 @@ export class SceneControls {
   createScene() {
     if (this.destroyed) return;
     const name = window.prompt(
-      'New scene name',
-      `Scene ${this.read().scenes.length + 1}`,
+      'Nombre de la nueva escena',
+      `Escena ${this.read().scenes.length + 1}`,
     );
     if (name) this.run('create', name);
   }
@@ -152,7 +152,10 @@ export class SceneControls {
     const scene = state.scenes.find(
       (item) => item.id === state.selectedSceneId,
     );
-    if (scene && window.confirm(`Delete scene "${scene.title}" and all shots?`))
+    if (
+      scene &&
+      window.confirm(`¿Eliminar la escena «${scene.title}» y todas sus tomas?`)
+    )
       this.run('deleteScene');
   }
 
@@ -160,7 +163,7 @@ export class SceneControls {
     if (this.destroyed) return;
     const scene = this.read().scenes.find((item) => item.id === sceneId);
     const shot = scene?.shots.find((item) => item.id === shotId);
-    if (shot && window.confirm(`Delete shot "${shot.title}"?`))
+    if (shot && window.confirm(`¿Eliminar la toma «${shot.title}»?`))
       this.run('deleteShot', sceneId, shotId);
   }
 

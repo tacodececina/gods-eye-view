@@ -4,6 +4,7 @@ import {
   MAX_WAYPOINTS_PER_ROAD,
   DOT_HEIGHT_OFFSET,
 } from './policy.js';
+import { safeTrafficSurfaceHeight } from './model.js';
 
 export function createTiming({ state: layerState, services, parts, source }) {
   /**
@@ -290,12 +291,13 @@ export function createTiming({ state: layerState, services, parts, source }) {
         /* TRACE_ONLY_BEGIN */
         const _trafficTimingSampleStart = performance.now();
         /* TRACE_ONLY_END */
-        const sampled = layerState._viewer.scene.sampleHeight(carto);
+        baseHeight = safeTrafficSurfaceHeight(
+          layerState._viewer.scene.sampleHeight(carto),
+        );
         /* TRACE_ONLY_BEGIN */
         _trafficTimingSampleHeightMs +=
           performance.now() - _trafficTimingSampleStart;
         /* TRACE_ONLY_END */
-        if (Number.isFinite(sampled)) baseHeight = sampled;
       }
 
       /* TRACE_ONLY_BEGIN */

@@ -78,6 +78,19 @@ function makeElement(tagName = 'div') {
 
 const doc = { createElement: (tagName) => makeElement(tagName) };
 
+test('public local cartography and its explicit fallback are reachable through the source tray', () => {
+  assert.deepEqual(
+    mapStackChipModels(
+      [
+        { id: 'natural-earth', label: 'Natural Earth' },
+        { id: 'ellipsoid', label: 'Sin imagen' },
+      ],
+      'natural-earth',
+    ).map((s) => s.id),
+    ['natural-earth', 'ellipsoid'],
+  );
+});
+
 /** Text a chip renders, label + optional requirement badge. */
 const chipText = (chip) =>
   chip.children.map((child) => child.textContent).join(' ');
@@ -145,6 +158,8 @@ test('the row renders exactly the five owner-approved sources', () => {
     'bing-labels',
     'esri-imagery',
     'osm',
+    'natural-earth',
+    'ellipsoid',
   ]);
   assert.ok(
     container.children.every(
@@ -180,7 +195,7 @@ test('re-rendering replaces the previous chips instead of stacking a second row'
   });
   renderMapStackChips(container, CONTROLLER_STACKS, { activeId: 'osm', doc });
 
-  assert.equal(container.children.length, PRESENTED_MAP_STACK_IDS.length);
+  assert.equal(container.children.length, CONTROLLER_STACKS.length);
 });
 
 test('clicking a chip dispatches that stack id — the same selection the dropdown made', () => {
@@ -504,7 +519,7 @@ test('the Visual Presets tray owns Map Source and the retired left panel is abse
   );
   assert.match(
     html,
-    /id="map-source-label">MAP SOURCE<[\s\S]*?id="map-stack-status"/,
+    /id="map-source-label">CARTOGRAFÍA<[\s\S]*?id="map-stack-status"/,
   );
   assert.match(
     html,

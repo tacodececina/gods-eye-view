@@ -1,9 +1,11 @@
 import { createAssetDirectorySource } from '../director/packs/source.js';
 import { createApplicationTools } from '../app/tools.js';
 import { startStandaloneChrome } from './startupChrome.js';
+import { mountEyeinsky } from '../ui/eyeinskyShell.js';
 export function createStandaloneTools(options) {
-  return createApplicationTools({
+  const tools = createApplicationTools({
     startChrome: startStandaloneChrome,
+    scopeAppearance: 'iris',
     sceneDataPacks: {
       sources: {
         assets: createAssetDirectorySource({
@@ -13,4 +15,6 @@ export function createStandaloneTools(options) {
     },
     ...options,
   });
+  const eyeinsky = mountEyeinsky({ ...options, tools });
+  return { ...tools, eyeinsky };
 }

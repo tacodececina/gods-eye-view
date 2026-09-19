@@ -1,0 +1,189 @@
+{
+  "status": "passed-source-stable",
+  "startedAt": "2026-09-18T18:26:02.676278-06:00",
+  "sourceCount": 1315,
+  "changedAfterPriorGates": [
+    "scripts/eyeinsky-p012.mjs",
+    "src/ui/eyeinskyShell.js"
+  ],
+  "redReproduced": true,
+  "publication": "blocked-pending-acceptance",
+  "gates": [
+    {
+      "name": "journey-regression",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "scripts/eyeinsky-p012.mjs",
+        "http://127.0.0.1:4197/",
+        "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\browser"
+      ],
+      "startedAt": "2026-09-18T18:26:02.683789-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\journey-regression.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:26:53.382867-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "supervisor-own-journey",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\own_final_journey.mjs",
+        "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\own-journey"
+      ],
+      "startedAt": "2026-09-18T18:26:53.384378-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\supervisor-own-journey.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:27:15.771384-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "unit",
+      "argv": [
+        "C:\\Program Files\\nodejs\\npm.cmd",
+        "test"
+      ],
+      "startedAt": "2026-09-18T18:27:15.782466-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\unit.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:29:42.102307-06:00",
+      "testTotals": {
+        "tests": 4204,
+        "pass": 4194,
+        "fail": 0,
+        "skipped": 10,
+        "todo": 0
+      }
+    },
+    {
+      "name": "build",
+      "argv": [
+        "C:\\Program Files\\nodejs\\npm.cmd",
+        "run",
+        "build"
+      ],
+      "startedAt": "2026-09-18T18:29:42.120761-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\build.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:29:50.069547-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "format",
+      "argv": [
+        "C:\\Program Files\\nodejs\\npm.cmd",
+        "run",
+        "format:check"
+      ],
+      "startedAt": "2026-09-18T18:29:50.083062-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\format.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:30:01.828425-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "boundaries",
+      "argv": [
+        "C:\\Program Files\\nodejs\\npm.cmd",
+        "run",
+        "check:boundaries"
+      ],
+      "startedAt": "2026-09-18T18:30:01.831424-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\boundaries.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:30:17.034769-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "types",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "C:/Users/Alex/AppData/Local/npm-cache/_npx/a322a253dbd59f36/node_modules/typescript/lib/tsc.js",
+        "-p",
+        "tsconfig.eyeinsky-immersive.json",
+        "--noEmit"
+      ],
+      "startedAt": "2026-09-18T18:32:21.853420-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\types.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:32:22.670095-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "camera-adverse",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "scripts/eyeinsky-camera-adverse.mjs",
+        "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\camera"
+      ],
+      "startedAt": "2026-09-18T18:32:22.672093-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\camera-adverse.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:33:07.568246-06:00",
+      "testTotals": {}
+    },
+    {
+      "name": "cockpit",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "scripts/eyeinsky-p012-cockpit.mjs",
+        "http://127.0.0.1:4197/",
+        "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\cockpit.json"
+      ],
+      "startedAt": "2026-09-18T18:33:07.570245-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\cockpit.log",
+      "exitCode": 0,
+      "endedAt": "2026-09-18T18:33:26.319589-06:00",
+      "testTotals": {}
+    }
+  ],
+  "priorInvocationErrors": [
+    {
+      "name": "types",
+      "argv": [
+        "C:\\Program Files\\nodejs\\node.EXE",
+        "C:\\Users\\Alex\\AppData\\Roaming\\orca\\codex-runtime-home\\home\\worktrees\\ea9e\\gods-eye-view\\node_modules\\typescript\\bin\\tsc",
+        "-p",
+        "tsconfig.eyeinsky-immersive.json",
+        "--noEmit"
+      ],
+      "startedAt": "2026-09-18T18:30:17.038769-06:00",
+      "log": "C:\\Users\\Alex\\orca\\gods-eye-view\\output\\eyeinsky-immersive\\p012\\supervisor\\focus-fix\\green\\types.log",
+      "exitCode": 1,
+      "endedAt": "2026-09-18T18:30:17.104270-06:00",
+      "testTotals": {}
+    }
+  ],
+  "unitSuites": [
+    {
+      "tests": 4190,
+      "pass": 4180,
+      "fail": 0,
+      "skipped": 10,
+      "todo": 0
+    },
+    {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    {
+      "tests": 13,
+      "pass": 13,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0
+    }
+  ],
+  "unitTotals": {
+    "tests": 4204,
+    "pass": 4194,
+    "fail": 0,
+    "skipped": 10,
+    "todo": 0
+  },
+  "sourceStable": true,
+  "httpStatus": 200,
+  "endedAt": "2026-09-18T18:33:26.592144-06:00"
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "file": "earth-texture.jpg",
+    "url": "https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/content-feature/bluemarble/images/land_shallow_topo_2048.jpg?w=2048&h=1024&fit=clip&crop=faces%2Cfocalpoint",
+    "sha256": "0204f0fa72b40a0ecee1b2c3dc2fcd2c143ad7f7db26dbfa27b2d3f2f4dcef9b",
+    "bytes": 199028
+  },
+  {
+    "file": "moon-texture.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg",
+    "sha256": "f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170",
+    "bytes": 457942
+  },
+  {
+    "file": "stars.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/starmap_2020_4k_print.jpg",
+    "sha256": "8d2e7e8d515e238deaf90e2b7fb11b2838b6e8db64f933a57540d894468148aa",
+    "bytes": 42786
+  },
+  {
+    "file": "hubble.jpg",
+    "url": "https://science.nasa.gov/wp-content/uploads/2023/07/hubble-space-telescope-hst-4.jpg?w=900",
+    "sha256": "933a771ba7b628fde2a2cecf214dfb6d5261c7675ceea75ebc8e0a56844f344a",
+    "bytes": 157167
+  }
+]

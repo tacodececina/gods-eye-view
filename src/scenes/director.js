@@ -85,6 +85,7 @@ export class SceneDirector {
       isMapStackAvailable = () => false,
       scenePacks = createDefaultScenePacks(),
       dataPacks = {},
+      createProject = createDefaultProject,
     } = {},
   ) {
     this._destroyed = false;
@@ -94,6 +95,7 @@ export class SceneDirector {
     this.dataManager = dataManager;
     this._isMapStackAvailable = isMapStackAvailable;
     this._scenePacks = scenePacks;
+    this._createProject = createProject;
     this._bundleAssets = createBundleAssets();
     this._dataPacks = createSceneDataPacks(viewer, {
       ...dataPacks,
@@ -257,7 +259,7 @@ export class SceneDirector {
   _loadProject() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return createDefaultProject();
+      if (!raw) return (this._createProject || createDefaultProject)();
       const project = normalizeProject(parseSceneDocument(raw));
       const installed = new Set(project.installedBuiltInSceneIds || []);
       let migrated = false;
@@ -305,7 +307,7 @@ export class SceneDirector {
     } catch (error) {
       // Never overwrite an unreadable or newer saved document with defaults.
       this._storageReadError = error;
-      return createDefaultProject();
+      return (this._createProject || createDefaultProject)();
     }
   }
 
@@ -505,7 +507,7 @@ export class SceneDirector {
     );
     // Restore default recipes if the user deleted all scenes
     if (!this._project.scenes.length) {
-      this._project = createDefaultProject();
+      this._project = (this._createProject || createDefaultProject)();
     }
 
     this._selectedSceneId = this._project.scenes[0]?.id || null;

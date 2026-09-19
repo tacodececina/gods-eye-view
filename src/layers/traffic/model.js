@@ -12,6 +12,18 @@ import {
   JAM_DOT_DEPTH_PUNCH,
 } from './policy.js';
 
+const MIN_TRAFFIC_SURFACE_HEIGHT_M = -1000;
+const MAX_TRAFFIC_SURFACE_HEIGHT_M = 12_000;
+
+/** Refuse transient sampleHeight sentinels that would place traffic inside Earth. */
+export function safeTrafficSurfaceHeight(value) {
+  return Number.isFinite(value) &&
+    value >= MIN_TRAFFIC_SURFACE_HEIGHT_M &&
+    value <= MAX_TRAFFIC_SURFACE_HEIGHT_M
+    ? value
+    : 0;
+}
+
 export function createModel({ state: layerState, services, parts, source }) {
   /** Build scene waypoints from source records; thinning and terrain remain rendering policy. */
   function parseRoads(roadData) {
@@ -55,8 +67,9 @@ export function createModel({ state: layerState, services, parts, source }) {
           firstCoord[0],
           firstCoord[1],
         );
-        const sampled = layerState._viewer.scene.sampleHeight(carto);
-        if (Number.isFinite(sampled)) baseHeight = sampled;
+        baseHeight = safeTrafficSurfaceHeight(
+          layerState._viewer.scene.sampleHeight(carto),
+        );
       }
 
       // Pre-compute Cartesian3 waypoints (lon, lat, height) for fast lerp animation

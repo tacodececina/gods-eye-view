@@ -9,6 +9,72 @@
 
 export const NAVIGATION_AUTHORITY_EVENT = 'gev:navigation-authority-taken';
 
+export const NAVIGATION_PRIORITY = Object.freeze({
+  incidental: 0,
+  layerFit: 1,
+  explicit: 2,
+  human: 3,
+});
+
+export function cameraTargetIdentity(target = {}) {
+  const layerId = String(target.layerId || '').trim();
+  const id = String(target.id ?? '').trim();
+  return layerId && id ? `${layerId}:${id}` : null;
+}
+
+export function layerVolumeNeedsFit(points = [], viewport = {}) {
+  if (!Array.isArray(points) || points.length === 0) return false;
+  const width = Number(viewport.width) || 0;
+  const height = Number(viewport.height) || 0;
+  const padding = viewport.padding || {};
+  const left = Number(padding.left) || 0;
+  const right = width - (Number(padding.right) || 0);
+  const top = Number(padding.top) || 0;
+  const bottom = height - (Number(padding.bottom) || 0);
+  return points.some(
+    (point) =>
+      !point ||
+      !Number.isFinite(point.x) ||
+      !Number.isFinite(point.y) ||
+      point.x < left ||
+      point.x > right ||
+      point.y < top ||
+      point.y > bottom,
+  );
+}
+
+function normalizePose(pose = {}) {
+  return {
+    lat: Number(pose.lat) || 0,
+    lon: Number(pose.lon) || 0,
+    alt: Math.max(1_000, Number(pose.alt) || 1_000),
+    heading: Number(pose.heading) || 0,
+    pitch: Number.isFinite(Number(pose.pitch)) ? Number(pose.pitch) : -90,
+    roll: Number(pose.roll) || 0,
+  };
+}
+
+/** Pure target-change choreography. Every stage retains the exact target ID. */
+export function planTargetCameraTransition({
+  current,
+  target,
+  reducedMotion = false,
+} = {}) {
+  const from = normalizePose(current);
+  const to = normalizePose(target);
+  const targetId = String(target?.id ?? '') || null;
+  if (reducedMotion) return [{ ...to, phase: 'final', duration: 0, targetId }];
+  const pullbackAlt = Math.min(
+    28_000_000,
+    Math.max(from.alt, to.alt * 2.8, 3_200_000),
+  );
+  return [
+    { ...from, alt: pullbackAlt, phase: 'pullback', duration: 0.42, targetId },
+    { ...to, alt: pullbackAlt, phase: 'reframe', duration: 0.58, targetId },
+    { ...to, phase: 'approach', duration: 0.72, targetId },
+  ];
+}
+
 /**
  * Announce that a layer-owned camera flight is taking navigation authority.
  *

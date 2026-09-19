@@ -70,8 +70,17 @@ function refreshFailureFromStats(stats, label) {
  * for real-time data overlays on the CesiumJS globe.
  */
 export class LayerLifecycle {
-  constructor(viewer, { allowQaRegistration = false } = {}) {
+  constructor(
+    viewer,
+    {
+      allowQaRegistration = false,
+      suspendWhenHidden = false,
+      isHidden = () => false,
+    } = {},
+  ) {
     this.viewer = viewer;
+    this.suspendWhenHidden = suspendWhenHidden;
+    this.isHidden = isHidden;
     this._activityListeners = new Set();
     this.layers = new Map(); // id → { module, enabled, initialized, intervalId, lifecycleState, lifecycleUncertain }
     this._listeners = new Set();
@@ -255,6 +264,7 @@ export class LayerLifecycle {
   }
 
   async _runPeriodicUpdate(layerId, entry, { signal = null } = {}) {
+    if (this.suspendWhenHidden && this.isHidden()) return false;
     if (
       !entry.enabled ||
       entry.lifecycleState !== 'enabled' ||

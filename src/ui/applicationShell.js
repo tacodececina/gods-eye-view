@@ -531,9 +531,11 @@ export class StyleManager extends ShellFacade {
     });
     this._initUI();
     this._initMapStackControl();
-    this._initPanelChrome();
-    this._initLeftPanelAdaptiveLayout();
-    this._initRightPanelAdaptiveLayout();
+    if (!services.workspaceLayout) {
+      this._initPanelChrome();
+      this._initLeftPanelAdaptiveLayout();
+      this._initRightPanelAdaptiveLayout();
+    }
     this._initRadioPanel();
     this._initCctvPanel();
     this._initGlobalContextPanel();
@@ -1237,7 +1239,7 @@ export class StyleManager extends ShellFacade {
       ),
       orientation: {
         heading: Cesium.Math.toRadians(cameraState.heading || 0),
-        pitch: Cesium.Math.toRadians(cameraState.pitch || -35),
+        pitch: Cesium.Math.toRadians(cameraState.pitch ?? -35),
         roll: Cesium.Math.toRadians(cameraState.roll || 0),
       },
       duration: Math.max(0.2, duration || 0),

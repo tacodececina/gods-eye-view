@@ -7,11 +7,16 @@ export function createApplicationData({
   catalog,
   allowQaRegistration,
   onData,
+  mountLayerPanel = true,
+  suspendWhenHidden = false,
+  isHidden,
   defer,
 }) {
   // Initialize data layer manager
   const dataManager = new LayerLifecycle(viewer, {
     allowQaRegistration,
+    suspendWhenHidden,
+    isHidden,
   });
   defer(async () => {
     await dataManager.destroyAll();
@@ -51,7 +56,8 @@ export function createApplicationData({
         delete window.__gevQaUnregisterLayer;
     });
   }
-  presentation.mount(document.getElementById('data-toggles'));
+  if (mountLayerPanel)
+    presentation.mount(document.getElementById('data-toggles'));
   styleManager.attachDataManager(dataManager);
 
   return { dataManager, catalog, presentation };

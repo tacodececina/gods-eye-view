@@ -1,0 +1,513 @@
+{
+  "startedAt": "2026-09-19T00:26:02.878Z",
+  "url": "http://127.0.0.1:4197/",
+  "browserMode": "fresh temporary profile, headless Chrome, native GPU default",
+  "checks": [
+    {
+      "id": "layout-1920x1080",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "outside": [],
+        "tooSmall": [],
+        "textOverflow": [],
+        "smallText": [],
+        "duplicates": [],
+        "overflow": {
+          "x": 0,
+          "y": 0
+        },
+        "catalogRows": 24,
+        "runtimeLayers": 21,
+        "canvasOperational": true,
+        "creditHit": true,
+        "scene": {
+          "regime": "far",
+          "skyBox": true,
+          "background": "rgb(0,0,0)",
+          "renderer": "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        "routes": [
+          "director",
+          "display",
+          "explore",
+          "instruments",
+          "more",
+          "operations",
+          "preferences",
+          "sensors",
+          "signals"
+        ]
+      }
+    },
+    {
+      "id": "layout-1440x900",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "outside": [],
+        "tooSmall": [],
+        "textOverflow": [],
+        "smallText": [],
+        "duplicates": [],
+        "overflow": {
+          "x": 0,
+          "y": 0
+        },
+        "catalogRows": 24,
+        "runtimeLayers": 21,
+        "canvasOperational": true,
+        "creditHit": true,
+        "scene": {
+          "regime": "far",
+          "skyBox": true,
+          "background": "rgb(0,0,0)",
+          "renderer": "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        "routes": [
+          "director",
+          "display",
+          "explore",
+          "instruments",
+          "more",
+          "operations",
+          "preferences",
+          "sensors",
+          "signals"
+        ]
+      }
+    },
+    {
+      "id": "layout-390x844",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "outside": [],
+        "tooSmall": [],
+        "textOverflow": [],
+        "smallText": [],
+        "duplicates": [],
+        "overflow": {
+          "x": 0,
+          "y": 0
+        },
+        "catalogRows": 24,
+        "runtimeLayers": 21,
+        "canvasOperational": true,
+        "creditHit": true,
+        "scene": {
+          "regime": "far",
+          "skyBox": true,
+          "background": "rgb(0,0,0)",
+          "renderer": "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        "routes": [
+          "director",
+          "display",
+          "explore",
+          "instruments",
+          "more",
+          "operations",
+          "preferences",
+          "sensors",
+          "signals"
+        ]
+      }
+    },
+    {
+      "id": "touch-cdp-globe-390x844",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "beforeTouch": {
+          "lat": 18,
+          "lon": -92,
+          "alt": 25999999.999999996,
+          "heading": 360,
+          "pitch": -90,
+          "roll": 0
+        },
+        "afterTouch": {
+          "lat": 14.959871906037492,
+          "lon": -121.28471711390863,
+          "alt": 25999384.515686717,
+          "heading": 360,
+          "pitch": -89.98285753986636,
+          "roll": 0
+        },
+        "protocol": "CDP Input.dispatchTouchEvent"
+      }
+    },
+    {
+      "id": "layout-360x800",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "outside": [],
+        "tooSmall": [],
+        "textOverflow": [],
+        "smallText": [],
+        "duplicates": [],
+        "overflow": {
+          "x": 0,
+          "y": 0
+        },
+        "catalogRows": 24,
+        "runtimeLayers": 21,
+        "canvasOperational": true,
+        "creditHit": true,
+        "scene": {
+          "regime": "far",
+          "skyBox": true,
+          "background": "rgb(0,0,0)",
+          "renderer": "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        "routes": [
+          "director",
+          "display",
+          "explore",
+          "instruments",
+          "more",
+          "operations",
+          "preferences",
+          "sensors",
+          "signals"
+        ]
+      }
+    },
+    {
+      "id": "layout-844x390",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "viewport": {
+          "width": 844,
+          "height": 390
+        },
+        "outside": [],
+        "tooSmall": [],
+        "textOverflow": [],
+        "smallText": [],
+        "duplicates": [],
+        "overflow": {
+          "x": 0,
+          "y": 0
+        },
+        "catalogRows": 24,
+        "runtimeLayers": 21,
+        "canvasOperational": true,
+        "creditHit": true,
+        "scene": {
+          "regime": "far",
+          "skyBox": true,
+          "background": "rgb(0,0,0)",
+          "renderer": "ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        "routes": [
+          "director",
+          "display",
+          "explore",
+          "instruments",
+          "more",
+          "operations",
+          "preferences",
+          "sensors",
+          "signals"
+        ]
+      }
+    },
+    {
+      "id": "search-right-focus",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "active": "location-search",
+        "value": "Ciudad de México",
+        "searchLeft": 1066
+      }
+    },
+    {
+      "id": "keyboard-top-navigation",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "panel": false,
+        "closeFocused": true
+      }
+    },
+    {
+      "id": "aladdin-off-focus-undo",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "panelOpen": false,
+        "activeView": "false",
+        "focus": true,
+        "row": false,
+        "enabled": false
+      }
+    },
+    {
+      "id": "aladdin-undo-restores-manager",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "layer": "local-datacenters"
+      }
+    },
+    {
+      "id": "rapid-undo-preserves-restored-layer-focus",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "enabled": true,
+        "focusId": "local-datacenters",
+        "staleAddFocus": false
+      }
+    },
+    {
+      "id": "external-state-active-list",
+      "ok": true,
+      "kind": "FIXTURE share origin on live DataManager",
+      "detail": {
+        "paramsAccepted": true,
+        "params": {
+          "catalog": "dense",
+          "showPoints": false,
+          "showOrbits": true,
+          "selectedSatTrackingId": null
+        }
+      }
+    },
+    {
+      "id": "undo-restores-layer-configuration",
+      "ok": true,
+      "kind": "FIXTURE share origin on live DataManager",
+      "detail": {
+        "enabled": true,
+        "params": {
+          "catalog": "dense",
+          "showPoints": false,
+          "showOrbits": true,
+          "selectedSatTrackingId": null
+        },
+        "row": true
+      }
+    },
+    {
+      "id": "clean-view-roundtrip",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "cleanOn": {
+          "active": true,
+          "exitHidden": false,
+          "focus": "eye-clean-exit"
+        },
+        "cleanOff": {
+          "active": false,
+          "focus": "eye-clean"
+        }
+      }
+    },
+    {
+      "id": "camera-overlap-a-b",
+      "ok": true,
+      "kind": "FIXTURE on live NavigationController",
+      "detail": {
+        "a": {
+          "completed": false,
+          "stale": true
+        },
+        "b": {
+          "completed": true,
+          "generation": 2,
+          "targetId": "fixture:B"
+        }
+      }
+    },
+    {
+      "id": "manual-override",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "flight": {
+          "completed": false,
+          "stale": true
+        },
+        "owner": {
+          "status": "cancelled-by-human",
+          "kind": "wheel",
+          "generation": 4
+        }
+      }
+    },
+    {
+      "id": "layer-fit-and-refresh-inert",
+      "ok": true,
+      "kind": "FIXTURE on live NavigationController",
+      "detail": {
+        "scheduled": true,
+        "before": 4,
+        "afterFit": 4,
+        "afterRefresh": 4,
+        "outcome": {
+          "status": "already-fits",
+          "layerIds": [
+            "satellites"
+          ]
+        }
+      }
+    },
+    {
+      "id": "home-stable",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "activeView": "false",
+        "inspecting": "false",
+        "camera": {
+          "lat": 17.999999999999996,
+          "lon": -91.99999999999999,
+          "alt": 18000000,
+          "heading": 360,
+          "pitch": -90,
+          "roll": 0
+        },
+        "target": {
+          "status": "already-fits",
+          "layerIds": [
+            "satellites"
+          ]
+        },
+        "homeHit": {
+          "x": 1377,
+          "y": 427,
+          "owned": true,
+          "hit": "STRONG"
+        }
+      }
+    },
+    {
+      "id": "live-selection-a-b",
+      "ok": true,
+      "kind": "LIVE USGS",
+      "detail": {
+        "expected": "pr71532753",
+        "selected": "pr71532753",
+        "viewerSelected": "pr71532753",
+        "pointerOwners": [
+          "us7000tigd",
+          "pr71532753"
+        ]
+      }
+    },
+    {
+      "id": "motion-reentry-and-stable-text",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "hidden": false,
+        "inert": false,
+        "title": "Capas y disponibilidad",
+        "kickerHidden": "true"
+      }
+    },
+    {
+      "id": "reduced-motion-final-state",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "activeFlight": false,
+        "altitude": 17999999.999999996,
+        "reduced": true
+      }
+    },
+    {
+      "id": "reduced-motion-layer-fit-no-flight",
+      "ok": true,
+      "kind": "FIXTURE on live NavigationController",
+      "detail": {
+        "scheduled": true,
+        "outcome": {
+          "status": "fitted",
+          "layerIds": [
+            "satellites"
+          ],
+          "pointCount": 2
+        },
+        "activeFlight": false,
+        "reduced": true,
+        "camera": {
+          "lat": -52.06263267094209,
+          "lon": 90,
+          "alt": 12613928.545023428,
+          "heading": 360,
+          "pitch": -89.81344410631321,
+          "roll": 0
+        }
+      }
+    },
+    {
+      "id": "reduced-motion-preference-change-session",
+      "ok": true,
+      "kind": "FIXTURE on live NavigationController",
+      "detail": {
+        "scheduled": true,
+        "outcome": {
+          "status": "fitting",
+          "layerIds": [
+            "satellites"
+          ],
+          "pointCount": 2
+        },
+        "activeFlight": true,
+        "reduced": false
+      }
+    }
+  ],
+  "pageErrors": [],
+  "requestFailures": [
+    {
+      "target": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "screenshots": [
+    "p012-1920x1080-home.png",
+    "p012-1920x1080-catalog.png",
+    "p012-1440x900-home.png",
+    "p012-1440x900-catalog.png",
+    "p012-390x844-home.png",
+    "p012-390x844-catalog.png",
+    "p012-360x800-home.png",
+    "p012-360x800-catalog.png",
+    "p012-844x390-home.png",
+    "p012-844x390-catalog.png"
+  ],
+  "completedAt": "2026-09-19T00:26:53.057Z",
+  "summary": {
+    "total": 23,
+    "passed": 23,
+    "failed": 0,
+    "live": 17,
+    "fixture": 6
+  },
+  "status": "pass"
+}
