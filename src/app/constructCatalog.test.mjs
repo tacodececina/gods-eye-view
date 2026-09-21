@@ -39,7 +39,7 @@ test('catalogs construct distinct layers and classification from their supplied 
     signal: b.signal,
     surface: fixtureSurface(b.signal),
   });
-  assert.equal(first.layers.length, 21);
+  assert.equal(first.layers.length, 20);
   assert.ok(first.get('transit'));
   const order = first.layers.map(({ id }) => id);
   assert.deepEqual(
@@ -47,11 +47,27 @@ test('catalogs construct distinct layers and classification from their supplied 
     ['traffic', 'cctv', 'radio', 'transit', 'bikeshare', 'directions'],
   );
   assert.ok(first.get('bhote-koshi-2026'));
-  assert.ok(first.get('bhote-koshi-locator'));
+  // P3.1: the locator is withdrawn from permanent runtime behaviour. Its module
+  // stays in the tree for a future contextual experience, but nothing in the
+  // running product may construct, register or reach it.
+  assert.equal(
+    first.get('bhote-koshi-locator'),
+    undefined,
+    'bhote-koshi-locator is not a runtime catalog layer',
+  );
+  assert.equal(
+    first.layers.some(({ id }) => id === 'bhote-koshi-locator'),
+    false,
+  );
   const lifecycle = new LayerLifecycle({});
   for (const layer of first.layers) lifecycle.register(layer);
   const rows = lifecycle.getAll();
-  for (const id of ['bhote-koshi-2026', 'bhote-koshi-locator']) {
+  assert.equal(
+    rows.some((row) => row.id === 'bhote-koshi-locator'),
+    false,
+    'the locator never reaches the layer lifecycle',
+  );
+  for (const id of ['bhote-koshi-2026']) {
     assert.equal(
       rows.find((row) => row.id === id)?.showInTogglePanel,
       false,

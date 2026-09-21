@@ -116,7 +116,6 @@ const ADDITIONAL_SHOTS = [
     roll: 174,
     duration: 4,
     hold: 11,
-    locatorPresentation: 'bhote-koshi-incident-places',
   },
 ];
 const EVIDENCE_ORDER = [
@@ -161,7 +160,7 @@ const PATH_DURATION_BY_BEAT = Object.freeze({
 export function expandNepalEvidencePack(base) {
   const layerId = base.requiredSourcePackLayerId;
   const extraShots = ADDITIONAL_SHOTS.map(
-    ({ id, hold, duration = 4.2, locatorPresentation, ...camera }) => ({
+    ({ id, hold, duration = 4.2, ...camera }) => ({
       ...camera,
       roll: Number.isFinite(Number(camera.roll)) ? Number(camera.roll) : 0,
       duration,
@@ -177,14 +176,6 @@ export function expandNepalEvidencePack(base) {
             split: 0.5,
           },
         },
-        ...(locatorPresentation
-          ? {
-              'bhote-koshi-locator': {
-                enabled: true,
-                params: { presentation: locatorPresentation },
-              },
-            }
-          : {}),
       },
     }),
   );

@@ -215,7 +215,9 @@ test('the Nepal evidence pack appends once and applies the approved corridor fra
     assert.deepEqual(scene.shots.slice(0, 8).map(({ id }) => id), originalShotIds);
     assert.equal(scene.shots.length, 25);
     assert.ok(scene.releaseLayerIds.includes('bhote-koshi-2026'));
-    assert.ok(scene.releaseLayerIds.includes('bhote-koshi-locator'));
+    // P3.1 withdrew the locator: the pack no longer claims or releases it, and
+    // saved shots that still carry the old entry are left untouched below.
+    assert.equal(scene.releaseLayerIds.includes('bhote-koshi-locator'), false);
     assert.equal(scene.appliedShotPacks[0].id, 'bhote-koshi-nepal-evidence-pack');
     assert.equal(scene.appliedShotPacks[0].version, 18);
     assert.deepEqual(
