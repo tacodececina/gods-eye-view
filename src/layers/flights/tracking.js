@@ -684,6 +684,38 @@ export function createTracking({
   }
 
   /**
+   * Detach the follow camera without deselecting the contact (P3.1).
+   *
+   * Camera ownership and selection identity are separate authorities. A wheel,
+   * drag or pinch means "I want the camera", never "forget who I was reading",
+   * so this route stops the per-frame follow frame and hands `trackedEntity`
+   * back — and deliberately does NOT touch `_trackedIcao`, the tracked entity,
+   * the billboard presentation, the shared context slot, the trail or the
+   * pending-restore latch, and emits no `gev:awareness-subject-cleared`.
+   * `_clearTracking` remains the one destructive deselect.
+   *
+   * Another layer holding `trackedEntity` keeps it: releasing our own camera
+   * must not yank someone else's follow.
+   *
+   * @param {object} [options]
+   * @param {string} [options.origin='programmatic'] - Diagnostic release origin.
+   * @returns {boolean} Whether a selection survived the release.
+   */
+
+  function _releaseCameraOwnership({ origin = 'programmatic' } = {}) {
+    void origin;
+    flightState._trackedCameraFrameStop?.();
+    flightState._trackedCameraFrameStop = null;
+    if (!flightState._trackedIcao) return false;
+    if (
+      flightState._viewer &&
+      flightState._viewer.trackedEntity === flightState._trackedEntity
+    )
+      flightState._viewer.trackedEntity = undefined;
+    return true;
+  }
+
+  /**
    * Whether the Military layer suppresses this civil duplicate right now.
    *
    * The dedicated Military layer owns icon/track/click for known-military
@@ -1248,6 +1280,7 @@ export function createTracking({
     _clearTrail,
     _destroyTrail,
     _clearTracking,
+    _releaseCameraOwnership,
     _militaryLayerSuppresses,
     _applyPendingTrackingRestore,
     _cancelPendingTrackingRestore,

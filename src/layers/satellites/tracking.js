@@ -61,6 +61,60 @@ export function createTracking({ state: layerState, services, parts, source }) {
   }
 
   /**
+   * Detach the follow camera without deselecting the satellite (P3.1).
+   *
+   * Camera ownership and selection identity are separate authorities. A wheel,
+   * drag or pinch means "I want the camera", never "forget who I was reading",
+   * so this hands `trackedEntity` back and deliberately does NOT touch
+   * `_trackedNorad`, the tracked entity, the orbit path, the shared context slot
+   * or the pending-restore latch, and emits no
+   * `gev:awareness-subject-cleared`. `_clearTracking` remains the one
+   * destructive deselect.
+   *
+   * Another layer holding `trackedEntity` keeps it.
+   *
+   * @param {object} [options]
+   * @param {string} [options.origin='programmatic'] - Diagnostic release origin.
+   * @returns {boolean} Whether a selection survived the release.
+   */
+
+  function _releaseCameraOwnership({ origin = 'programmatic' } = {}) {
+    void origin;
+    if (layerState._trackedNorad === null) return false;
+    if (
+      layerState._viewer &&
+      layerState._viewer.trackedEntity === layerState._trackedEntity
+    )
+      layerState._viewer.trackedEntity = undefined;
+    return true;
+  }
+
+  /**
+   * Re-follow the already-selected satellite after a camera release (SEGUIR).
+   *
+   * Refuses when the id is not the current selection, or when a different layer
+   * owns the follow camera; a free camera is reclaimable.
+   * @param {number|string} noradId - Target satellite.
+   * @returns {boolean} Whether the follow camera was reattached.
+   */
+
+  function _refocusTracked(noradId) {
+    const id = _normalizeTrackedNorad(noradId);
+    if (
+      id === null ||
+      id !== layerState._trackedNorad ||
+      !layerState._viewer ||
+      !layerState._trackedEntity
+    )
+      return false;
+    const cameraOwner = layerState._viewer.trackedEntity;
+    if (cameraOwner && cameraOwner !== layerState._trackedEntity) return false;
+    layerState._viewer.camera?.cancelFlight?.();
+    layerState._viewer.trackedEntity = layerState._trackedEntity;
+    return true;
+  }
+
+  /**
    * Stop tracking the currently followed satellite.
    * @param {boolean} [skipViewerUntrack=false] - When ANOTHER layer just grabbed
    *   the follow-camera (viewer.trackedEntityChanged), tear down our own state
@@ -468,6 +522,8 @@ export function createTracking({ state: layerState, services, parts, source }) {
     _applyPendingTrackingRestore,
     _cancelPendingTrackingRestore,
     _clearTracking,
+    _releaseCameraOwnership,
+    _refocusTracked,
     _getTrackedFramePosition,
     _trackedDisplayCached,
     _contextSubjectMetadata,

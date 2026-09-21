@@ -119,17 +119,20 @@ test('navigation clears dormant tracker IDs without aborting unrelated layer res
     /militaryFlightsLayer\.cancelPendingTrackingRestore\?\.\(\)/,
   );
   assert.match(stamp, /satellitesLayer\.cancelPendingTrackingRestore\?\.\(\)/);
+  // P3.1 added `clearSelectedIdentity`: a physical gesture cancels pending
+  // camera claims but must not null a stable id that is already on screen, so
+  // each destructive branch now also gates on it.
   assert.match(
     stamp,
-    /if \(\s*!passivelyClearedShareSelection\s*&&\s*!flightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedFlightsTrackingId: null/,
+    /if \(\s*clearSelectedIdentity\s*&&\s*!passivelyClearedShareSelection\s*&&\s*!flightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedFlightsTrackingId: null/,
   );
   assert.match(
     stamp,
-    /if \(\s*!passivelyClearedShareSelection\s*&&\s*!militaryFlightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedMilitaryTrackingId: null/,
+    /if \(\s*clearSelectedIdentity\s*&&\s*!passivelyClearedShareSelection\s*&&\s*!militaryFlightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedMilitaryTrackingId: null/,
   );
   assert.match(
     stamp,
-    /if \(\s*!passivelyClearedShareSelection\s*&&\s*!satellitesLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedSatTrackingId: null/,
+    /if \(\s*clearSelectedIdentity\s*&&\s*!passivelyClearedShareSelection\s*&&\s*!satellitesLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedSatTrackingId: null/,
   );
 });
 

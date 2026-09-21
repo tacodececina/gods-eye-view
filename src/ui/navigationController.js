@@ -51,9 +51,21 @@ export class NavigationController {
     this._lastLayerFitResult = null;
     this._disposed = false;
   }
+  /**
+   * @param {object} [options]
+   * @param {boolean} [options.cancelPendingSelection=true] - Supersede camera
+   *   claims that have not landed yet (share selection, deferred restores).
+   * @param {boolean} [options.clearSearchedLocation=true] - Blank the free-text
+   *   location readout.
+   * @param {boolean} [options.clearSelectedIdentity=true] - Null the stable
+   *   `selected*TrackingId` of layers that are not actively following. A
+   *   physical gesture passes `false`: it takes the camera, not the selection
+   *   (P3.1).
+   */
   _stampNavigation({
     cancelPendingSelection = true,
     clearSearchedLocation = true,
+    clearSelectedIdentity = true,
   } = {}) {
     this.cancelOrientation();
     const { flightsLayer, militaryFlightsLayer, satellitesLayer } =
@@ -84,7 +96,11 @@ export class NavigationController {
       }
       // A deliberate destination supersedes share-selected entities that have
       // not arrived yet. Active owners publish their clear when released.
-      if (!passivelyClearedShareSelection && !flightsLayer.getTrackedInfo?.()) {
+      if (
+        clearSelectedIdentity &&
+        !passivelyClearedShareSelection &&
+        !flightsLayer.getTrackedInfo?.()
+      ) {
         this.getDataManager()?.setLayerParams(
           'flights',
           {
@@ -94,6 +110,7 @@ export class NavigationController {
         );
       }
       if (
+        clearSelectedIdentity &&
         !passivelyClearedShareSelection &&
         !militaryFlightsLayer.getTrackedInfo?.()
       ) {
@@ -106,6 +123,7 @@ export class NavigationController {
         );
       }
       if (
+        clearSelectedIdentity &&
         !passivelyClearedShareSelection &&
         !satellitesLayer.getTrackedInfo?.()
       ) {
@@ -262,11 +280,63 @@ export class NavigationController {
     });
   }
 
+  /**
+   * Detach every follow camera this app owns without deselecting anything.
+   *
+   * The gesture counterpart of `_releaseFollowCamera`. Camera ownership and
+   * selection identity are separate authorities (P3.1): a wheel, drag or pinch
+   * claims the camera, so each tracking layer is asked for its camera back
+   * through `releaseCameraOwnership` — never `stopTracking`, which would clear
+   * the shared context slot, emit the semantic clear the dossier listens to and
+   * drop the stable id that SEGUIR needs. Vessel selection is left alone for the
+   * same reason.
+   *
+   * Ordering matters: the follow must be released before the tween is
+   * interrupted, because resetting the lookAt transform while an entity is
+   * tracked flings the camera (see `interruptCameraMotion`).
+   *
+   * @param {object} [options]
+   * @param {string} [options.origin='user'] - Diagnostic release origin.
+   * @returns {boolean} Whether any semantic selection survived the release.
+   */
+  _releaseCameraOwnership({ origin = 'user' } = {}) {
+    const {
+      flightsLayer,
+      militaryFlightsLayer,
+      satellitesLayer,
+      rocketLaunchesLayer,
+    } = this.tracking;
+    let selected = false;
+    for (const layer of [flightsLayer, militaryFlightsLayer, satellitesLayer]) {
+      try {
+        if (layer?.releaseCameraOwnership?.({ origin })) selected = true;
+      } catch {
+        /* best-effort release */
+      }
+    }
+    try {
+      rocketLaunchesLayer.releaseCameraOwnership?.();
+    } catch {
+      /* best-effort release */
+    }
+    this.viewer.trackedEntity = undefined;
+    this.interruptCameraMotion('human-gesture');
+    this.stopOrbit();
+    this._settleInterruptedFlight();
+    return selected;
+  }
+
   /** A physical gesture outranks every pending or followed camera owner. */
   interruptHumanNavigation(kind = 'gesture') {
     if (this._disposed || this.isCockpitActive()) return false;
-    const generation = this._stampNavigation({ clearSearchedLocation: false });
-    this._releaseFollowCamera({ trackingOrigin: 'user' });
+    // A gesture still supersedes camera claims that have NOT landed yet (a
+    // share restore still waiting for its contact to arrive), but it must not
+    // touch selection identity that already exists on screen.
+    const generation = this._stampNavigation({
+      clearSearchedLocation: false,
+      clearSelectedIdentity: false,
+    });
+    this._releaseCameraOwnership({ origin: 'user' });
     this._lastLayerFitResult = {
       status: 'cancelled-by-human',
       kind,
