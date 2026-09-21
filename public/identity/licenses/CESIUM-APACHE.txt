@@ -338,7 +338,7 @@ Fork: https://github.com/lyntel/GraphicsSamples/blob/3d30817ebeeade64fe6a4fc3aa1
 
 > ----------------------------------------------------------------------------------
 > File:        es3-kepler\FXAA/FXAA3_11.h
-> SDK Version: v3.00 
+> SDK Version: v3.00
 > Email:       gameworks@nvidia.com
 > Site:        http://developer.nvidia.com/
 >
