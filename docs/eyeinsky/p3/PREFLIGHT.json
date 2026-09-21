@@ -1,0 +1,24 @@
+{
+  "inspectedDate": "2026-09-19",
+  "cliVersion": "2.1.220",
+  "cliPath": "C:/Users/Alex/AppData/Roaming/npm/claude.CMD",
+  "requestedModel": "claude-opus-5",
+  "exitCode": 1,
+  "response": {
+    "is_error": true,
+    "subtype": "success",
+    "terminal_reason": "api_error",
+    "api_error_status": 400,
+    "result": "Credit balance is too low",
+    "session_id": "da67e1ce-0d3c-4708-b13e-bd6914f8b573",
+    "num_turns": 1,
+    "total_cost_usd": 0,
+    "modelUsage": {}
+  },
+  "toolsEnabled": false,
+  "sessionPersistence": false,
+  "constructionStarted": false,
+  "status": "blocked-credit-balance",
+  "documentationAuthor": "KRONOS",
+  "note": "Sanitized transcription of real terminal output. No model response or product implementation occurred."
+}

@@ -1,6 +1,6 @@
 # EYEINSKY — fases guardadas al cierre
 
-Estado: corte P0–P2 entregado localmente el18sep2026. Alex pidió guardar y cerrar, no empezar P3. Aceptación estética, paridad global y publicación siguen separadas. Detalle completo original: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
+Estado: P0–P3 verificadas localmente al 20sep2026. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
 
 ## P0 — cerrada como base y spike técnico
 
@@ -14,18 +14,22 @@ Escena negro global/verde cercano; navegación flotante simplificada; búsqueda 
 
 Director cinematográfico interrumpible, encuadre al activar capas, reduced-motion, revelado terminal y Aladino reversible. Regresiones de rueda/render y Deshacer rápido/foco cerradas. Cabina con fixture; picking universal y paridad global siguen pendientes.
 
-## P3 — próximo lote recomendado, NO iniciado
+## P3 — verificada y aceptada técnicamente
+
+Implementación realizada con Claude Code `claude-opus-5` como único escritor y verificación independiente. Plan y diseño: `../superpowers/plans/2026-09-19-eyeinsky-p3-implementation.md` y spec enlazada. Evidencia canónica local: `output/eyeinsky-p3/supervisor/FINAL-ACCEPTANCE.md` y `.json`.
 
 Expediente y actividad:
 
-- [ ] Abrir el expediente inferior derecho por defecto; versión móvil como hoja compacta, sin perder acceso a instrumentos ni globo.
-- [ ] Jerarquía identidad/fuente/edad/datos/fotos/acciones; datos faltantes visibles, no inventados.
-- [ ] Fotografías reales, marcas autorizadas y slider con pausa/foco/reduced-motion; error de imagen no bloquea selección.
-- [ ] Actividad bajo Ayuda conectada a carga real de mapas/cámaras/capas; totales sólo si existen, error/cancelación/retry idempotente.
-- [ ] Pruebas de contexto/objeto, medios fallidos, carga parcial, accesibilidad, modo limpio, créditos y falta de red.
-- [ ] Preview acotada para Alex; conservar capacidades y el estilo hack/espías más simple/visual.
+- [x] Expediente inferior derecho abierto por defecto; hoja compacta móvil sin perder instrumentos ni globo.
+- [x] Jerarquía identidad/fuente/edad/datos/fotos/acciones; ausencias visibles sin telemetría inventada.
+- [x] Fotografías reales curadas, slider accesible y suspensión por foco/puntero/hidden/reduced-motion.
+- [x] Actividad conectada a mapas/cámaras/capas reales, terminales reintentables y single-flight.
+- [x] Carreras A→B, eventos de imagen obsoletos, retry, saneado de secretos y zoom real cubiertos.
+- [x] Recorridos P3, P0–P2, cámara adversa y cabina aprobados por el supervisor.
 
-## P4 — satélites3D, NO iniciado
+## P4 — satélites 3D, plan preparado; implementación NO iniciada
+
+Plan ejecutable: `../superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`.
 
 - [ ] Curar al menos un modelo específico verificable y uno de familia, con licencia, escala, procedencia y hash.
 - [ ] Distinguir identidad/orbita propagada, geometría específica/familia/genérica y actitud aproximada.

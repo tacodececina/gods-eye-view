@@ -1205,6 +1205,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
     .eye-hud-details,
     .eye-workspace,
     .eye-inspector,
+    .eye-activity,
     .eye-field-reticle
   ),
 body.eyeinsky.ui-clean-view
@@ -1219,6 +1220,7 @@ body.eyeinsky.ui-clean-view
     .eye-hud-details,
     .eye-workspace,
     .eye-inspector,
+    .eye-activity,
     .eye-field-reticle
   ) {
   display: none !important;
@@ -2343,6 +2345,351 @@ body.eyeinsky {
   .eye-active-layers :is(p, strong, button),
   #eye-notice,
   #eye-notice button {
+    font-size: 14px;
+  }
+
+  /* P3: en móvil el texto esencial sube a 14px, incluida la ficha nueva, su
+   * rótulo de contexto y el pie de las fotografías. */
+  .eye-inspector .eye-kicker,
+  .eye-dossier :is(p, span, b, dt, dd, button, a, figcaption),
+  .eye-activity :is(b, span, button, li, h3) {
+    font-size: 14px;
+  }
+}
+
+/* ─── EYEINSKY P3 · expediente contextual ───
+ *
+ * El globo manda: estas superficies son vidrio sobre la escena, ancladas abajo
+ * a la derecha en escritorio y como hoja compacta en móvil (reglas de arriba).
+ * Nada de botones extruidos; el texto esencial no baja de 13px y ningún
+ * objetivo táctil de 44px.
+ */
+.eye-dossier-title {
+  margin: 10px 0;
+  font-size: 22px;
+  font-weight: 450;
+  line-height: 1.25;
+}
+
+.eye-dossier-status,
+.eye-dossier-source {
+  margin: 6px 0;
+  color: var(--text-dim);
+  font: 13px/1.5 var(--font-mono);
+}
+
+/* La frescura se dice con palabras; el color sólo acompaña. */
+.eye-dossier-status[data-status='stale'],
+.eye-dossier-status[data-status='missing'] {
+  color: #ffd9a8;
+}
+
+.eye-dossier-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--accent);
+}
+
+.eye-dossier-position {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.eye-dossier-compass {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid rgb(166 215 194 / 34%);
+  border-radius: 999px;
+}
+
+.eye-dossier-heading-text {
+  font: 13px var(--font-mono);
+}
+
+.eye-dossier-needle {
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-dossier-needle {
+    transition: none;
+  }
+}
+
+.eye-dossier-coords {
+  font: 13px/1.5 var(--font-mono);
+}
+
+.eye-dossier-action {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.eye-dossier-actions {
+  margin-top: 14px;
+}
+
+.eye-dossier-actions .eye-dossier-action {
+  width: 100%;
+}
+
+/* ─── Medios con permiso verificado ─── */
+.eye-media {
+  margin: 16px 0 0;
+}
+
+.eye-media-frame {
+  overflow: hidden;
+  border-radius: var(--eye-radius-small);
+  background: rgb(166 215 194 / 6%);
+}
+
+.eye-media-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.eye-media-caption {
+  margin-top: 8px;
+  font: 13px/1.5 var(--font-mono);
+}
+
+.eye-media-credit {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.eye-media-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eye-media-step,
+.eye-media-play {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 13px;
+}
+
+.eye-media-position {
+  font: 13px var(--font-mono);
+}
+
+/* El rótulo nombra qué se está mirando: es texto esencial, no adorno, así que
+ * sube al mínimo de 13px dentro del expediente. */
+.eye-inspector .eye-kicker {
+  font-size: 13px;
+}
+
+/* ─── Cápsula de actividad, bajo Ayuda ───
+ *
+ * Ocupa una fila propia del grupo de utilidades para quedar literalmente debajo
+ * de Ayuda, y el resumen de señales baja lo justo para no pisarla. */
+.eye-utility-cluster {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  /* Con dos filas la caja del grupo cubre ancho vacío por encima del rail de
+   * capas y se quedaba con sus clics (medido en diag-mobile-2 y -3). El hueco
+   * transparente deja pasar el puntero; los controles siguen recibiéndolo. */
+  pointer-events: none;
+}
+
+.eye-utility-cluster > button,
+.eye-utility-cluster .eye-activity-capsule,
+.eye-utility-cluster .eye-activity-detail {
+  pointer-events: auto;
+}
+
+.eye-activity {
+  position: relative;
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.eyeinsky:has(.eye-activity:not([hidden])) .eye-signal-glance {
+  top: calc(var(--eye-safe-top) + 122px);
+}
+
+.eye-utility-cluster .eye-activity-capsule {
+  width: auto;
+  min-width: 132px;
+}
+
+.eye-activity-capsule {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.eye-activity-capsule[data-activity-state='error'] {
+  border-color: rgb(255 176 120 / 55%);
+}
+
+.eye-activity-detail {
+  position: absolute;
+  z-index: 52;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(330px, calc(100vw - 28px));
+  max-height: min(60dvh, 460px);
+  padding: 14px;
+  overflow: auto;
+  border-radius: var(--eye-radius);
+}
+
+.eye-activity-list,
+.eye-activity-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eye-activity-item,
+.eye-activity-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid rgb(166 215 194 / 16%);
+}
+
+.eye-activity-label {
+  font: 13px/1.5 var(--font-mono);
+}
+
+.eye-activity-state,
+.eye-activity-count,
+.eye-activity-age,
+.eye-activity-attempt {
+  color: var(--text-dim);
+  font: 13px/1.5 var(--font-mono);
+}
+
+.eye-activity-error {
+  width: 100%;
+  overflow-wrap: anywhere;
+  color: #ffd9a8;
+  font: 13px/1.5 var(--font-mono);
+}
+
+.eye-activity-progress {
+  width: 100%;
+  height: 6px;
+}
+
+.eye-activity-retry,
+.eye-activity-cancel,
+.eye-activity-entry {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.eye-activity-entry {
+  width: 100%;
+  text-align: left;
+}
+
+.eye-activity-entry-body {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0 0;
+}
+
+.eye-activity-history-title {
+  margin: 14px 0 0;
+  color: var(--text-dim);
+  font: 13px var(--font-mono);
+  letter-spacing: 0.1em;
+}
+
+.eye-activity-empty {
+  padding: 10px 0;
+  color: var(--text-dim);
+  font: 13px/1.5 var(--font-mono);
+}
+
+/* En móvil el mínimo es 14px. Va al final a propósito: las reglas P3 de arriba
+ * son posteriores al bloque móvil del archivo y si no ganarían por orden.
+ * Un teléfono en horizontal (844x390) también es un teléfono: entra por alto. */
+@media (max-width: 650px), (max-height: 520px) and (orientation: landscape) {
+  /* La ficha de VISTA convive con el rail de capas, así que en móvil es una
+   * hoja compacta anclada abajo: el panel alto de la izquierda tapaba
+   * `[data-eye-active-add]` y el catálogo dejaba de poder abrirse (medido en
+   * output/eyeinsky-p3/build/diag-mobile-1/result.json). Cuando SÍ hay un
+   * objetivo inspeccionado el rail ya se apaga solo, y la ficha recupera toda
+   * la altura. */
+  .eyeinsky[data-eye-inspecting='false'] .eye-inspector {
+    top: auto;
+    right: 76px;
+    bottom: calc(var(--eye-safe-bottom) + 138px);
+    left: var(--eye-safe-left);
+    /* Hoja baja y compacta: el centro del globo queda libre para arrastrar con
+     * el dedo. Con 34dvh la hoja llegaba a la mitad de la pantalla y se comía
+     * el gesto del recorrido base (touch-cdp-globe-390x844). Desplaza su
+     * contenido en vertical en lugar de crecer. */
+    max-height: min(22dvh, 186px);
+  }
+
+  /* El resumen se acorta para no rozar el rail; «Actividad» sigue en el nombre
+   * accesible del botón, sólo deja de ocupar ancho. */
+  .eye-activity-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .eye-utility-cluster .eye-activity-capsule {
+    min-width: 44px;
+  }
+  .eye-inspector .eye-kicker,
+  .eye-dossier :is(p, span, b, dt, dd, button, a, figcaption),
+  .eye-dossier-status,
+  .eye-dossier-source,
+  .eye-dossier-coords,
+  .eye-media-caption,
+  .eye-media-credit,
+  .eye-media-position,
+  .eye-activity :is(b, span, button, li, h3),
+  .eye-activity-label,
+  .eye-activity-state,
+  .eye-activity-count,
+  .eye-activity-age,
+  .eye-activity-attempt,
+  .eye-activity-error,
+  .eye-activity-history-title,
+  .eye-activity-empty {
     font-size: 14px;
   }
 }

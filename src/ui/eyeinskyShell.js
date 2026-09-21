@@ -13,6 +13,22 @@ import { mountEyeCatalog } from './eyeinskyCatalog.js';
 import { mountEyeActiveLayers } from './eyeinskyActiveLayers.js';
 import { planTargetCameraTransition } from '../navigationPolicy.js';
 import { createDecorativeDecoder } from './eyeinskyDecode.js';
+import {
+  createDossierState,
+  createViewContext,
+  isDossierVisible,
+  normalizeContext,
+  reduceDossier,
+} from './eyeinskyDossierModel.js';
+import { connectDossierSources } from './eyeinskyDossierSources.js';
+import { mountEyeDossier } from './eyeinskyDossier.js';
+import { mountEyeMedia } from './eyeinskyMedia.js';
+import {
+  createActivityState,
+  reduceActivity,
+} from './eyeinskyActivityModel.js';
+import { connectActivitySources } from './eyeinskyActivitySources.js';
+import { mountEyeActivity } from './eyeinskyActivity.js';
 
 const $ = (id) => document.getElementById(id);
 const viewTitles = {
@@ -113,6 +129,10 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   let catalog = null,
     activeLayers = null,
     lastCameraTargetId = null;
+  // Razones de suspensión de las superficies P3. Se declaran aquí porque
+  // `openView` puede correr durante el arranque, antes de que existan.
+  const suspensionReasons = new Set();
+  let eyeSurfacesReady = false;
   let restoreController = null;
   const layer = () => dataManager.getAll().find((l) => l.id === 'earthquakes');
   const earthquake = () => dataManager.layers.get('earthquakes')?.module;
@@ -203,16 +223,22 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     }
     if (view === 'signals') void refresh();
     if (view === 'operations') operations.refresh();
-    if (matchMedia('(max-width:650px)').matches && view !== 'explore')
-      closeInspector(false);
+    // En móvil el panel ocupa la pantalla: el expediente se SUSPENDE mientras
+    // tanto. Antes se cerraba, y abrir Catálogo o Preferencias equivalía a
+    // cerrarlo para siempre, perdiendo la ficha vigente sin que nadie lo pidiera.
+    setEyeSurfaceSuspension(
+      'mobile-workspace',
+      matchMedia('(max-width:650px)').matches && view !== 'explore',
+    );
   }
   function closePanel() {
     openView('explore', panelTrigger);
     panelTrigger?.focus?.({ preventScroll: true });
   }
   function closeInspector(focus = true) {
-    setSurface('eye-inspector', false);
-    document.body.dataset.eyeInspecting = 'false';
+    // Cerrar es una decisión de la persona: el expediente la recuerda y ningún
+    // refresh posterior lo reabre por su cuenta.
+    publishDossier({ type: 'close' });
     if (focus) {
       const mobileReturn =
         activeView === 'signals' && matchMedia('(max-width:650px)').matches;
@@ -332,55 +358,69 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   function selectedEntity(id) {
     return getEntities().find((e) => e.properties?.usgsId?.getValue() === id);
   }
+  /**
+   * Contexto de presentación de un evento USGS.
+   *
+   * La autoridad sigue siendo esta función: identidad, cámara y guardado no se
+   * mueven al expediente. El expediente sólo PINTA lo que aquí se decide.
+   * @param {string} id Identidad USGS.
+   * @param {object|undefined} row Registro del último conjunto consultado.
+   * @returns {object} Contexto normalizado.
+   */
+  function earthquakeContext(id, row) {
+    if (!row)
+      return normalizeContext({
+        key: `earthquakes:${id}`,
+        kind: 'earthquake',
+        layerId: 'earthquakes',
+        stableId: id,
+        title: 'Evento no disponible',
+        source: 'USGS',
+        fields: [
+          { label: 'ID USGS', value: id },
+          {
+            label: 'SITUACIÓN',
+            value: `El contacto ${id} no está en el último conjunto consultado. Su ausencia no demuestra que el evento haya desaparecido.`,
+          },
+        ],
+      });
+    return normalizeContext({
+      key: `earthquakes:${row.id}`,
+      kind: 'earthquake',
+      layerId: 'earthquakes',
+      stableId: row.id,
+      title: row.place || 'Ubicación no informada',
+      source: 'USGS',
+      sourceUrl: `https://earthquake.usgs.gov/earthquakes/eventpage/${encodeURIComponent(row.id)}`,
+      observedAt: row.timeMs ?? null,
+      fetchedAt: layer()?.stats?.lastUpdate ?? null,
+      position: { lat: row.lat, lon: row.lon },
+      fields: [
+        { label: 'MAGNITUD', value: `M${row.magnitude.toFixed(1)}` },
+        { label: 'ID USGS', value: row.id },
+        { label: 'HORA DEL EVENTO', value: date(row.timeMs) },
+        { label: 'ÚLTIMA CONSULTA', value: date(layer()?.stats.lastUpdate) },
+        {
+          label: 'PROFUNDIDAD',
+          value:
+            row.depthKm == null ? 'No informada' : `${row.depthKm.toFixed(1)}`,
+          unit: row.depthKm == null ? null : 'km',
+        },
+        { label: 'ESTADO', value: stateLabels[signalState(layer())] },
+      ],
+    });
+  }
   function inspect(id, { fly = true, trigger = document.activeElement } = {}) {
     const row = rows.find((r) => r.id === id);
     selection = id;
     inspectorTrigger = trigger;
-    setSurface('eye-inspector', true);
-    document.body.dataset.eyeInspecting = 'true';
-    const host = $('eye-inspector-content');
-    host.replaceChildren();
-    if (!row) {
-      const title = node('h2', 'Evento no disponible');
-      title.id = 'eye-inspector-title';
-      host.append(
-        title,
-        node(
-          'p',
-          `El contacto ${id} no está en el último conjunto consultado. Su ausencia no demuestra que el evento haya desaparecido.`,
-        ),
-      );
-      return;
-    }
-    host.append(node('span', `M${row.magnitude.toFixed(1)}`, 'eye-mag'));
-    const title = node('h2', row.place || 'Ubicación no informada');
-    title.id = 'eye-inspector-title';
-    host.append(title);
-    const dl = node('dl');
-    for (const [label, value] of [
-      ['ID USGS', row.id],
-      ['HORA DEL EVENTO', date(row.timeMs)],
-      ['ÚLTIMA CONSULTA', date(layer()?.stats.lastUpdate)],
-      ['COORDENADAS', `${row.lat.toFixed(3)}° / ${row.lon.toFixed(3)}°`],
-      [
-        'PROFUNDIDAD',
-        row.depthKm == null ? 'No informada' : `${row.depthKm.toFixed(1)} km`,
-      ],
-      ['ESTADO', stateLabels[signalState(layer())]],
-    ]) {
-      const item = node('div');
-      item.append(node('dt', label), node('dd', value));
-      dl.append(item);
-    }
-    host.append(dl);
-    const link = node('a', 'Ver registro en USGS ↗');
-    link.href = `https://earthquake.usgs.gov/earthquakes/eventpage/${encodeURIComponent(row.id)}`;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    host.append(link);
-    const save = node('button', 'Añadir contexto a una operación');
-    save.dataset.eyeView = 'operations';
-    host.append(save);
+    // Un clic es una petición explícita: reabre el expediente si estaba cerrado.
+    publishDossier({
+      type: 'select',
+      context: earthquakeContext(id, row),
+      explicit: true,
+    });
+    if (!row) return;
     const entity = selectedEntity(id);
     if (entity && viewer.selectedEntity !== entity)
       viewer.selectedEntity = entity;
@@ -719,7 +759,14 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     }
   });
   const returnHome = (trigger) => {
-    closeInspector(false);
+    // Home vuelve a la vista del globo. No apaga capas ni suelta el
+    // seguimiento: sólo deja de inspeccionar un objetivo concreto.
+    selection = null;
+    publishDossier({
+      type: 'select',
+      context: currentViewContext(),
+      explicit: true,
+    });
     openView('explore', trigger);
     sector('global');
     trigger?.focus?.({ preventScroll: true });
@@ -775,8 +822,218 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     $('eye-grid').setAttribute('aria-pressed', String(grid.show));
     viewer.scene.requestRender();
   });
+  // ─── EYEINSKY P3 · expediente contextual, medios y actividad real ───
+  //
+  // El expediente PINTA; la autoridad sigue repartida como estaba: la selección
+  // la deciden `contextStore` y las capas, la cámara el shell, y el trabajo de
+  // carga el manager. Aquí sólo se observan esos dueños y se delegan acciones.
+  const dossierSurface = $('eye-inspector');
+  // Controlador público de CCTV: el mismo módulo que el manager ya registró,
+  // por la vía que este shell usa para `earthquakes`. No se crea ningún
+  // controlador simulado ni se toca una propiedad privada nueva.
+  const cctvController = () => {
+    const module = dataManager.layers.get('cctv')?.module;
+    return typeof module?.subscribe === 'function' ? module : null;
+  };
+  const dossier = mountEyeDossier({
+    host: $('eye-inspector-content'),
+    kicker: dossierSurface?.querySelector('.eye-kicker') ?? null,
+    onAction: ({ type }) => {
+      if (type === 'save-operation') openView('operations', $('eye-home'));
+      // Centrar reutiliza la cámara del shell; el expediente nunca vuela solo.
+      if (type === 'center' && dossierState.context.position)
+        camera({
+          ...styleManager.getCameraState(),
+          lat: dossierState.context.position.lat,
+          lon: dossierState.context.position.lon,
+        });
+      // Norte pasa por la MISMA autoridad de navegación que el botón del dock.
+      if (type === 'north')
+        styleManager._navigation.runOrientation('vista', () =>
+          resetCameraNorth(viewer),
+        );
+    },
+  });
+  defer(() => dossier.destroy());
+  const dossierMedia = mountEyeMedia({
+    host: dossier.getMediaHost(),
+    reducedMotion: reduced,
+  });
+  defer(() => dossierMedia.destroy());
+  /**
+   * Ficha de la vista con datos REALES: mapa activo y cámara de este instante.
+   *
+   * Sólo lee: no enciende capas, no mueve la cámara y no pide nada. Si un dato
+   * no está disponible se omite el campo en vez de inventarlo.
+   * @returns {object} Contexto de vista.
+   */
+  function currentViewContext() {
+    const pose = styleManager.getCameraState?.() ?? null;
+    const stack = mapStackController?.getState?.() ?? null;
+    const fields = [];
+    const mapLabel =
+      stack?.label || stack?.name || stack?.activeId || stack?.id || null;
+    if (mapLabel) fields.push({ label: 'MAPA ACTIVO', value: mapLabel });
+    if (Number.isFinite(pose?.alt))
+      fields.push({
+        label: 'ALTURA',
+        value: (pose.alt / 1000).toFixed(pose.alt >= 100000 ? 0 : 1),
+        unit: 'km',
+      });
+    if (Number.isFinite(pose?.heading))
+      fields.push({
+        label: 'RUMBO',
+        value: String(Math.round(((pose.heading % 360) + 360) % 360)),
+        unit: '°',
+      });
+    return createViewContext({
+      position:
+        Number.isFinite(pose?.lat) && Number.isFinite(pose?.lon)
+          ? { lat: pose.lat, lon: pose.lon }
+          : null,
+      fields,
+    });
+  }
+  let dossierState = createDossierState(currentViewContext());
+  function applyDossier() {
+    const visible = isDossierVisible(dossierState);
+    setSurface('eye-inspector', visible);
+    // `eyeInspecting` sigue significando «hay un objetivo inspeccionado». La
+    // ficha de vista no es un objetivo, así que Home y el arranque no lo activan
+    // y las regresiones que dependen de esa semántica siguen valiendo.
+    document.body.dataset.eyeInspecting = String(
+      visible && dossierState.context.kind !== 'view',
+    );
+    dossier.update(dossierState);
+    dossierMedia.setContext({
+      key: dossierState.context.key,
+      generation: dossierState.generation,
+    });
+    if (!visible) dossierMedia.pause();
+  }
+  function publishDossier(event) {
+    const nextState = reduceDossier(dossierState, event);
+    if (nextState === dossierState) return;
+    dossierState = nextState;
+    applyDossier();
+  }
+  const dossierSources = connectDossierSources({
+    viewer,
+    dataManager,
+    mapStackController,
+    cctv: cctvController(),
+    onContext: ({ type, context, explicit }) => {
+      // La vista del globo la describe el shell, que es quien puede leer cámara
+      // y mapa sin pedirle nada a nadie.
+      const enriched = context.kind === 'view' ? currentViewContext() : context;
+      // Un evento observado nunca es explícito: no roba foco ni reabre.
+      publishDossier({ type, context: enriched, explicit });
+    },
+  });
+  defer(() => dossierSources.destroy());
+  // La ficha de vista se mantiene viva con lecturas reales: al terminar un
+  // movimiento de cámara y cuando cambia el mapa. Es un refresh, así que no
+  // reabre lo cerrado ni cambia de objetivo.
+  const refreshViewContext = () => {
+    if (lifetime.destroyed || dossierState.context.kind !== 'view') return;
+    publishDossier({ type: 'refresh', context: currentViewContext() });
+  };
+  const removeViewSync =
+    viewer.camera.moveEnd.addEventListener(refreshViewContext);
+  defer(removeViewSync);
+  lifetime.listen(window, 'gev:map-stack-changed', refreshViewContext);
+  lifetime.listen(document, 'click', (event) => {
+    const opener = event.target.closest?.('[data-eye-dossier-open]');
+    if (!opener) return;
+    // Acción visible para recuperar el expediente vigente tras cerrarlo. En
+    // móvil el panel que contiene este botón ocupa la pantalla y mantiene viva
+    // la razón `mobile-workspace`: sin retirarla, reabrir dejaba la ficha en
+    // display:none. Se sale a Explorar primero y sólo después se mueve el foco.
+    openView('explore', opener);
+    publishDossier({ type: 'reopen' });
+    // Vista limpia manda: si sigue activa, la ficha no debe aparecer ni robar
+    // el foco; la reapertura queda registrada para cuando se restaure.
+    if (suspensionReasons.size > 0) return;
+    const target = $('eye-inspector-close');
+    if (target && !$('eye-inspector').hidden)
+      target.focus({ preventScroll: true });
+  });
+  const syncCompass = () => {
+    if (lifetime.destroyed) return;
+    const heading = styleManager.getCameraState?.()?.heading;
+    dossier.setHeading(Number.isFinite(heading) ? heading : null);
+  };
+  const removeCompassSync = viewer.camera.changed.addEventListener(syncCompass);
+  defer(removeCompassSync);
+  syncCompass();
+
+  const activity = mountEyeActivity({
+    host: $('eye-help').parentElement,
+    onRetry: (taskId) => activitySources.retry(taskId),
+    onCancel: (taskId) => activitySources.cancel(taskId),
+  });
+  defer(() => activity.destroy());
+  let activityState = createActivityState();
+  const activitySources = connectActivitySources({
+    dataManager,
+    mapStackController,
+    cctv: cctvController(),
+    onEvent: (event) => {
+      const nextState = reduceActivity(activityState, event);
+      if (nextState === activityState) return;
+      activityState = nextState;
+      activity.update(activityState);
+    },
+  });
+  defer(() => activitySources.destroy());
+  activity.update(activityState);
+
+  /**
+   * Aplica una razón de suspensión. Las razones son independientes y pueden
+   * solaparse: salir de Vista limpia mientras el panel móvil sigue abierto NO
+   * restaura. Suspender no es cerrar: el cierre explícito, la selección y el
+   * foco se conservan intactos al volver.
+   * @param {string} reason Identidad de la razón.
+   * @param {boolean} active Si esa razón está vigente.
+   * @returns {void}
+   */
+  function setEyeSurfaceSuspension(reason, active) {
+    if (active) suspensionReasons.add(reason);
+    else suspensionReasons.delete(reason);
+    if (!eyeSurfacesReady) return;
+    const suspended = suspensionReasons.size > 0;
+    if (
+      suspended === dossierState.suspended &&
+      suspended === activity.isSuspended()
+    )
+      return;
+    publishDossier({ type: 'suspend', value: suspended });
+    activity.suspend(suspended);
+  }
+  // La otra ruta de Vista limpia es la del producto base (`ui-clean-view`), que
+  // sólo cambia una clase del body: se observa en vez de duplicar su control.
+  const cleanObserver = new MutationObserver(() => {
+    setEyeSurfaceSuspension(
+      'clean-view',
+      document.body.classList.contains('ui-clean-view') ||
+        document.body.classList.contains('eye-clean'),
+    );
+  });
+  cleanObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  defer(() => cleanObserver.disconnect());
+  eyeSurfacesReady = true;
+  // Aplica lo que se haya acumulado mientras las superficies se montaban.
+  setEyeSurfaceSuspension('init', false);
+  applyDossier();
+
   function clean(value) {
     document.body.classList.toggle('eye-clean', value);
+    // Suspender, no destruir: al salir de Vista limpia el expediente y la
+    // cápsula vuelven exactamente como estaban, con su carrusel en pausa.
+    setEyeSurfaceSuspension('clean-view', value);
     $('eye-clean-exit').hidden = !value;
     $('eye-clean').setAttribute('aria-pressed', String(value));
     if (value) $('eye-clean-exit').focus();

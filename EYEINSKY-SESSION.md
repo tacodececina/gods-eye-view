@@ -1,13 +1,24 @@
 # EYEINSKY — punto de reanudación
 
-Estado al cierre del 18 de septiembre de 2026: P0–P2 entregadas como preview local; revisión estética de Alex y paridad global pendientes. P3–P7 aún no ejecutadas. Esta sesión se cierra por orden de Alex.
+## Actualización 2026-09-20 — P3 aceptada; P4 sólo planificada
 
-Leer primero `docs/eyeinsky/NEXT-SESSION.md`. Ahí están el estado, las fases siguientes, verificaciones, límites, rutas y precauciones.
+P0–P3 están implementadas en `eyeinsky/p3-opus5`. P3 fue construida con la sesión Claude Code `32cfb7bc-04f0-47e2-a38c-a6278aacda8b`, modelo efectivo `claude-opus-5`, y aceptada por KRÓNOS después de gates independientes y reparación RED→GREEN. La autoridad final es `output/eyeinsky-p3/supervisor/FINAL-ACCEPTANCE.md` y `.json`, no el handoff anterior del constructor.
 
-- Rama de checkpoint local: `eyeinsky/p0-p2-checkpoint-2026-09-18`.
-- Worktree del producto: `C:/Users/Alex/AppData/Roaming/orca/codex-runtime-home/home/worktrees/ea9e/gods-eye-view`.
-- Clon principal y evidencias: `C:/Users/Alex/orca/gods-eye-view`.
-- Ambos comparten el mismo repositorio Git. No confundir el código base de `main` con el producto del worktree.
-- Preview: http://127.0.0.1:4197/ — comprobar si sigue viva, no asumirlo en otra sesión.
-- Siguiente bloque recomendado: P3, después de revisar el feedback de Alex y bajo su siguiente orden.
-- No se hizo push, merge a main ni publicación. No borrar el worktree ni resetear cambios para volver a empezar.
+La preview local aceptada fue `http://127.0.0.1:4198/`; siempre comprobar HTTP antes de asumir que sigue viva. No representa un deployment público.
+
+Estado de integración al redactar este documento:
+
+- Worktree P3: `C:/Users/Alex/orca/eyeinsky-p3-opus5`.
+- Rama: `eyeinsky/p3-opus5`.
+- Base P0–P2: `812d75c0833887069e31cc2218d47b728b9cad36`.
+- `main` remoto previo: `0d41b6be5490db1f10a171f238be75db4d4ec3b4`.
+- Alex autorizó commit, push, PR/merge y publicación del código en el fork público.
+- El repositorio no tiene GitHub Pages, deployments, environments, releases ni proveedor de hosting configurado. Publicar el código en `main` no equivale a desplegar una app.
+
+P4 está planificada, NO implementada:
+
+- Plan: `docs/superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`.
+- Alcance: OMM/TLE sin truncamiento, época/caducidad, un modelo específico ISS y uno de familia CubeSat sujetos a curación, máximo dos modelos cercanos, puntos globales, selección/cámara/expediente intactos y actitud sólo aproximada.
+- No iniciar P4 sin orden separada. Crear un worktree nuevo desde el `main` ya integrado; un solo escritor.
+
+Límites reales de P3 siguen vigentes: no teléfono físico, no afirmación de FPS sostenido, no paridad global completa y CCTV no inventa porcentajes cuando la fuente carece de denominador.

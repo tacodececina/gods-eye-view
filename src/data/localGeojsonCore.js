@@ -651,6 +651,16 @@ export function createLocalGeoJsonLayer(
 
                 if (!pos) continue;
 
+                // Cesium reads visibility in DataSourceDisplay.update, a full
+                // frame before the globe-LOD walk in preRender can decide
+                // anything. A record handed over visible is materialized for
+                // that frame — terrain clamping for its marker, ground-geometry
+                // batching for its polygon — so the entire dataset lands at
+                // once and freezes the thread (measured: 39.1 s on 4362
+                // records). Start hidden; the walk below opens exactly the
+                // records its camera-height budget selects.
+                feature.show = false;
+
                 const carto = Cesium.Cartographic.fromCartesian(pos);
                 const groundHeight = 0; // Ellipsoid surface until a scene sample lands
                 const tipHeight = 2000; // Initial Stem height

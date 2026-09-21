@@ -6,12 +6,21 @@ import puppeteer from 'puppeteer';
 const outputDirectory = path.resolve(
   process.argv[2] || 'output/camera-adverse',
 );
+// La URL llega como argv[3]. El valor por defecto sigue siendo 4197 para no
+// cambiar el significado de las corridas anteriores; el candidato P3 la pasa
+// explícita, porque si no esta prueba mediría el producto anterior.
+const targetUrl = process.argv[3] || 'http://127.0.0.1:4197/';
 const delays = (process.env.EYE_CAMERA_DELAYS || '0,1,4,8,12,16,24,32,48')
   .split(',')
   .map(Number)
   .filter(Number.isFinite);
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'eye-camera-adverse-'));
-const report = { startedAt: new Date().toISOString(), delays, attempts: [] };
+const report = {
+  startedAt: new Date().toISOString(),
+  url: targetUrl,
+  delays,
+  attempts: [],
+};
 await fs.mkdir(outputDirectory, { recursive: true });
 
 const browser = await puppeteer.launch({
@@ -35,7 +44,7 @@ async function runAttempt(delayMs, index) {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-  await page.goto('http://127.0.0.1:4197/', {
+  await page.goto(targetUrl, {
     waitUntil: 'domcontentloaded',
     timeout: 90_000,
   });
