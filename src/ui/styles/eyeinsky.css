@@ -37,6 +37,13 @@
   --eye-safe-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   --eye-safe-left: max(14px, env(safe-area-inset-left, 0px));
   --eye-viewport-height: 100dvh;
+  --eye-viewport-width: 100vw;
+  --eye-visual-left: 0px;
+  --eye-visual-right: 0px;
+  --eye-visual-top: 0px;
+  --eye-visual-bottom: 0px;
+  --eye-visual-center-x: 50vw;
+  --eye-visual-center-y: 50vh;
 }
 
 html {
@@ -442,8 +449,8 @@ body.eyeinsky {
 .eye-instruments {
   position: fixed;
   z-index: 37;
-  top: 50%;
-  right: var(--eye-safe-right);
+  top: var(--eye-visual-center-y);
+  right: calc(var(--eye-safe-right) + var(--eye-visual-right));
   display: flex;
   width: 100px;
   padding: 6px;
@@ -487,11 +494,13 @@ body.eyeinsky {
 .eye-telemetry {
   position: fixed;
   z-index: 35;
-  bottom: calc(var(--eye-safe-bottom) + 18px);
-  left: 50%;
+  bottom: calc(
+    var(--eye-safe-bottom) + 18px + var(--eye-visual-bottom)
+  );
+  left: var(--eye-visual-center-x);
   display: flex;
   align-items: center;
-  max-width: calc(100vw - 230px);
+  max-width: calc(var(--eye-viewport-width) - 230px);
   min-height: 58px;
   padding: 6px 8px;
   transform: translateX(-50%);
@@ -814,13 +823,17 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
    * derecha (medido en p31-11). Un `left`/`right` fijos no pueden desbordar:
    * el bloque contenedor ya está escalado. `max-width` sólo evita que la barra
    * se estire de lado a lado en una pantalla ancha. */
-  right: calc(var(--eye-safe-right) + 116px);
+  right: calc(
+    var(--eye-safe-right) + 116px + var(--eye-visual-right)
+  );
   /* La atribución de Cesium vive pegada al borde inferior izquierdo y tiene que
    * poder pulsarse: no es adorno. El dock se apoya POR ENCIMA de esa franja en
    * vez de mover los créditos, que ya tienen una posición verificada (medido en
    * p3-11: «Powered by Esri» y «Data attribution» quedaban debajo del dock). */
-  bottom: calc(var(--eye-safe-bottom) + 18px);
-  left: var(--eye-safe-left);
+  bottom: calc(
+    var(--eye-safe-bottom) + 18px + var(--eye-visual-bottom)
+  );
+  left: calc(var(--eye-safe-left) + var(--eye-visual-left));
   display: flex;
   width: auto;
   max-width: var(--eye-dock-width, 760px);
@@ -1380,9 +1393,9 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 
 .eyeinsky #cesium-credits {
   z-index: 40 !important;
-  bottom: 3px !important;
-  left: var(--eye-safe-left) !important;
-  max-width: calc(100vw - 28px);
+  bottom: calc(3px + var(--eye-visual-bottom)) !important;
+  left: calc(var(--eye-safe-left) + var(--eye-visual-left)) !important;
+  max-width: calc(var(--eye-viewport-width) - 28px);
   font: 9px var(--font-sans) !important;
 }
 
@@ -1836,7 +1849,7 @@ body.eyeinsky.ui-clean-view
     max-width: 60vw;
   }
   .eyeinsky #cesium-credits {
-    bottom: 2px !important;
+    bottom: calc(2px + var(--eye-visual-bottom)) !important;
     font-size: 10px !important;
   }
   #eye-notice {

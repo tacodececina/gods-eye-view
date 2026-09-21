@@ -48,7 +48,7 @@ const check = (id, ok, detail, kind = 'LIVE') => {
 /** Anchos reales que el dock tiene que resolver, no una media inventada. */
 const VIEWPORTS = [
   { id: '390x844', width: 390, height: 844, mobile: true },
-  { id: '744x1133', width: 744, height: 1133, mobile: true },
+  { id: '768x1024', width: 768, height: 1024, mobile: true },
   { id: '844x390', width: 844, height: 390, mobile: true },
   { id: '1280x800', width: 1280, height: 800, mobile: false },
   { id: '1920x1080', width: 1920, height: 1080, mobile: false },
@@ -230,6 +230,34 @@ try {
 
   await page.focus('#eye-dock-tab-objetivo');
   await page.keyboard.press('ArrowRight');
+  const mediaPane = await page.evaluate(() => {
+    const tab = document.getElementById('eye-dock-tab-medios');
+    const panel = document.getElementById('eye-dock-panel-medios');
+    const image = panel?.querySelector('.eye-media-image');
+    const credit = panel?.querySelector('.eye-media-credit');
+    return {
+      present: Boolean(tab && panel),
+      selected: tab?.getAttribute('aria-selected') ?? null,
+      visible: Boolean(panel) && !panel.hidden,
+      assetSrc: image?.getAttribute('src') ?? null,
+      alt: image?.getAttribute('alt') ?? null,
+      credit: credit?.textContent ?? null,
+      creditHref: credit?.getAttribute('href') ?? null,
+    };
+  });
+  check(
+    'p31-04b-real-media-is-reachable-and-attributed',
+    mediaPane.present &&
+      mediaPane.selected === 'true' &&
+      mediaPane.visible &&
+      /^\/eyeinsky\/media\//.test(mediaPane.assetSrc || '') &&
+      Boolean(mediaPane.alt) &&
+      Boolean(mediaPane.credit) &&
+      /^https:\/\//.test(mediaPane.creditHref || ''),
+    mediaPane,
+  );
+
+  await page.keyboard.press('ArrowRight');
   const afterArrow = await page.evaluate(() => {
     const dock = document.getElementById('eye-mission-dock');
     const selected = dock.querySelector('[aria-selected="true"]');
@@ -304,51 +332,106 @@ try {
     camera,
   );
 
-  // ─── P31-09 · Un gesto físico suelta la cámara y conserva la selección ───
-  //
-  // Se mide con la MISMA autoridad que usa la rueda real: el controlador de
-  // navegación del shell. Lo que se comprueba es la consecuencia observable —
-  // que las capas de seguimiento conservan su identidad seleccionada.
-  const gesture = await page.evaluate(() => {
+  // ─── P31-09 · Selección real → gesto físico → misma identidad → SEGUIR ───
+  const gesture = await page.evaluate(async () => {
     const view = window.__godsEyeView;
-    const navigation =
-      view?.styleManager?._navigation ||
-      window.__eyeinsky?.styleManager?._navigation ||
-      null;
-    if (!navigation) return { skipped: 'sin controlador de navegación' };
+    const viewer = view?.viewer;
     const manager = view?.dataManager || window.__eyeinsky?.dataManager || null;
-    const before = ['flights', 'military', 'satellites'].map((id) => ({
-      id,
-      params: manager?.layers?.get(id)?.module?.getParams?.() ?? null,
-    }));
-    const generation = navigation.interruptHumanNavigation('wheel');
-    const after = ['flights', 'military', 'satellites'].map((id) => ({
-      id,
-      params: manager?.layers?.get(id)?.module?.getParams?.() ?? null,
-    }));
-    const key = {
-      flights: 'selectedFlightsTrackingId',
-      military: 'selectedMilitaryTrackingId',
-      satellites: 'selectedSatTrackingId',
+    const layer = manager?.layers?.get('flights')?.module ?? null;
+    if (!viewer || !layer) return { skipped: 'sin viewer o capa de vuelos' };
+
+    if (
+      typeof layer.testing?._setTrackedFlightRefreshStateForTest !==
+      'function'
+    )
+      return { skipped: 'la capa activa no expone su fixture de tracking' };
+
+    const id = 'p31e2e';
+    const position = viewer.camera.positionWC.clone();
+    const entity = viewer.entities.add({ position });
+    entity.gevTrackedId = `flights:${id}`;
+    layer.testing._setTrackedFlightRefreshStateForTest({
+      icao24: id,
+      entity,
+      billboard: { position, show: true, rotation: 0 },
+      billboardCollection: { show: true, remove() {} },
+      viewer,
+      meta: {
+        callsign: 'P31TEST',
+        registration: 'P31-E2E',
+        altitude: 10_668,
+        velocity: 250,
+        trueTrack: 95,
+        klass: 'airliner',
+      },
+    });
+    viewer.trackedEntity = entity;
+    const selected = layer.refocusTrackedById(id, { origin: 'user' });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const dock = document.getElementById('eye-mission-dock');
+    const before = {
+      contextKey: dock?.dataset.contextKey ?? null,
+      selectedId: layer.getParams?.().selectedFlightsTrackingId ?? null,
+      ownerIsFixture: viewer.trackedEntity === entity,
     };
-    return {
-      generation,
-      preserved: before.every(
-        (row, index) =>
-          (row.params?.[key[row.id]] ?? null) ===
-          (after[index].params?.[key[row.id]] ?? null),
-      ),
-      trackedEntity: Boolean(view?.viewer?.trackedEntity),
-      before,
-      after,
+
+    const canvas = viewer.canvas;
+    const box = canvas.getBoundingClientRect();
+    canvas.dispatchEvent(
+      new WheelEvent('wheel', {
+        deltaY: -180,
+        clientX: box.left + box.width / 2,
+        clientY: box.top + box.height / 3,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 180));
+
+    const followButton = document.querySelector(
+      '[data-eye-dock-action="follow"]',
+    );
+    const released = {
+      contextKey: dock?.dataset.contextKey ?? null,
+      selectedId: layer.getParams?.().selectedFlightsTrackingId ?? null,
+      ownerReleased: !viewer.trackedEntity,
+      cameraStatus: dock?.dataset.cameraStatus ?? null,
+      followPressed: followButton?.getAttribute('aria-pressed') ?? null,
+      followDisabled: followButton?.disabled ?? true,
     };
+
+    followButton?.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const refollowed = {
+      contextKey: dock?.dataset.contextKey ?? null,
+      selectedId: layer.getParams?.().selectedFlightsTrackingId ?? null,
+      ownerIsFixture: viewer.trackedEntity === entity,
+      cameraStatus: dock?.dataset.cameraStatus ?? null,
+    };
+
+    layer.stopTracking?.({ origin: 'test-cleanup' });
+    if (viewer.entities.contains(entity)) viewer.entities.remove(entity);
+
+    return { id, selected, before, released, refollowed };
   });
   check(
-    'p31-09-gesture-frees-the-camera-and-keeps-selection',
+    'p31-09-real-selection-survives-gesture-and-refollows-the-same-id',
     !gesture.skipped &&
-      Number.isFinite(gesture.generation) &&
-      gesture.preserved &&
-      !gesture.trackedEntity,
+      gesture.selected === true &&
+      gesture.before.contextKey === `flights:${gesture.id}` &&
+      gesture.before.selectedId === gesture.id &&
+      gesture.before.ownerIsFixture &&
+      gesture.released.contextKey === `flights:${gesture.id}` &&
+      gesture.released.selectedId === gesture.id &&
+      gesture.released.ownerReleased &&
+      gesture.released.cameraStatus === 'selected-free' &&
+      gesture.released.followPressed === 'false' &&
+      !gesture.released.followDisabled &&
+      gesture.refollowed.contextKey === `flights:${gesture.id}` &&
+      gesture.refollowed.selectedId === gesture.id &&
+      gesture.refollowed.ownerIsFixture &&
+      gesture.refollowed.cameraStatus === 'following',
     gesture,
   );
 
@@ -397,33 +480,109 @@ try {
     { beforeClean, clean, restored },
   );
 
-  // ─── P31-11 · Zoom de página al 200 % sin desbordes ni solapes ───
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = '2';
+  // ─── P31-11 · Zoom real del navegador al 200 % ───
+  const zoomClient = await page.createCDPSession();
+  await zoomClient.send('Emulation.setPageScaleFactor', {
+    pageScaleFactor: 2,
   });
   await new Promise((resolve) => setTimeout(resolve, 400));
   const zoomed = await page.evaluate(() => {
+    const viewport = window.visualViewport;
     const dock = document.getElementById('eye-mission-dock');
+    const visible = (element) =>
+      Boolean(element?.getClientRects().length) &&
+      getComputedStyle(element).visibility !== 'hidden';
+    const measureTarget = (element) => {
+      const box = element.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return {
+        label:
+          element.getAttribute('aria-label') ||
+          element.textContent?.trim() ||
+          element.id,
+        width: box.width,
+        height: box.height,
+        inside:
+          box.left >= -1 &&
+          box.top >= -1 &&
+          box.right <= viewport.width + 1 &&
+          box.bottom <= viewport.height + 1,
+        hit: Boolean(hit && (hit === element || element.contains(hit))),
+      };
+    };
+    const dockTargets = [...dock.querySelectorAll('button')]
+      .filter(visible)
+      .map(measureTarget);
+    const globeTargets = [
+      ...document.querySelectorAll('.eye-instruments button'),
+    ]
+      .filter(visible)
+      .map(measureTarget);
+    const creditTargets = [
+      ...document.querySelectorAll(
+        '.cesium-widget-credits a, #cesium-credits a, .cesium-credit-expand-link',
+      ),
+    ]
+      .filter(visible)
+      .map(measureTarget);
+    const essentialText = [
+      ...dock.querySelectorAll(
+        '.eye-dock-kicker, .eye-dock-title, .eye-dock-tab, .eye-dock-action, .eye-dock-key dt, .eye-dock-key dd',
+      ),
+    ]
+      .filter(visible)
+      .map((element) => ({
+        text: element.textContent?.trim() || element.className,
+        size: Number.parseFloat(getComputedStyle(element).fontSize),
+      }));
     const box = dock.getBoundingClientRect();
     return {
-      overflowsRight: box.right > window.innerWidth + 1,
-      overflowsBottom: box.bottom > window.innerHeight + 1,
-      overflowsLeft: box.left < -1,
-      scrollsVertically: dock.scrollHeight <= dock.clientHeight + 1,
-      bodyScroll: document.documentElement.scrollWidth,
-      innerWidth: window.innerWidth,
+      scale: viewport?.scale ?? null,
+      viewport: {
+        width: viewport?.width ?? null,
+        height: viewport?.height ?? null,
+      },
+      dockInside:
+        box.left >= -1 &&
+        box.top >= -1 &&
+        box.right <= viewport.width + 1 &&
+        box.bottom <= viewport.height + 1,
+      overflowX: document.documentElement.scrollWidth - window.innerWidth,
+      dockTargets,
+      globeTargets,
+      creditTargets,
+      essentialText,
     };
   });
   check(
-    'p31-11-page-zoom-200-stays-inside-the-viewport',
-    !zoomed.overflowsRight && !zoomed.overflowsBottom && !zoomed.overflowsLeft,
+    'p31-11-browser-zoom-200-preserves-layout-hits-and-legibility',
+    zoomed.scale === 2 &&
+      zoomed.dockInside &&
+      zoomed.overflowX <= 0 &&
+      zoomed.dockTargets.length > 0 &&
+      zoomed.dockTargets.every(
+        (target) =>
+          target.inside &&
+          target.hit &&
+          target.width >= 44 &&
+          target.height >= 44,
+      ) &&
+      zoomed.globeTargets.length > 0 &&
+      zoomed.globeTargets.every((target) => target.inside && target.hit) &&
+      zoomed.creditTargets.length > 0 &&
+      zoomed.creditTargets.every((target) => target.inside && target.hit) &&
+      zoomed.essentialText.length > 0 &&
+      zoomed.essentialText.every((entry) => entry.size >= 13),
     zoomed,
     'A11Y',
   );
   await shot(page, 'p31-zoom-200');
-  await page.evaluate(() => {
-    document.documentElement.style.zoom = '';
+  await zoomClient.send('Emulation.setPageScaleFactor', {
+    pageScaleFactor: 1,
   });
+  await zoomClient.detach();
 
   // ─── P31-12 · Geometría y alcance en los cinco anchos reales ───
   const geometry = [];
@@ -545,7 +704,88 @@ try {
     geometry,
   );
 
-  // ─── P31-13 · Ningún error de página ni petición rota durante el recorrido ───
+  // ─── P31-13 · Desmontar y remontar deja un solo dueño de eventos ───
+  const teardown = await page.evaluate(async () => {
+    const { mountEyeMissionDock } = await import(
+      '/src/ui/eyeinskyMissionDock.js'
+    );
+    const frame = document.createElement('iframe');
+    frame.hidden = true;
+    document.body.append(frame);
+    await new Promise((resolve) => {
+      if (frame.contentDocument?.readyState === 'complete') resolve();
+      else frame.addEventListener('load', resolve, { once: true });
+    });
+    const host = frame.contentDocument.createElement('section');
+    frame.contentDocument.body.append(host);
+    const view = {
+      visible: true,
+      expanded: false,
+      contextKey: 'earth:view',
+      contextKind: 'view',
+      generation: 1,
+      title: 'Vista · Tierra',
+      kicker: 'VISTA / TIERRA',
+      status: 'ready',
+      observedAt: null,
+      localUpdatedAt: null,
+      keyValues: [],
+      pane: 'objetivo',
+      panes: [
+        { id: 'objetivo', label: 'Objetivo', badge: null },
+        { id: 'ops', label: 'OPS', badge: null },
+      ],
+      camera: {
+        id: 'free',
+        label: 'CÁMARA / LIBRE',
+        detail: 'Sin objetivo seleccionado.',
+      },
+      actions: [
+        {
+          id: 'north',
+          label: 'Norte',
+          enabled: true,
+          pressed: false,
+          hint: 'Orientar al norte',
+        },
+        {
+          id: 'more',
+          label: 'Más',
+          enabled: true,
+          pressed: false,
+          hint: 'Abrir detalle',
+        },
+      ],
+    };
+    let oldCalls = 0;
+    let newCalls = 0;
+    const old = mountEyeMissionDock({
+      host,
+      onAction: () => {
+        oldCalls += 1;
+      },
+    });
+    old.update(view);
+    old.destroy();
+    const fresh = mountEyeMissionDock({
+      host,
+      onAction: () => {
+        newCalls += 1;
+      },
+    });
+    fresh.update(view);
+    host.querySelector('[data-eye-dock-action="north"]')?.click();
+    fresh.destroy();
+    frame.remove();
+    return { oldCalls, newCalls };
+  });
+  check(
+    'p31-12b-destroyed-dock-releases-every-event-listener',
+    teardown.oldCalls === 0 && teardown.newCalls === 1,
+    teardown,
+  );
+
+  // ─── P31-14 · Ningún error de página ni petición rota durante el recorrido ───
   check(
     'p31-13-no-page-errors',
     result.pageErrors.length === 0,

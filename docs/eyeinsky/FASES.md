@@ -47,9 +47,12 @@ fase. Evidencia local: `output/eyeinsky-p31/` (no versionada).
 - [x] `bhote-koshi-locator` retirado del runtime: sin capa, sin registro de
       serialización, sin receta ejecutable y sin entrada de interfaz. El módulo
       sigue en el árbol, con sus pruebas en verde, pero nada lo alcanza.
-- [x] Recorrido de navegador nuevo `scripts/eyeinsky-p31.mjs`: 13/13 en cinco
-      viewports reales, alcance de controles, pestañera y foco, zoom de página
-      al 200 %, Vista limpia y gesto que preserva la selección.
+- [x] Recorrido de navegador nuevo `scripts/eyeinsky-p31.mjs`: 15/15 en cinco
+      viewports reales (incluido 768×1024), alcance de controles, pestañera y
+      foco, medios reales atribuidos, zoom real CDP al 200 % con
+      `visualViewport.scale === 2`, Vista limpia, gesto físico que conserva
+      `flights:<id>` y SEGUIR que recupera la misma entidad. El desmontaje/remontaje
+      del dock también demuestra que el listener anterior no vuelve a responder.
 - [x] Regresiones P3 (30/30), P0–P2 (23/23), cámara adversa y cabina (4/4) en
       verde contra este candidato.
 

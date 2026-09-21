@@ -211,7 +211,7 @@ try {
     opsTab.present &&
       opsTab.role === 'tab' &&
       !opsTab.overlapsSearch &&
-      opsTab.height >= 42 &&
+      opsTab.height >= 44 &&
       opsTab.hit,
     opsTab,
   );

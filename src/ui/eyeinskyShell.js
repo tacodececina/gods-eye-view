@@ -28,7 +28,7 @@ import {
   reduceMissionDock,
 } from './eyeinskyMissionDockModel.js';
 import { mountEyeMissionDock } from './eyeinskyMissionDock.js';
-import { mountEyeMedia } from './eyeinskyMedia.js';
+import { mountEyeMedia, resolveContextMedia } from './eyeinskyMedia.js';
 import {
   createActivityState,
   reduceActivity,
@@ -112,9 +112,12 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   const lifetime = new UiLifetime();
   defer(() => lifetime.destroy());
   defer(
-    configureEyeCameraInteraction(viewer, (kind) =>
-      styleManager._navigation.interruptHumanNavigation(kind),
-    ),
+    configureEyeCameraInteraction(viewer, (kind) => {
+      const generation =
+        styleManager._navigation.interruptHumanNavigation(kind);
+      applyDossier();
+      return generation;
+    }),
   );
   const releaseIcons = mountEyeIcons();
   defer(releaseIcons);
@@ -153,19 +156,50 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     reducedMotion: reduced,
   });
   defer(() => panelKickerDecode.destroy());
+  const visualViewportProperties = [
+    '--eye-viewport-height',
+    '--eye-viewport-width',
+    '--eye-visual-left',
+    '--eye-visual-right',
+    '--eye-visual-top',
+    '--eye-visual-bottom',
+    '--eye-visual-center-x',
+    '--eye-visual-center-y',
+  ];
   const syncVisualViewport = () => {
-    const height = window.visualViewport?.height || window.innerHeight;
-    document.documentElement.style.setProperty(
-      '--eye-viewport-height',
-      `${Math.round(height)}px`,
-    );
+    const viewport = window.visualViewport;
+    const width = viewport?.width || window.innerWidth;
+    const height = viewport?.height || window.innerHeight;
+    const left = viewport?.offsetLeft || 0;
+    const top = viewport?.offsetTop || 0;
+    const right = Math.max(0, window.innerWidth - left - width);
+    const bottom = Math.max(0, window.innerHeight - top - height);
+    const properties = {
+      '--eye-viewport-height': height,
+      '--eye-viewport-width': width,
+      '--eye-visual-left': left,
+      '--eye-visual-right': right,
+      '--eye-visual-top': top,
+      '--eye-visual-bottom': bottom,
+      '--eye-visual-center-x': left + width / 2,
+      '--eye-visual-center-y': top + height / 2,
+    };
+    for (const [name, value] of Object.entries(properties)) {
+      document.documentElement.style.setProperty(
+        name,
+        `${Math.round(value)}px`,
+      );
+    }
   };
   syncVisualViewport();
   lifetime.listen(window, 'resize', syncVisualViewport);
   lifetime.listen(window.visualViewport, 'resize', syncVisualViewport);
-  defer(() =>
-    document.documentElement.style.removeProperty('--eye-viewport-height'),
-  );
+  lifetime.listen(window.visualViewport, 'scroll', syncVisualViewport);
+  defer(() => {
+    for (const property of visualViewportProperties) {
+      document.documentElement.style.removeProperty(property);
+    }
+  });
   const advancedTelemetry = document.querySelector('.eye-hud-details');
   let advancedTelemetryWasOpen = advancedTelemetry?.open ?? false;
   let cockpitTelemetryForced = false;
@@ -945,12 +979,20 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
         value: String(Math.round(((pose.heading % 360) + 360) % 360)),
         unit: '°',
       });
-    return createViewContext({
-      position:
-        Number.isFinite(pose?.lat) && Number.isFinite(pose?.lon)
-          ? { lat: pose.lat, lon: pose.lon }
-          : null,
-      fields,
+    return withResolvedMedia(
+      createViewContext({
+        position:
+          Number.isFinite(pose?.lat) && Number.isFinite(pose?.lon)
+            ? { lat: pose.lat, lon: pose.lon }
+            : null,
+        fields,
+      }),
+    );
+  }
+  function withResolvedMedia(context) {
+    return normalizeContext({
+      ...context,
+      assetIds: resolveContextMedia(context?.key).map(({ id }) => id),
     });
   }
   let dossierState = createDossierState(currentViewContext());
@@ -1002,7 +1044,9 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     onContext: ({ type, context, explicit }) => {
       // La vista del globo la describe el shell, que es quien puede leer cámara
       // y mapa sin pedirle nada a nadie.
-      const enriched = context.kind === 'view' ? currentViewContext() : context;
+      const enriched = withResolvedMedia(
+        context.kind === 'view' ? currentViewContext() : context,
+      );
       // Un evento observado nunca es explícito: no roba foco ni reabre.
       publishDossier({ type, context: enriched, explicit });
     },

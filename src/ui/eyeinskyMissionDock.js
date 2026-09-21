@@ -153,7 +153,7 @@ export function mountEyeMissionDock({
   const emit = (type) =>
     onAction?.({ type, contextKey: currentView?.contextKey || '' });
 
-  host.addEventListener('click', (event) => {
+  const handleHostClick = (event) => {
     const closeButton = event.target.closest?.('.eye-dock-close');
     if (closeButton && host.contains(closeButton)) {
       onClose?.();
@@ -175,10 +175,11 @@ export function mountEyeMissionDock({
       return;
     }
     emit(type);
-  });
+  };
+  host.addEventListener('click', handleHostClick);
 
   // Pestañera real: flechas recorren, Inicio y Fin saltan a los extremos.
-  tabs.addEventListener('keydown', (event) => {
+  const handleTabsKeydown = (event) => {
     const order = currentView?.panes?.map(({ id }) => id) ?? [];
     if (order.length === 0) return;
     const index = order.indexOf(currentView.pane);
@@ -191,9 +192,10 @@ export function mountEyeMissionDock({
     if (next === null) return;
     event.preventDefault();
     onPane?.(next);
-  });
+  };
+  tabs.addEventListener('keydown', handleTabsKeydown);
 
-  host.addEventListener('keydown', (event) => {
+  const handleHostKeydown = (event) => {
     if (event.key !== 'Escape' || !currentView?.expanded) return;
     event.stopPropagation();
     onToggle?.(false);
@@ -203,7 +205,8 @@ export function mountEyeMissionDock({
         ? expandTrigger
         : close;
     target.focus?.({ preventScroll: true });
-  });
+  };
+  host.addEventListener('keydown', handleHostKeydown);
 
   /**
    * Firma barata de lo visible: evita repintar (y por tanto mover el foco)
@@ -389,11 +392,16 @@ export function mountEyeMissionDock({
       if (destroyed) return;
       destroyed = true;
       sizeObserver?.disconnect();
+      host.removeEventListener('click', handleHostClick);
+      tabs.removeEventListener('keydown', handleTabsKeydown);
+      host.removeEventListener('keydown', handleHostKeydown);
+      signal?.removeEventListener('abort', handleAbort);
       doc.documentElement.style.removeProperty('--eye-dock-band');
       host.replaceChildren();
     },
   };
 
-  signal?.addEventListener('abort', () => control.destroy(), { once: true });
+  const handleAbort = () => control.destroy();
+  signal?.addEventListener('abort', handleAbort, { once: true });
   return control;
 }

@@ -120,23 +120,28 @@ test('Mailung clip trim estimates seven seconds and its exit, including older sa
   } finally { restore(); }
 });
 
-test('Incident Corridor gives all overview pins time to reveal without rewriting saved shots', () => {
+test('a saved Bhote Koshi locator state cannot restore runtime hold behavior', () => {
   const { director, restore } = makeDirector();
   try {
     const scene = director._project.scenes[0];
     const shot = scene.shots[0];
     shot.holdSec = 0.9;
-    shot.layers = { 'bhote-koshi-locator': {
-      enabled: true, params: { presentation: 'bhote-koshi-incident-places' },
-    } };
-    assert.equal(director._effectiveShotHoldSec(scene, shot), 11);
+    shot.layers = {
+      'bhote-koshi-locator': {
+        enabled: true,
+        params: { presentation: 'bhote-koshi-incident-places' },
+      },
+    };
+    assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
     assert.equal(shot.holdSec, 0.9);
     shot.holdSec = 15;
     assert.equal(director._effectiveShotHoldSec(scene, shot), 15);
     shot.holdSec = 0.9;
-    shot.layers['bhote-koshi-locator'].params.presentation = 'bhote-koshi-flood-path';
+    shot.layers['bhote-koshi-locator'].params.presentation =
+      'bhote-koshi-flood-path';
     assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
-    shot.layers['bhote-koshi-locator'].params.presentation = 'bhote-koshi-incident-places';
+    shot.layers['bhote-koshi-locator'].params.presentation =
+      'bhote-koshi-incident-places';
     shot.layers['bhote-koshi-locator'].enabled = false;
     assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
   } finally {
