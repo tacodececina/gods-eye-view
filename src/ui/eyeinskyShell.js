@@ -22,6 +22,12 @@ import {
 } from './eyeinskyDossierModel.js';
 import { connectDossierSources } from './eyeinskyDossierSources.js';
 import { mountEyeDossier } from './eyeinskyDossier.js';
+import {
+  buildMissionDockView,
+  createMissionDockState,
+  reduceMissionDock,
+} from './eyeinskyMissionDockModel.js';
+import { mountEyeMissionDock } from './eyeinskyMissionDock.js';
 import { mountEyeMedia } from './eyeinskyMedia.js';
 import {
   createActivityState,
@@ -713,10 +719,6 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     catalog?.sync();
   }
   lifetime.listen($('eye-panel-close'), 'click', closePanel);
-  lifetime.listen($('eye-inspector-close'), 'click', () => {
-    closeInspector();
-    if (activeView === 'signals') setSurface('eye-workspace', true);
-  });
   lifetime.listen($('eye-connect'), 'click', () =>
     openView('signals', $('eye-connect')),
   );
@@ -827,7 +829,6 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   // El expediente PINTA; la autoridad sigue repartida como estaba: la selección
   // la deciden `contextStore` y las capas, la cámara el shell, y el trabajo de
   // carga el manager. Aquí sólo se observan esos dueños y se delegan acciones.
-  const dossierSurface = $('eye-inspector');
   // Controlador público de CCTV: el mismo módulo que el manager ya registró,
   // por la vía que este shell usa para `earthquakes`. No se crea ningún
   // controlador simulado ni se toca una propiedad privada nueva.
@@ -835,19 +836,77 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     const module = dataManager.layers.get('cctv')?.module;
     return typeof module?.subscribe === 'function' ? module : null;
   };
-  const dossier = mountEyeDossier({
-    host: $('eye-inspector-content'),
-    kicker: dossierSurface?.querySelector('.eye-kicker') ?? null,
+  /**
+   * ¿Tiene una capa la cámara puesta sobre el objetivo vigente?
+   *
+   * Dos condiciones REALES, no una suposición: la capa dueña sigue declarando
+   * ese contacto como seleccionado, y el viewer tiene efectivamente una entidad
+   * enganchada. Un gesto suelta lo segundo sin tocar lo primero (P3.1), y esa
+   * es exactamente la diferencia que el dock tiene que saber decir.
+   * @returns {boolean} True si la cámara sigue al objetivo.
+   */
+  function isFollowingCurrentTarget() {
+    const context = dossierState.context;
+    if (context.kind !== 'tracked' || !context.layerId) return false;
+    const module = dataManager.layers.get(context.layerId)?.module;
+    if (!module?.getTrackedInfo?.()) return false;
+    return Boolean(viewer.trackedEntity);
+  }
+  /**
+   * Devuelve o suelta la cámara sobre el objetivo vigente, siempre por el
+   * contrato público de su capa. El dock no vuela por su cuenta.
+   * @param {boolean} pressed Si la cámara ya lo está siguiendo.
+   * @returns {void}
+   */
+  function toggleFollowCurrentTarget(pressed) {
+    const context = dossierState.context;
+    const module = dataManager.layers.get(context.layerId || '')?.module;
+    if (!module) return;
+    if (pressed) module.releaseCameraOwnership?.({ origin: 'user' });
+    else if (!module.refocusTrackedById?.(context.stableId, { origin: 'user' }))
+      notice('El contacto ya no está disponible para seguirlo.');
+    applyDossier();
+  }
+  const missionDock = mountEyeMissionDock({
+    host: $('eye-mission-dock'),
+    onClose: () => closeInspector(),
+    onPane: (pane) => publishDock({ type: 'select-pane', pane }),
+    onToggle: (expanded) =>
+      publishDock({ type: expanded ? 'expand' : 'collapse' }),
     onAction: ({ type }) => {
-      if (type === 'save-operation') openView('operations', $('eye-home'));
-      // Centrar reutiliza la cámara del shell; el expediente nunca vuela solo.
+      if (type === 'follow')
+        toggleFollowCurrentTarget(
+          dockView?.actions.find((item) => item.id === 'follow')?.pressed ===
+            true,
+        );
+      // Centrar reutiliza la cámara del shell; el dock nunca vuela solo.
       if (type === 'center' && dossierState.context.position)
         camera({
           ...styleManager.getCameraState(),
           lat: dossierState.context.position.lat,
           lon: dossierState.context.position.lon,
         });
-      // Norte pasa por la MISMA autoridad de navegación que el botón del dock.
+      // Norte pasa por la MISMA autoridad de navegación que el riel de cámara.
+      if (type === 'north')
+        styleManager._navigation.runOrientation('vista', () =>
+          resetCameraNorth(viewer),
+        );
+    },
+  });
+  defer(() => missionDock.destroy());
+  // El expediente P3 sigue siendo el que PINTA el objetivo: aquí sólo cambia de
+  // casa, del panel lateral al panel OBJETIVO del dock. Su modelo, sus fuentes y
+  // sus reglas no se reimplementan.
+  const dossier = mountEyeDossier({
+    host: missionDock.getObjetivoHost(),
+    onAction: ({ type }) => {
+      if (type === 'save-operation') openView('operations', $('eye-home'));
+      if (type === 'center' && dossierState.context.position)
+        camera({
+          ...styleManager.getCameraState(),
+          lat: dossierState.context.position.lat,
+          lon: dossierState.context.position.lon,
+        });
       if (type === 'north')
         styleManager._navigation.runOrientation('vista', () =>
           resetCameraNorth(viewer),
@@ -856,7 +915,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   });
   defer(() => dossier.destroy());
   const dossierMedia = mountEyeMedia({
-    host: dossier.getMediaHost(),
+    host: missionDock.getMediaHost(),
     reducedMotion: reduced,
   });
   defer(() => dossierMedia.destroy());
@@ -895,26 +954,44 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     });
   }
   let dossierState = createDossierState(currentViewContext());
+  let dockState = createMissionDockState();
+  let dockView = null;
+  let activityState = createActivityState();
   function applyDossier() {
     const visible = isDossierVisible(dossierState);
-    setSurface('eye-inspector', visible);
+    setSurface('eye-mission-dock', visible);
     // `eyeInspecting` sigue significando «hay un objetivo inspeccionado». La
     // ficha de vista no es un objetivo, así que Home y el arranque no lo activan
     // y las regresiones que dependen de esa semántica siguen valiendo.
     document.body.dataset.eyeInspecting = String(
       visible && dossierState.context.kind !== 'view',
     );
+    dockView = buildMissionDockView({
+      dossier: dossierState,
+      activity: activityState,
+      dock: dockState,
+      following: isFollowingCurrentTarget(),
+    });
+    missionDock.update(dockView);
     dossier.update(dossierState);
     dossierMedia.setContext({
       key: dossierState.context.key,
       generation: dossierState.generation,
     });
-    if (!visible) dossierMedia.pause();
+    // Los medios sólo suenan y sólo se mueven en su propio panel desplegado.
+    if (!visible || !(dockView.expanded && dockView.pane === 'medios'))
+      dossierMedia.pause();
   }
   function publishDossier(event) {
     const nextState = reduceDossier(dossierState, event);
     if (nextState === dossierState) return;
     dossierState = nextState;
+    applyDossier();
+  }
+  function publishDock(event) {
+    const nextState = reduceMissionDock(dockState, event);
+    if (nextState === dockState) return;
+    dockState = nextState;
     applyDossier();
   }
   const dossierSources = connectDossierSources({
@@ -954,26 +1031,28 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     // Vista limpia manda: si sigue activa, la ficha no debe aparecer ni robar
     // el foco; la reapertura queda registrada para cuando se restaure.
     if (suspensionReasons.size > 0) return;
-    const target = $('eye-inspector-close');
-    if (target && !$('eye-inspector').hidden)
+    const target = $('eye-mission-dock-close');
+    if (target && !$('eye-mission-dock').hidden)
       target.focus({ preventScroll: true });
   });
   const syncCompass = () => {
     if (lifetime.destroyed) return;
     const heading = styleManager.getCameraState?.()?.heading;
+    missionDock.setHeading(Number.isFinite(heading) ? heading : null);
     dossier.setHeading(Number.isFinite(heading) ? heading : null);
   };
   const removeCompassSync = viewer.camera.changed.addEventListener(syncCompass);
   defer(removeCompassSync);
   syncCompass();
 
+  // OPS vive DENTRO del dock: es el tercer panel del mismo objetivo, no una
+  // cápsula suelta junto a Ayuda. Su modelo y sus fuentes son los de P3.
   const activity = mountEyeActivity({
-    host: $('eye-help').parentElement,
+    host: missionDock.getOpsHost(),
     onRetry: (taskId) => activitySources.retry(taskId),
     onCancel: (taskId) => activitySources.cancel(taskId),
   });
   defer(() => activity.destroy());
-  let activityState = createActivityState();
   const activitySources = connectActivitySources({
     dataManager,
     mapStackController,
@@ -983,6 +1062,8 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
       if (nextState === activityState) return;
       activityState = nextState;
       activity.update(activityState);
+      // La insignia de OPS cuenta trabajo real: se recalcula con él.
+      applyDossier();
     },
   });
   defer(() => activitySources.destroy());

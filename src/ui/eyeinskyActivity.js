@@ -1,13 +1,16 @@
 /**
- * Cápsula de actividad real (EYEINSKY P3).
+ * Terminal OPS (EYEINSKY P3.1, sobre el modelo de actividad de P3).
  *
- * Resumen bajo Ayuda y detalle voluntario. Narra lo que otros dueños ya están
- * haciendo:
+ * Tercer panel del Mission Dock. Narra lo que otros dueños ya están haciendo:
  *   - sin denominador fiable dice «en curso», nunca un porcentaje inventado,
- *   - los avisos críticos siguen siendo de ShellFeedback: aquí no se duplica
- *     `aria-live` para la misma transición,
- *   - abrir o cerrar la cápsula no arranca ni detiene trabajo del manager,
- *   - sin eventos dice «Sin actividad registrada», sin barras decorativas.
+ *   - abrir el panel no arranca ni detiene trabajo del manager,
+ *   - sin eventos dice «Sin actividad registrada», sin barras decorativas,
+ *   - LIVE describe el estado medido del registro, no una promesa de conexión.
+ *
+ * Accesibilidad: el registro es UNA sola región viva (`role="log"`, que ya
+ * implica `aria-live="polite"`). No se añade un segundo `aria-live` para la
+ * misma transición: los avisos críticos siguen siendo de ShellFeedback, y dos
+ * regiones vivas contando lo mismo se leen dos veces.
  */
 import { activityProgress } from './eyeinskyActivityModel.js';
 
@@ -55,62 +58,50 @@ function node(doc, tag, text = '', className = '') {
 }
 
 /**
- * Monta la cápsula de actividad.
+ * Monta la terminal OPS.
  *
  * @param {object} options Montaje.
- * @param {HTMLElement} options.host Contenedor (junto a Ayuda).
+ * @param {HTMLElement} options.host Contenedor (el panel OPS del dock).
  * @param {(taskId:string) => void} [options.onRetry] Reintento.
  * @param {(taskId:string) => void} [options.onCancel] Cancelación.
  * @param {AbortSignal} [options.signal] Señal de desmontaje.
- * @returns {{update:(state:object) => void, open:() => void, close:() => void, suspend:(value:boolean) => void, isOpen:() => boolean, destroy:() => void}} Control.
+ * @returns {{update:(state:object) => void, suspend:(value:boolean) => void, isSuspended:() => boolean, destroy:() => void}} Control.
  */
 export function mountEyeActivity({ host, onRetry, onCancel, signal } = {}) {
   if (!host) throw new TypeError('mountEyeActivity requiere un host');
   const doc = host.ownerDocument;
   let destroyed = false;
-  let open = false;
   let suspended = false;
-  let trigger = null;
   let lastState = { tasks: [], history: [] };
 
-  const root = node(doc, 'div', '', 'eye-activity');
-  const capsule = node(
-    doc,
-    'button',
-    '',
-    'eye-activity-capsule eye-glass-surface',
-  );
-  capsule.type = 'button';
-  capsule.id = 'eye-activity-capsule';
-  capsule.setAttribute('aria-expanded', 'false');
-  capsule.setAttribute('aria-controls', 'eye-activity-detail');
-  const capsuleText = node(doc, 'b', '', 'eye-activity-summary');
-  // Dos partes: el nombre fijo y el resumen medido. En pantallas estrechas el
-  // nombre se oculta visualmente pero sigue en el nombre accesible del botón.
-  const capsuleWord = node(doc, 'span', 'Actividad', 'eye-activity-word');
-  const capsuleCount = node(doc, 'span', '', 'eye-activity-count-text');
-  capsuleText.append(capsuleWord, capsuleCount);
-  capsule.append(capsuleText);
+  const root = node(doc, 'div', '', 'eye-activity eye-ops');
 
-  const detail = node(doc, 'div', '', 'eye-activity-detail eye-glass-surface');
-  detail.id = 'eye-activity-detail';
-  detail.hidden = true;
-  // No modal a propósito: el globo sigue recibiendo rueda y arrastre detrás.
-  detail.setAttribute('role', 'group');
-  detail.setAttribute('aria-label', 'Actividad de carga');
-  // Puede no haber ningún control dentro (sin trabajo en curso): el propio
-  // panel debe poder recibir el foco para que Escape lo devuelva a la cápsula.
-  detail.tabIndex = -1;
-  const list = node(doc, 'ul', '', 'eye-activity-list');
+  const head = node(doc, 'header', '', 'eye-ops-head');
+  const mark = node(doc, 'b', 'EYEINSKY OPS', 'eye-ops-mark');
+  // `LIVE` describe el registro que se está pintando, no una promesa de
+  // conexión: su estado sale de las tareas reales, igual que las filas.
+  const live = node(doc, 'span', '// LIVE', 'eye-ops-live');
+  live.dataset.activityState = 'idle';
+  const summary = node(doc, 'span', '', 'eye-ops-summary');
+  head.append(mark, live, summary);
+
+  // Una sola región viva para todo el registro. `role="log"` ya implica
+  // `aria-live="polite"`; añadir otro lo contaría dos veces.
+  const list = node(doc, 'ol', '', 'eye-activity-list eye-ops-log');
+  list.id = 'eye-ops-log';
+  list.setAttribute('role', 'log');
+  list.setAttribute('aria-label', 'Trabajo en curso');
+
   const historyTitle = node(
     doc,
     'h3',
     'Historial',
-    'eye-activity-history-title',
+    'eye-activity-history-title eye-ops-history-title',
   );
-  const history = node(doc, 'ul', '', 'eye-activity-history');
-  detail.append(list, historyTitle, history);
-  root.append(capsule, detail);
+  historyTitle.id = 'eye-ops-history-title';
+  const history = node(doc, 'ul', '', 'eye-activity-history eye-ops-history');
+  history.setAttribute('aria-labelledby', 'eye-ops-history-title');
+  root.append(head, list, historyTitle, history);
   host.append(root);
 
   /**
@@ -184,33 +175,18 @@ export function mountEyeActivity({ host, onRetry, onCancel, signal } = {}) {
     }
   });
 
-  capsule.addEventListener('click', () => {
-    trigger = capsule;
-    control[open ? 'close' : 'open']();
-  });
-
-  detail.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    control.close();
-    // El foco vuelve a quien abrió, no al principio del documento.
-    (trigger || capsule).focus({ preventScroll: true });
-  });
-
   const render = () => {
     const { tasks, history: entries } = lastState;
     const active = tasks.length;
     const failed = entries.filter((task) => task.status === 'error').length;
-    capsuleCount.textContent = active
-      ? ` · ${active} en curso`
+    summary.textContent = active
+      ? `${active} en curso`
       : failed
-        ? ` · ${failed} con fallo`
-        : '';
-    capsule.dataset.activityState = active
-      ? 'loading'
-      : failed
-        ? 'error'
-        : 'idle';
+        ? `${failed} con fallo`
+        : 'En reposo';
+    const state = active ? 'loading' : failed ? 'error' : 'idle';
+    live.dataset.activityState = state;
+    root.dataset.activityState = state;
 
     list.replaceChildren();
     if (active === 0)
@@ -279,22 +255,11 @@ export function mountEyeActivity({ host, onRetry, onCancel, signal } = {}) {
       lastState = state;
       render();
     },
-    open() {
-      if (destroyed || suspended) return;
-      open = true;
-      detail.hidden = false;
-      capsule.setAttribute('aria-expanded', 'true');
-      const first = detail.querySelector('button');
-      (first || detail).focus?.({ preventScroll: true });
-    },
-    close() {
-      if (destroyed) return;
-      open = false;
-      detail.hidden = true;
-      capsule.setAttribute('aria-expanded', 'false');
-    },
     /**
      * Suspende la superficie sin perder su estado: al restaurar vuelve tal cual.
+     * El dock ya se retira entero en Vista limpia; esto apaga además la región
+     * viva, para que un trabajo que termina detrás no se lea en voz alta sobre
+     * una pantalla que la persona pidió despejar.
      * @param {boolean} value Suspender.
      * @returns {void}
      */
@@ -302,17 +267,7 @@ export function mountEyeActivity({ host, onRetry, onCancel, signal } = {}) {
       if (destroyed) return;
       suspended = value === true;
       root.hidden = suspended;
-      // Oculto no puede recibir foco: se apaga el control, no sólo la pintura.
-      capsule.tabIndex = suspended ? -1 : 0;
-      if (suspended) {
-        detail.hidden = true;
-        capsule.setAttribute('aria-expanded', 'false');
-      } else if (open) {
-        detail.hidden = false;
-        capsule.setAttribute('aria-expanded', 'true');
-      }
     },
-    isOpen: () => open,
     isSuspended: () => suspended,
     destroy() {
       if (destroyed) return;

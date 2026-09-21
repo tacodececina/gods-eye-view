@@ -49,7 +49,7 @@ function node(doc, tag, text = '', className = '') {
  * @param {HTMLElement} [options.kicker] Rótulo de la cabecera.
  * @param {(action:{type:string, contextKey:string}) => void} [options.onAction] Acciones.
  * @param {AbortSignal} [options.signal] Señal de desmontaje.
- * @returns {{update:(state:object) => void, getMediaHost:() => HTMLElement, setHeading:(deg:number|null) => void, destroy:() => void}} Control.
+ * @returns {{update:(state:object) => void, setHeading:(deg:number|null) => void, destroy:() => void}} Control.
  */
 export function mountEyeDossier({
   host,
@@ -64,41 +64,20 @@ export function mountEyeDossier({
 
   const root = node(doc, 'div', '', 'eye-dossier');
   const title = node(doc, 'h2', '', 'eye-dossier-title');
-  title.id = 'eye-inspector-title';
+  title.id = 'eye-dossier-title';
   const statusLine = node(doc, 'p', '', 'eye-dossier-status');
   const sourceLine = node(doc, 'p', '', 'eye-dossier-source');
   const positionRow = node(doc, 'div', '', 'eye-dossier-position');
-  // La brújula es un control, no un dibujo: se pulsa, se tabula y ejecuta la
-  // acción Norte del shell. `Centrar` no la sustituye: son cosas distintas.
-  const compass = node(doc, 'button', '', 'eye-dossier-compass');
-  compass.type = 'button';
-  compass.dataset.eyeDossierAction = 'north';
-  const compassNeedle = node(doc, 'span', '▲', 'eye-dossier-needle');
-  compassNeedle.setAttribute('aria-hidden', 'true');
-  const compassText = node(doc, 'span', '', 'eye-dossier-heading-text');
-  compass.append(compassNeedle, compassText);
+  // P3.1: la brújula y `Centrar` viven ahora en el riel del Mission Dock, que
+  // está siempre a la vista. Repetirlos aquí daría dos controles con el mismo
+  // nombre accesible para la misma acción; el panel conserva sólo la lectura.
   const positionText = node(doc, 'span', '', 'eye-dossier-coords');
-  const centerButton = node(
-    doc,
-    'button',
-    'Centrar aquí',
-    'eye-dossier-action',
-  );
-  centerButton.type = 'button';
-  centerButton.dataset.eyeDossierAction = 'center';
-  positionRow.append(compass, positionText, centerButton);
+  positionRow.append(positionText);
   const fields = node(doc, 'dl', '', 'eye-dossier-fields');
-  const mediaHost = node(doc, 'div', '', 'eye-dossier-media');
+  // P3.1: los medios tienen su propio panel en el dock. El expediente ya no los
+  // aloja, así que tampoco deja aquí un contenedor vacío.
   const actions = node(doc, 'div', '', 'eye-dossier-actions');
-  root.append(
-    title,
-    statusLine,
-    sourceLine,
-    positionRow,
-    fields,
-    mediaHost,
-    actions,
-  );
+  root.append(title, statusLine, sourceLine, positionRow, fields, actions);
   host.replaceChildren(root);
 
   const emit = (type, contextKey) => onAction?.({ type, contextKey });
@@ -221,33 +200,14 @@ export function mountEyeDossier({
       }
     },
     /**
-     * Brújula viva: refleja el rumbo real de la cámara y ofrece su alternativa
-     * textual. Sin rumbo medido no se dibuja una aguja inventada.
+     * Sin brújula propia desde P3.1: el rumbo lo publica el riel del dock. Se
+     * conserva el método para no romper a quien lo llame, y no dibuja nada.
      * @param {number|null} headingDeg Rumbo en grados.
      * @returns {void}
      */
     setHeading(headingDeg) {
-      if (destroyed) return;
-      if (!Number.isFinite(headingDeg)) {
-        compass.hidden = true;
-        compass.removeAttribute('aria-label');
-        compassText.textContent = '';
-        return;
-      }
-      const degrees = ((headingDeg % 360) + 360) % 360;
-      const rounded = Math.round(degrees);
-      compass.hidden = false;
-      compassNeedle.style.transform = `rotate(${degrees.toFixed(1)}deg)`;
-      // Nombre accesible completo: qué mide y qué hace al pulsarlo.
-      compass.setAttribute(
-        'aria-label',
-        `Rumbo ${rounded} grados. Orientar al norte`,
-      );
-      compass.title = `Rumbo ${rounded}° · orientar al norte`;
-      compassText.textContent = `${rounded}°`;
-      compass.dataset.heading = String(rounded);
+      void headingDeg;
     },
-    getMediaHost: () => mediaHost,
     destroy() {
       if (destroyed) return;
       destroyed = true;
