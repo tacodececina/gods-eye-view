@@ -720,10 +720,15 @@ export function createQueries({
         return false;
       let id = String(icao24).trim();
       if (!flightState._billboards.has(id)) id = id.toLowerCase();
+      // A free camera (nobody holds trackedEntity) is reclaimable: that is the
+      // state `releaseCameraOwnership` leaves behind after a gesture, and SEGUIR
+      // has to be able to re-follow from it. A DIFFERENT owner still refuses —
+      // re-framing must never yank another layer's follow.
+      const cameraOwner = flightState._viewer.trackedEntity;
       if (
         id !== flightState._trackedIcao ||
         !flightState._viewer.entities?.contains?.(flightState._trackedEntity) ||
-        flightState._viewer.trackedEntity !== flightState._trackedEntity
+        (cameraOwner && cameraOwner !== flightState._trackedEntity)
       )
         return false;
       flightState._trackedCameraFrameStop?.();
@@ -747,6 +752,21 @@ export function createQueries({
       parts.tracking._cancelPendingTrackingRestore();
       parts.tracking._clearTracking(false, { origin });
       return true;
+    },
+
+    /**
+     * Hand the follow camera back without deselecting (P3.1).
+     *
+     * The gesture verb. `stopTracking` is the deliberate destructive one; this
+     * one leaves the stable selected id, the tracked presentation, the shared
+     * context slot and the dossier exactly as they were, and emits no semantic
+     * selection-cleared event. `refocusTrackedById` re-follows the same id.
+     * @param {object} [options]
+     * @param {string} [options.origin='programmatic'] Diagnostic release origin.
+     * @returns {boolean} Whether a selection survived the release.
+     */
+    releaseCameraOwnership({ origin = 'programmatic' } = {}) {
+      return parts.tracking._releaseCameraOwnership({ origin });
     },
 
     cancelPendingTrackingRestore() {

@@ -78,10 +78,13 @@ test('unknown-only v2 layer tokens are invalid, while historical l fields stay i
   }
 });
 
-test('Nepal locator token is valid in v2 share links', () => {
+test('the retired Nepal locator token no longer resolves to a layer', () => {
+  // P3.1 withdrew 'bhote-koshi-locator' from runtime. Its 'z' token is retired,
+  // so a v2 link carrying it is rejected exactly like any other unknown token
+  // rather than quietly resolving to some other layer.
   const parsed = makeManager('#v=2&lat=10&lon=20&l=z').parseInitialHash();
-  assert.deepEqual(parsed.layerState.enabledLayerIds, ['bhote-koshi-locator']);
-  assert.equal(parsed.layerStateInvalid, false);
+  assert.equal(parsed.layerState, null);
+  assert.equal(parsed.layerStateInvalid, true);
 });
 
 test('share-link serialization emits the current celestial state', () => {

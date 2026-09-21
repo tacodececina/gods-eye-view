@@ -48,13 +48,16 @@ try {
         window.__eyeinsky &&
         document.querySelector('#loading-screen').classList.contains('hidden'),
     );
-    await page.click('.eye-nav [data-eye-view="signals"]');
+    // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+    // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+    await page.click('.eye-function-dock [data-eye-view="instruments"]');
+    await page.click('#eye-connect');
     await page.waitForFunction(
       () => !document.querySelector('#eye-refresh').disabled,
     );
     await page.waitForSelector('[data-signal-id="focus-fixture"]');
     await page.click('[data-signal-id="focus-fixture"]');
-    await page.click('#eye-inspector-close');
+    await page.click('#eye-mission-dock-close');
     checks.push({
       name: `${width}: inspector returns focus to current row`,
       ok: await page.evaluate(
@@ -76,7 +79,9 @@ try {
       ),
     });
     for (const view of ['catalog', 'display', 'sensors', 'preferences']) {
-      await page.click('.eye-nav [data-eye-view="operations"]');
+      // Operación vive bajo Más desde el rediseño P0-P2.
+      await page.click('.eye-function-dock [data-eye-view="more"]');
+      await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
       await page.$eval('.eye-workspace-content', (element) => {
         element.scrollTop = 500;
       });

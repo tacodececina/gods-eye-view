@@ -317,11 +317,9 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     token: 'h',
     disposition: 'enabled-only',
   }),
-  Object.freeze({
-    id: 'bhote-koshi-locator',
-    token: 'z',
-    disposition: 'enabled-only',
-  }),
+  // 'z' belonged to 'bhote-koshi-locator', withdrawn from runtime in P3.1. The
+  // token stays retired rather than reused so an old v2 link can never silently
+  // decode into a different layer.
   Object.freeze({ id: 'bikeshare', token: 'b', disposition: 'enabled-only' }),
   Object.freeze({
     id: 'cctv',

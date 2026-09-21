@@ -10,12 +10,6 @@ export const EYE_LAYER_GUIDE = Object.freeze({
     'Corredor del evento en Nepal; conjunto acotado, no vigilancia global.',
     'Vantor + GeoPera. Se abre desde su recorrido de contexto.',
   ),
-  'bhote-koshi-locator': guide(
-    '⌖',
-    'Referencias de ubicación para orientar el recorrido Bhote Koshi.',
-    'Entorno regional del evento; depende del mapa comunitario disponible.',
-    'OpenStreetMap + GeoPera; uso sujeto a sus atribuciones.',
-  ),
   flights: guide(
     '✈',
     'Posiciones ADS-B de aeronaves civiles que la fuente logra observar.',

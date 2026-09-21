@@ -350,6 +350,26 @@ export function createControls({ state: layerState, services, parts, source }) {
       return true;
     },
 
+    /**
+     * Hand the follow camera back without deselecting (P3.1).
+     *
+     * The gesture verb. `stopTracking` is the deliberate destructive one; this
+     * one leaves the stable selected id, the tracked presentation, the shared
+     * context slot and the dossier exactly as they were, and emits no semantic
+     * selection-cleared event. `refocusTrackedById` re-follows the same id.
+     * @param {object} [options]
+     * @param {string} [options.origin='programmatic'] Diagnostic release origin.
+     * @returns {boolean} Whether a selection survived the release.
+     */
+    releaseCameraOwnership({ origin = 'programmatic' } = {}) {
+      return parts.tracking._releaseCameraOwnership({ origin });
+    },
+
+    /** Re-follow the already-selected satellite after a camera release. */
+    refocusTrackedById(noradId) {
+      return parts.tracking._refocusTracked(noradId);
+    },
+
     cancelPendingTrackingRestore() {
       parts.tracking._cancelPendingTrackingRestore();
     },

@@ -6,7 +6,7 @@ import { BHOTE_KOSHI_FLOOD_PATH } from './bhoteKoshiFloodPath.js';
 import * as Cesium from 'cesium';
 import { SceneDirector } from '../scenes/director.js';
 import { createPlaybackClock } from '../director/clock.js';
-import { createDefaultScenePacks } from '../scenes/packs/defaults.js';
+import { createScenePackRegistry } from '../scenes/packs/registry.js';
 import {
   anchoredCalloutPresentation,
   BHOTE_KOSHI_CITY_CONTEXT_PRESENTATION,
@@ -506,7 +506,15 @@ for (const phase of ['timer', 'move-end', 'approach', 'orbit']) {
     });
     const director = {
       _clock: createPlaybackClock({ isRunning: () => false, timingForShot: () => null, onProgress() {} }),
-      _scenePacks: createDefaultScenePacks(),
+      _scenePacks: createScenePackRegistry({
+        adapters: [
+          {
+            cancelMotion(getLayerModule) {
+              getLayerModule('bhote-koshi-locator')?.cancelSceneMotion?.();
+            },
+          },
+        ],
+      }),
       dataManager: { layers: new Map([[layer.id, { module: layer }]]) },
       viewer,
       _sceneSeekGeneration: 0,

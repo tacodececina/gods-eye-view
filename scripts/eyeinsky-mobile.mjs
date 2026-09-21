@@ -39,9 +39,12 @@ try {
         window.__eyeinsky &&
         document.querySelector('#loading-screen').classList.contains('hidden'),
     );
-  await page.goto('http://127.0.0.1:4194/');
+  await page.goto(process.env.EYE_URL || 'http://127.0.0.1:4194/');
   await ready();
-  await page.click('.eye-nav [data-eye-view="signals"]');
+  // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+  // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-connect');
   await page.waitForFunction(
     () =>
       window.__eyeinsky.rows.length >= 2 &&
@@ -65,10 +68,12 @@ try {
         id,
       ),
     );
-    await page.click('#eye-inspector-close');
+    await page.click('#eye-mission-dock-close');
   }
   await page.select('#eye-filter-hours', '6');
-  await page.click('.eye-nav [data-eye-view="operations"]');
+  // Operación vive bajo Más desde el rediseño P0-P2.
+  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.type('#eye-operation-name', 'Recorrido móvil');
   await page.type('#eye-operation-note', 'Nota móvil privada');
   await page.click('#eye-operation-save');
@@ -82,7 +87,9 @@ try {
   );
   await page.reload();
   await ready();
-  await page.click('.eye-nav [data-eye-view="operations"]');
+  // Operación vive bajo Más desde el rediseño P0-P2.
+  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.click('[data-operation-action="open"]');
   await page.waitForFunction(
     () =>

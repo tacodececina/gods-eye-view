@@ -85,8 +85,31 @@ try {
       () =>
         !document.getElementById('eye-workspace').hidden &&
         document.querySelectorAll('#eye-catalog .eye-catalog-row').length ===
-          24,
+          23,
     );
+    // El Mission Dock se SUSPENDE cuando el panel ocupa la pantalla en móvil, y
+    // su cierre es animado (`scale(0.975)`). Medir a mitad de esa transición
+    // devolvía controles de 42.9 px para un mínimo real de 44. Se espera a que
+    // el dock esté escondido del todo o quieto a escala 1 antes de medir.
+    await page
+      .waitForFunction(
+        () => {
+          const dock = document.getElementById('eye-mission-dock');
+          if (!dock) return true;
+          // En móvil el panel abierto SUSPENDE el dock: su estado final es
+          // `hidden`, y esperar eso es determinista. Esperar sólo a «escala 1»
+          // pasaba antes de que la animación de cierre arrancara y luego medía
+          // a mitad de `scale(0.975)`: controles de 43.5 px para un mínimo de
+          // 44 que el producto sí cumple en reposo.
+          if (window.matchMedia('(max-width:650px)').matches)
+            return dock.hidden === true;
+          if (dock.hidden) return true;
+          const transform = getComputedStyle(dock).transform;
+          return transform === 'none' || /^matrix\(1, 0, 0, 1/.test(transform);
+        },
+        { timeout: 8_000 },
+      )
+      .catch(() => {});
     const layout = await page.evaluate(() => {
       const visible = (element) => {
         if (!element || element.hidden || element.inert) return false;
@@ -228,8 +251,8 @@ try {
         layout.duplicates.length === 0 &&
         layout.overflow.x <= 0 &&
         layout.overflow.y <= 0 &&
-        layout.catalogRows === 24 &&
-        layout.runtimeLayers === 21 &&
+        layout.catalogRows === 23 &&
+        layout.runtimeLayers === 20 &&
         layout.canvasOperational &&
         layout.creditHit &&
         layout.scene.skyBox &&
@@ -661,7 +684,7 @@ try {
   if (
     await page.evaluate(() => document.body.dataset.eyeInspecting === 'true')
   ) {
-    await page.click('#eye-inspector-close');
+    await page.click('#eye-mission-dock-close');
     await new Promise((resolve) => setTimeout(resolve, 260));
   }
   await page.click('#eye-panel-close');

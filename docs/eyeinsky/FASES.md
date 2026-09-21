@@ -1,6 +1,8 @@
 # EYEINSKY — fases guardadas al cierre
 
-Estado: P0–P3 verificadas localmente al 20sep2026. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
+Estado: P0–P3 verificadas localmente al 20sep2026; P3.1 (Mission Dock)
+implementada y verificada localmente al 21sep2026. P4 sigue SIN iniciar y es lo
+siguiente. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
 
 ## P0 — cerrada como base y spike técnico
 
@@ -26,6 +28,37 @@ Expediente y actividad:
 - [x] Actividad conectada a mapas/cámaras/capas reales, terminales reintentables y single-flight.
 - [x] Carreras A→B, eventos de imagen obsoletos, retry, saneado de secretos y zoom real cubiertos.
 - [x] Recorridos P3, P0–P2, cámara adversa y cabina aprobados por el supervisor.
+
+## P3.1 — Mission Dock, implementada y verificada localmente
+
+Corte de presentación y autoridad sobre P3, con `claude-opus-5` como único
+escritor. Commits `0ca97f7`, `1bb0ac3`, `3985708` y el commit de cierre de esta
+fase. Evidencia local: `output/eyeinsky-p31/` (no versionada).
+
+- [x] El expediente lateral derecho pasa a ser un Mission Dock inferior: riel
+      siempre visible y cuerpo desplegable con tres paneles — OBJETIVO, MEDIOS
+      (sólo si el contexto trae activos) y OPS.
+- [x] La cápsula de Actividad bajo Ayuda pasa a ser la terminal `EYEINSKY OPS //
+      LIVE`, tercer panel del dock, sobre el mismo modelo y fuentes de P3.
+- [x] Autoridad de cámara separada de la identidad de selección: un gesto físico
+      suelta la cámara y conserva el objetivo. `releaseCameraOwnership` frente a
+      `stopTracking` en vuelos, militar y satélites; `refocusTrackedById` (SEGUIR)
+      vuelve a engancharla.
+- [x] `bhote-koshi-locator` retirado del runtime: sin capa, sin registro de
+      serialización, sin receta ejecutable y sin entrada de interfaz. El módulo
+      sigue en el árbol, con sus pruebas en verde, pero nada lo alcanza.
+- [x] Recorrido de navegador nuevo `scripts/eyeinsky-p31.mjs`: 15/15 en cinco
+      viewports reales (incluido 768×1024), alcance de controles, pestañera y
+      foco, medios reales atribuidos, zoom real CDP al 200 % con
+      `visualViewport.scale === 2`, Vista limpia, gesto físico que conserva
+      `flights:<id>` y SEGUIR que recupera la misma entidad. El desmontaje/remontaje
+      del dock también demuestra que el listener anterior no vuelve a responder.
+- [x] Regresiones P3 (30/30), P0–P2 (23/23), cámara adversa y cabina (4/4) en
+      verde contra este candidato.
+
+Bhote Koshi queda **aplazado**, no cancelado: será una experiencia contextual
+futura y NO permanente. Mientras no exista ese diseño, la retirada es el estado
+honesto; reintroducirlo exige una fase propia, no un interruptor.
 
 ## P4 — satélites 3D, plan preparado; implementación NO iniciada
 

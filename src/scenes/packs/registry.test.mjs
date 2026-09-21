@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createDefaultScenePacks } from './defaults.js';
 import { createScenePackRegistry } from './registry.js';
 import {
   effectiveShotHoldSec,
@@ -53,4 +54,36 @@ test('registered pack rules apply to another source without editing the Director
   packs.cancelMotion(() => ({ cancelSceneMotion: () => cancelled++ }));
   assert.equal(cancelled, 1);
   assert.deepEqual(shot, before);
+});
+
+test('default scene packs never activate the withdrawn Bhote Koshi locator', () => {
+  const packs = createDefaultScenePacks();
+  const requested = [];
+  packs.cancelMotion((layerId) => {
+    requested.push(layerId);
+    return null;
+  });
+  assert.equal(
+    requested.includes('bhote-koshi-locator'),
+    false,
+    'runtime adapters must not request the withdrawn layer',
+  );
+
+  const retiredOnly = {
+    'bhote-koshi-locator': {
+      enabled: true,
+      params: { presentation: 'bhote-koshi-incident-places' },
+    },
+  };
+  assert.equal(
+    packs.minimumHoldSec(retiredOnly),
+    0,
+    'a saved locator entry cannot reactivate runtime timing behavior',
+  );
+  const visual = { mapStack: 'photoreal' };
+  assert.deepEqual(
+    packs.resolveVisual({ layers: retiredOnly }, visual, () => false),
+    visual,
+    'a saved locator entry cannot rewrite the active map stack',
+  );
 });

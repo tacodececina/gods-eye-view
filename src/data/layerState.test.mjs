@@ -158,9 +158,10 @@ function encode(state) {
 
 test('production registry is exact, canonical, and rejects incomplete contracts', async () => {
   assert.equal(validateLayerStateRegistry(), true);
-  assert.equal(REGISTERED_LAYER_IDS.length, 21);
-  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 21);
+  assert.equal(REGISTERED_LAYER_IDS.length, 20);
+  assert.equal(new Set(REGISTERED_LAYER_IDS).size, 20);
   assert.ok(REGISTERED_LAYER_IDS.includes('transit'));
+  assert.equal(REGISTERED_LAYER_IDS.includes('bhote-koshi-locator'), false);
   assert.deepEqual(REGISTERED_LAYER_IDS, [...REGISTERED_LAYER_IDS].sort());
   assert.throws(
     () => validateLayerStateRegistry([...LAYER_STATE_REGISTRY, LAYER_STATE_REGISTRY[0]]),
@@ -231,10 +232,12 @@ test('unknown enabled-layer tokens reject the payload instead of becoming an emp
   assert.equal(decodeLayerStateParams(new URLSearchParams('v=2&l=c.unknown')), null);
 });
 
-test('Nepal event and locator have distinct enabled-only share tokens', () => {
-  const decoded = decodeLayerStateParams(new URLSearchParams('v=2&l=h.z'));
-  assert.deepEqual(decoded.enabledLayerIds, ['bhote-koshi-2026', 'bhote-koshi-locator']);
-  assert.ok(encode(decoded).includes('l=h.z'));
+test('the Nepal event keeps its share token while the retired locator token is gone', () => {
+  const decoded = decodeLayerStateParams(new URLSearchParams('v=2&l=h'));
+  assert.deepEqual(decoded.enabledLayerIds, ['bhote-koshi-2026']);
+  assert.ok(encode(decoded).includes('l=h'));
+  // P3.1 retired 'z' with the locator; it must not be honoured or reassigned.
+  assert.equal(decodeLayerStateParams(new URLSearchParams('v=2&l=h.z')), null);
 });
 
 test('unknown and forbidden option fields are ignored while missing options use codec defaults', () => {

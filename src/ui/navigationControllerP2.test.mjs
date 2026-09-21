@@ -145,6 +145,144 @@ test('human interruption snapshots a finite world view before resetting the tran
   );
 });
 
+/**
+ * P3.1 — a physical gesture takes the camera, never the selection.
+ *
+ * `interruptHumanNavigation` used to stamp through the destructive path:
+ * `_stampNavigation` nulled `selected*TrackingId` and `_releaseFollowCamera`
+ * reached `stopTracking`, which clears the shared context slot and emits the
+ * semantic clear the dossier listens to. Zooming therefore deselected.
+ */
+function selectionRig({ tracked = true } = {}) {
+  const verbs = [];
+  const paramWrites = [];
+  const trackingLayer = (layerId) => ({
+    cancelPendingTrackingRestore() {
+      verbs.push([layerId, 'cancelPendingTrackingRestore']);
+    },
+    getTrackedInfo: () => (tracked ? { id: `${layerId}-A` } : null),
+    stopTracking({ origin } = {}) {
+      verbs.push([layerId, 'stopTracking', origin]);
+      return true;
+    },
+    releaseCameraOwnership({ origin } = {}) {
+      verbs.push([layerId, 'releaseCameraOwnership', origin]);
+      return true;
+    },
+  });
+  const controller = new NavigationController({
+    viewer: {
+      camera: {
+        positionWC: { x: 1, y: 2, z: 3 },
+        directionWC: { x: 0, y: 0, z: -1 },
+        upWC: { x: 0, y: 1, z: 0 },
+        cancelFlight() {},
+        lookAtTransform() {},
+        setView() {},
+      },
+      scene: { canvas: { clientWidth: 1000, clientHeight: 700 } },
+    },
+    tracking: {
+      flightsLayer: trackingLayer('flights'),
+      militaryFlightsLayer: trackingLayer('military'),
+      satellitesLayer: trackingLayer('satellites'),
+      aisLiveVesselsLayer: {
+        clearSelection() {
+          verbs.push(['vessels', 'clearSelection']);
+        },
+      },
+      militaryAwarenessLayer: {
+        releaseCameraOwnership() {
+          verbs.push(['awareness', 'releaseCameraOwnership']);
+          return true;
+        },
+      },
+      rocketLaunchesLayer: { releaseCameraOwnership() {} },
+    },
+    searchInput: null,
+    interruptCameraMotion: (reason) => verbs.push(['camera', reason]),
+    isCockpitActive: () => false,
+    clearLocation() {
+      verbs.push(['location', 'clear']);
+    },
+    cancelShareSelection: () => false,
+    getDataManager: () => ({
+      setLayerParams: (layerId, params, options) =>
+        paramWrites.push([layerId, params, options?.origin]),
+    }),
+    stopOrbit() {},
+    showToast() {},
+  });
+  return { controller, verbs, paramWrites };
+}
+
+test('a manual gesture releases the camera and keeps the exact selection', () => {
+  const h = selectionRig();
+  h.controller.interruptHumanNavigation('wheel');
+
+  for (const layerId of ['flights', 'military', 'satellites']) {
+    assert.deepEqual(
+      h.verbs.find(([id, verb]) => id === layerId && verb.startsWith('stop')),
+      undefined,
+      `${layerId} must not be deselected by a gesture`,
+    );
+    assert.deepEqual(
+      h.verbs.find(
+        ([id, verb]) => id === layerId && verb === 'releaseCameraOwnership',
+      ),
+      [layerId, 'releaseCameraOwnership', 'user'],
+      `${layerId} releases the camera as the user`,
+    );
+  }
+  assert.deepEqual(
+    h.paramWrites,
+    [],
+    'no selected*TrackingId is nulled by a gesture',
+  );
+  assert.equal(
+    h.verbs.some(([id, verb]) => id === 'vessels' && verb === 'clearSelection'),
+    false,
+    'vessel selection behaviour is preserved',
+  );
+  assert.equal(
+    h.verbs.some(([id]) => id === 'camera'),
+    true,
+    'the camera tween is still interrupted so the gesture owns the camera',
+  );
+  assert.equal(
+    h.verbs.some(([id]) => id === 'location'),
+    false,
+    'the searched-location readout survives a gesture',
+  );
+});
+
+test('explicit navigation still performs a deliberate destructive deselection', () => {
+  // No active owner holds a tracked contact, so the controller itself is the
+  // one that must null the pending selection identity — the branch a gesture
+  // must never take.
+  const h = selectionRig({ tracked: false });
+  assert.equal(
+    h.controller.runCameraPlan('vista', [
+      { lat: 1, lon: 2, alt: 1_000_000, duration: 0 },
+    ]) instanceof Promise,
+    true,
+  );
+  assert.deepEqual(
+    h.paramWrites.map(([layerId, params]) => [layerId, Object.values(params)]),
+    [
+      ['flights', [null]],
+      ['military', [null]],
+      ['satellites', [null]],
+    ],
+    'an explicit destination still clears pending selection identity',
+  );
+  assert.equal(
+    h.verbs.some(([id, verb]) => id === 'awareness' && verb === 'releaseCameraOwnership'),
+    true,
+    'explicit navigation keeps its existing Contact release route',
+  );
+});
+
 test('a reduced-motion layer fit uses an instantaneous view and leaves no flight', () => {
   const h = rig({ reducedMotion: true });
   h.controller.requestLayerFit(

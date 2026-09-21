@@ -120,23 +120,28 @@ test('Mailung clip trim estimates seven seconds and its exit, including older sa
   } finally { restore(); }
 });
 
-test('Incident Corridor gives all overview pins time to reveal without rewriting saved shots', () => {
+test('a saved Bhote Koshi locator state cannot restore runtime hold behavior', () => {
   const { director, restore } = makeDirector();
   try {
     const scene = director._project.scenes[0];
     const shot = scene.shots[0];
     shot.holdSec = 0.9;
-    shot.layers = { 'bhote-koshi-locator': {
-      enabled: true, params: { presentation: 'bhote-koshi-incident-places' },
-    } };
-    assert.equal(director._effectiveShotHoldSec(scene, shot), 11);
+    shot.layers = {
+      'bhote-koshi-locator': {
+        enabled: true,
+        params: { presentation: 'bhote-koshi-incident-places' },
+      },
+    };
+    assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
     assert.equal(shot.holdSec, 0.9);
     shot.holdSec = 15;
     assert.equal(director._effectiveShotHoldSec(scene, shot), 15);
     shot.holdSec = 0.9;
-    shot.layers['bhote-koshi-locator'].params.presentation = 'bhote-koshi-flood-path';
+    shot.layers['bhote-koshi-locator'].params.presentation =
+      'bhote-koshi-flood-path';
     assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
-    shot.layers['bhote-koshi-locator'].params.presentation = 'bhote-koshi-incident-places';
+    shot.layers['bhote-koshi-locator'].params.presentation =
+      'bhote-koshi-incident-places';
     shot.layers['bhote-koshi-locator'].enabled = false;
     assert.equal(director._effectiveShotHoldSec(scene, shot), 0.9);
   } finally {
@@ -215,7 +220,9 @@ test('the Nepal evidence pack appends once and applies the approved corridor fra
     assert.deepEqual(scene.shots.slice(0, 8).map(({ id }) => id), originalShotIds);
     assert.equal(scene.shots.length, 25);
     assert.ok(scene.releaseLayerIds.includes('bhote-koshi-2026'));
-    assert.ok(scene.releaseLayerIds.includes('bhote-koshi-locator'));
+    // P3.1 withdrew the locator: the pack no longer claims or releases it, and
+    // saved shots that still carry the old entry are left untouched below.
+    assert.equal(scene.releaseLayerIds.includes('bhote-koshi-locator'), false);
     assert.equal(scene.appliedShotPacks[0].id, 'bhote-koshi-nepal-evidence-pack');
     assert.equal(scene.appliedShotPacks[0].version, 18);
     assert.deepEqual(

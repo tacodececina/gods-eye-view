@@ -11,10 +11,11 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
   title: 'Bhote Koshi Evidence Sequence',
   style: 'normal',
   ui: { hidePanels: false, hudMode: 'full', safeFrame: '16:9' },
-  layers: {
-    'bhote-koshi-locator': false,
-  },
-  releaseLayerIds: ['bhote-koshi-2026', 'bhote-koshi-locator'],
+  // P3.1 withdrew the Bhote Koshi locator from runtime behaviour, so no shot,
+  // scene-level state or release list may name it any more. The event layer
+  // carries the whole sequence on its own.
+  layers: {},
+  releaseLayerIds: ['bhote-koshi-2026'],
   post: {
     bloom: 0,
     sharpen: true,
@@ -35,12 +36,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'nepal-context' },
-          },
-        },
       },
       {
         title: 'Nepal-Focused Globe Rotation',
@@ -52,12 +47,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'nepal-context' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Regional Approach',
@@ -69,12 +58,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-regional' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Nearby Cities',
@@ -86,12 +69,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-city-context' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Incident Corridor',
@@ -103,12 +80,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 11,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-incident-places' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Flood Path',
@@ -120,12 +91,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-flood-path' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Corridor Overview',
@@ -137,12 +102,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 0.9,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-path-overview' },
-          },
-        },
       },
       {
         title: 'Bhote Koshi Upper Valley',
@@ -154,12 +113,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
         roll: 0,
         duration: 4,
         hold: 8,
-        layers: {
-          'bhote-koshi-locator': {
-            enabled: true,
-            params: { presentation: 'bhote-koshi-trigger-record' },
-          },
-        },
       },
     ],
   },
@@ -346,12 +299,6 @@ const BHOTE_KOSHI_NEPAL_BASE_RECIPE = Object.freeze({
             beatId: 'immediate-collapse-viewpoint',
             beatReveal: 0.36,
             split: 0.5,
-          },
-        },
-        'bhote-koshi-locator': {
-          enabled: true,
-          params: {
-            presentation: 'bhote-koshi-trigger-record',
           },
         },
       },
