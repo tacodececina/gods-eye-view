@@ -54,7 +54,10 @@ try {
     ),
   );
   await page.screenshot({ path: `${out}/preview-home-1440.png` });
-  await page.click('.eye-nav [data-eye-view="signals"]');
+  // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+  // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-connect');
   await page.waitForFunction(() => window.__eyeinsky.rows.length >= 2, {
     timeout: 60000,
   });

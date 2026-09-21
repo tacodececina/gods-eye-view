@@ -75,14 +75,17 @@ try {
     if (mode === 'hold') pending.push(() => send().catch(() => {}));
     else void send();
   });
-  await page.goto('http://127.0.0.1:4194/');
+  await page.goto(process.env.EYE_URL || 'http://127.0.0.1:4194/');
   await page.waitForFunction(
     () =>
       window.__eyeinsky &&
       document.querySelector('#loading-screen').classList.contains('hidden'),
   );
   mode = 'hold';
-  await page.click('.eye-nav [data-eye-view="signals"]');
+  // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+  // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-connect');
   await page.waitForFunction(() =>
     document
       .querySelector('#eye-feed-status')
@@ -188,7 +191,7 @@ try {
   check(
     'missing saved contact has a labelled explanation',
     await page.$eval(
-      '#eye-inspector-title',
+      '#eye-mission-dock-title',
       (e) => e.textContent === 'Evento no disponible',
     ),
   );

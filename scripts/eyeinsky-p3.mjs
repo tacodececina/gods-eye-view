@@ -2,7 +2,8 @@
  * Arnés de navegador de EYEINSKY P3.
  *
  * Mide sobre la aplicación viva el expediente contextual, los medios con
- * permiso, la cápsula de actividad, el foco y las dos rutas de Vista limpia.
+ * permiso, la terminal OPS, el foco y las dos rutas de Vista limpia. Desde
+ * P3.1 las tres superficies viven dentro del Mission Dock inferior.
  *
  * Uso: node scripts/eyeinsky-p3.mjs <url> <directorio-de-salida>
  * El directorio de salida es OBLIGATORIO y no puede contener ya un result.json:
@@ -80,13 +81,13 @@ try {
 
   // ─── P3-01 · Ficha de vista abierta al inicio, sin robar el foco ───
   const initial = await page.evaluate(() => {
-    const inspector = document.getElementById('eye-inspector');
+    const inspector = document.getElementById('eye-mission-dock');
     const dossier = document.querySelector('.eye-dossier');
     const active = document.activeElement;
     return {
       inspectorVisible: Boolean(inspector) && !inspector.hidden,
       contextKey: dossier?.dataset.contextKey ?? null,
-      title: document.getElementById('eye-inspector-title')?.textContent ?? null,
+      title: document.getElementById('eye-mission-dock-title')?.textContent ?? null,
       focusInsideDossier: Boolean(inspector && active && inspector.contains(active)),
       inspectingFlag: document.body.dataset.eyeInspecting ?? null,
     };
@@ -100,27 +101,29 @@ try {
     initial,
   );
 
-  // ─── P3-08 · En reposo la cápsula no inventa trabajo ───
+  // ─── P3-08 · En reposo OPS no inventa trabajo ───
   // Se mide ANTES de encender ninguna capa: con el mapa ya listo y las capas
   // apagadas, no hay trabajo que narrar. Antes decía «22 en curso».
+  // P3.1: la cápsula bajo Ayuda es ahora el panel OPS del Mission Dock; lo que
+  // se comprueba es lo mismo, sobre la superficie que existe hoy.
   const idleActivity = await page.evaluate(() => {
-    const detail = document.getElementById('eye-activity-detail');
+    const ops = document.getElementById('eye-dock-panel-ops');
     return {
-      capsule:
-        document.querySelector('.eye-activity-summary')?.textContent ?? null,
-      items: [...detail.querySelectorAll('.eye-activity-item')].map(
+      summary: document.querySelector('.eye-ops-summary')?.textContent ?? null,
+      liveState:
+        document.querySelector('.eye-ops-live')?.dataset.activityState ?? null,
+      items: [...ops.querySelectorAll('.eye-activity-item')].map(
         (item) => item.textContent,
       ),
-      empty: Boolean(
-        detail.querySelector('.eye-activity-list .eye-activity-empty'),
-      ),
+      empty: Boolean(ops.querySelector('.eye-ops-log .eye-activity-empty')),
     };
   });
   check(
     'p3-08-idle-activity-is-empty',
     idleActivity.items.length === 0 &&
       idleActivity.empty &&
-      !/en curso/.test(idleActivity.capsule || ''),
+      idleActivity.liveState === 'idle' &&
+      !/en curso/.test(idleActivity.summary || ''),
     idleActivity,
   );
 
@@ -176,14 +179,12 @@ try {
     slider,
   );
 
-  // ─── P3-08 · Cápsula de actividad bajo Ayuda, sin solaparse con la búsqueda ───
-  const capsule = await page.evaluate(() => {
-    const help = document.getElementById('eye-help');
-    const element = document.getElementById('eye-activity-capsule');
+  // ─── P3-08 · OPS es una pestaña del dock, alcanzable y con objetivo táctil ───
+  const opsTab = await page.evaluate(() => {
+    const element = document.getElementById('eye-dock-tab-ops');
     const search = document.querySelector('.eye-search');
-    if (!element || !help) return { present: false };
+    if (!element) return { present: false };
     const box = element.getBoundingClientRect();
-    const helpBox = help.getBoundingClientRect();
     const searchBox = search?.getBoundingClientRect() ?? null;
     const overlaps =
       searchBox &&
@@ -191,93 +192,98 @@ try {
       box.right > searchBox.left &&
       box.top < searchBox.bottom &&
       box.bottom > searchBox.top;
+    const top = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
     return {
       present: true,
-      belowHelp: box.top >= helpBox.bottom - 2,
+      role: element.getAttribute('role'),
       overlapsSearch: Boolean(overlaps),
       height: box.height,
       width: box.width,
       label: element.textContent,
-      hit:
-        document.elementFromPoint(
-          box.left + box.width / 2,
-          box.top + box.height / 2,
-        ) === element ||
-        element.contains(
-          document.elementFromPoint(
-            box.left + box.width / 2,
-            box.top + box.height / 2,
-          ),
-        ),
+      hit: top === element || element.contains(top),
     };
   });
   check(
-    'p3-08-activity-capsule-under-help',
-    capsule.present &&
-      capsule.belowHelp &&
-      !capsule.overlapsSearch &&
-      capsule.height >= 44 &&
-      capsule.hit,
-    capsule,
+    'p3-08-activity-reachable-as-a-dock-tab',
+    opsTab.present &&
+      opsTab.role === 'tab' &&
+      !opsTab.overlapsSearch &&
+      opsTab.height >= 42 &&
+      opsTab.hit,
+    opsTab,
   );
 
-  // ─── P3-08/09 · El detalle narra trabajo real y no inventa porcentaje ───
-  await page.click('#eye-activity-capsule');
+  // ─── P3-08/09 · OPS narra trabajo real y no inventa porcentaje ───
+  await page.click('[data-eye-dock-action="more"]');
+  await page.click('#eye-dock-tab-ops');
   const detail = await page.evaluate(() => {
-    const panel = document.getElementById('eye-activity-detail');
+    const panel = document.getElementById('eye-dock-panel-ops');
     const bars = [...panel.querySelectorAll('progress')];
     return {
       open: Boolean(panel) && !panel.hidden,
       expanded:
-        document.getElementById('eye-activity-capsule')?.getAttribute('aria-expanded') ??
-        null,
-      focusInside: panel.contains(document.activeElement),
+        document
+          .querySelector('[data-eye-dock-action="more"]')
+          ?.getAttribute('aria-expanded') ?? null,
+      selected: document
+        .getElementById('eye-dock-tab-ops')
+        ?.getAttribute('aria-selected'),
+      logRole: document.getElementById('eye-ops-log')?.getAttribute('role'),
       items: [...panel.querySelectorAll('.eye-activity-item')].map((item) => ({
         status: item.dataset.status,
         text: item.textContent,
       })),
       emptyText: panel.querySelector('.eye-activity-empty')?.textContent ?? null,
       // Una barra sin max real sería un porcentaje inventado.
-      barsWithoutDenominator: bars.filter((bar) => !(Number(bar.max) > 0)).length,
+      barsWithoutDenominator: bars.filter((bar) => !(Number(bar.max) > 0))
+        .length,
     };
   });
   check(
     'p3-08-activity-detail-no-fake-progress',
     detail.open &&
       detail.expanded === 'true' &&
-      detail.focusInside &&
+      detail.selected === 'true' &&
+      detail.logRole === 'log' &&
       detail.barsWithoutDenominator === 0,
     detail,
   );
 
-  // ─── P3-10 · Escape cierra y devuelve el foco a quien abrió ───
+  // ─── P3-10 · Escape repliega y devuelve el foco a quien desplegó ───
+  await page.focus('#eye-dock-tab-ops');
   await page.keyboard.press('Escape');
   const afterEscape = await page.evaluate(() => ({
-    open: !document.getElementById('eye-activity-detail').hidden,
-    focus: document.activeElement?.id ?? null,
+    open: document.getElementById('eye-mission-dock').dataset.expanded === 'true',
+    focus: document.activeElement?.id || document.activeElement?.className || '',
+    focusInsideDock: document
+      .getElementById('eye-mission-dock')
+      .contains(document.activeElement),
   }));
   check(
     'p3-10-escape-returns-focus',
-    !afterEscape.open && afterEscape.focus === 'eye-activity-capsule',
+    !afterEscape.open && afterEscape.focusInsideDock,
     afterEscape,
   );
 
   // ─── P3-05 · Lo cerrado sigue cerrado tras un refresh de la misma ficha ───
-  await page.click('#eye-inspector-close');
+  await page.click('#eye-mission-dock-close');
   // El cierre es animado: se espera a que termine antes de leer, y sólo después
   // se provoca el refresh que no debe reabrir nada.
   await new Promise((resolve) => setTimeout(resolve, 600));
   const closed = await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent('gev:map-stack-changed', { detail: {} }));
     return {
-      hidden: document.getElementById('eye-inspector').hidden,
+      hidden: document.getElementById('eye-mission-dock').hidden,
       inspecting: document.body.dataset.eyeInspecting ?? null,
     };
   });
   await new Promise((resolve) => setTimeout(resolve, 400));
   const stillClosed = await page.evaluate(() => ({
-    hidden: document.getElementById('eye-inspector').hidden,
-    focusable: [...document.querySelectorAll('#eye-inspector button')].some(
+    hidden: document.getElementById('eye-mission-dock').hidden,
+    focusable: [...document.querySelectorAll('#eye-mission-dock button')].some(
       (button) => button.offsetParent !== null,
     ),
   }));
@@ -424,9 +430,9 @@ try {
       };
       const surfaces = [
         ...document.querySelectorAll(
-          '#eye-inspector, #eye-activity-detail, .eye-activity-capsule',
+          '#eye-mission-dock, #eye-dock-panel-ops, .eye-dock-tabs',
         ),
-      ].filter((element) => element.offsetParent !== null || element.id === 'eye-inspector');
+      ].filter((element) => element.offsetParent !== null || element.id === 'eye-mission-dock');
       const smallText = [];
       const smallTargets = [];
       const lowContrast = [];
@@ -524,7 +530,7 @@ try {
   await page.setViewport({ width: 390, height: 844 });
   await new Promise((resolve) => setTimeout(resolve, 500));
   const mobileSuspension = await page.evaluate(async () => {
-    const surface = () => document.getElementById('eye-inspector');
+    const surface = () => document.getElementById('eye-mission-dock');
     const dossierKey = () =>
       document.querySelector('.eye-dossier')?.dataset.contextKey ?? null;
     const visible = () => {
@@ -537,7 +543,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 600));
     const during = {
       visible: visible(),
-      focusable: [...document.querySelectorAll('#eye-inspector button')].filter(
+      focusable: [...document.querySelectorAll('#eye-mission-dock button')].filter(
         (button) => button.offsetParent !== null,
       ).length,
     };
@@ -549,7 +555,7 @@ try {
   // ─── P3-05 · REPAIR-2: el botón Expediente reabre de verdad en móvil ───
   const mobileReopen = await page.evaluate(async () => {
     const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const surface = () => document.getElementById('eye-inspector');
+    const surface = () => document.getElementById('eye-mission-dock');
     const visible = () => {
       const element = surface();
       const style = getComputedStyle(element);
@@ -559,7 +565,7 @@ try {
       document.querySelector('.eye-dossier')?.dataset.contextKey ?? null;
     const identityBefore = key();
     // Cierre EXPLÍCITO de la persona.
-    document.getElementById('eye-inspector-close').click();
+    document.getElementById('eye-mission-dock-close').click();
     await settle(600);
     const afterClose = visible();
     // Navegar a Instrumentos (en móvil ocupa la pantalla y suspende).
@@ -629,11 +635,11 @@ try {
         );
       };
       return {
-        dossier: visible(document.getElementById('eye-inspector')),
+        dossier: visible(document.getElementById('eye-mission-dock')),
         activity: visible(document.querySelector('.eye-activity')),
         focusable: [
           ...document.querySelectorAll(
-            '#eye-inspector button, .eye-activity button',
+            '#eye-mission-dock button, .eye-activity button',
           ),
         ].filter((button) => button.offsetParent !== null).length,
       };
@@ -677,13 +683,13 @@ try {
   // ─── P3-12 · La brújula sigue al rumbo real de la cámara ───
   const compass = await page.evaluate(async () => {
     const view = window.__godsEyeView;
-    const before = document.querySelector('.eye-dossier-compass')?.dataset.heading ?? null;
+    const before = document.querySelector('.eye-dock-compass')?.dataset.heading ?? null;
     view.viewer.camera.setView({
       destination: view.viewer.camera.position,
       orientation: { heading: Math.PI / 2, pitch: -Math.PI / 4, roll: 0 },
     });
     await new Promise((resolve) => setTimeout(resolve, 700));
-    const element = document.querySelector('.eye-dossier-compass');
+    const element = document.querySelector('.eye-dock-compass');
     return {
       before,
       after: element?.dataset.heading ?? null,
@@ -710,8 +716,8 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 700));
   const zoomed = await page.evaluate(() => {
     const surfaces = [
-      document.getElementById('eye-inspector'),
-      document.querySelector('.eye-activity-capsule'),
+      document.getElementById('eye-mission-dock'),
+      document.querySelector('.eye-dock-tabs'),
     ].filter((element) => element && !element.hidden);
     const outside = surfaces
       .map((element) => {
@@ -750,7 +756,7 @@ try {
   // Se prueba ANTES de Home a propósito: en la pose cenital global la cámara
   // queda fijada al norte y el rumbo no puede salirse de él.
   const compassControl = await page.evaluate(async () => {
-    const element = document.querySelector('.eye-dossier-compass');
+    const element = document.querySelector('.eye-dock-compass');
     if (!element) return { present: false };
     const box = element.getBoundingClientRect();
     const view = window.__godsEyeView;
@@ -954,7 +960,7 @@ try {
       caption:
         document.querySelector('.eye-media-caption')?.textContent ?? null,
       dossierStillThere: Boolean(
-        document.getElementById('eye-inspector-title')?.textContent,
+        document.getElementById('eye-mission-dock-title')?.textContent,
       ),
       fieldsStillThere:
         document.querySelectorAll('.eye-dossier-fields dt').length > 0,
@@ -1006,7 +1012,7 @@ try {
     let geometry = null;
     let frames = null;
     while (performance.now() < deadline && !geometry) {
-      const detail = document.getElementById('eye-activity-detail');
+      const detail = document.getElementById('eye-dock-panel-ops');
       for (const item of detail.querySelectorAll('.eye-activity-item')) {
         const text = item.textContent || '';
         if (text.includes('Cámaras · geometría')) geometry = text;
@@ -1068,7 +1074,7 @@ try {
       },
       contextKey: root?.dataset.contextKey ?? null,
       kind: root?.dataset.contextKind ?? null,
-      title: document.getElementById('eye-inspector-title')?.textContent ?? null,
+      title: document.getElementById('eye-mission-dock-title')?.textContent ?? null,
       source: document.querySelector('.eye-dossier-source')?.textContent ?? null,
       coords: document.querySelector('.eye-dossier-coords')?.textContent ?? null,
       labels,
@@ -1101,14 +1107,18 @@ try {
     const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     // (2) Un terminal accionable debe poder reintentarse DESDE el historial.
+    //
+    // P3.1: OPS ya no es una cápsula con disclosure propio — es el panel OPS
+    // del Mission Dock, siempre pintado dentro de su pestaña. No hay `open()`
+    // que llamar: montarlo y darle estado ES abrirlo.
     const activityHost = document.createElement('div');
     sandbox.append(activityHost);
     const retries = [];
-    const capsule = activity.mountEyeActivity({
+    const ops = activity.mountEyeActivity({
       host: activityHost,
       onRetry: (taskId) => retries.push(taskId),
     });
-    capsule.update({
+    ops.update({
       tasks: [],
       history: [
         {
@@ -1127,7 +1137,6 @@ try {
         },
       ],
     });
-    capsule.open();
     const historyRetry = activityHost.querySelector(
       '.eye-activity-history [data-eye-activity-retry]',
     );
@@ -1147,16 +1156,21 @@ try {
     };
 
     // (5) La reproducción no corre mientras el puntero o el foco están dentro.
+    //
+    // P3.1: los medios tienen su propio panel en el dock, así que se montan en
+    // su propio host — igual que hace el shell con `getMediaHost()` del dock —
+    // en vez de dentro del expediente, que ya no los aloja.
     const dossierHost = document.createElement('div');
-    sandbox.append(dossierHost);
+    const mediaHost = document.createElement('div');
+    sandbox.append(dossierHost, mediaHost);
     const mountedDossier = dossier.mountEyeDossier({ host: dossierHost });
     const player = media.mountEyeMedia({
-      host: mountedDossier.getMediaHost(),
+      host: mediaHost,
       reducedMotion: () => false,
     });
     player.setContext({ key: 'earth:view', generation: 0 });
-    const figure = dossierHost.querySelector('.eye-media');
-    const playButton = dossierHost.querySelector('.eye-media-play');
+    const figure = mediaHost.querySelector('.eye-media');
+    const playButton = mediaHost.querySelector('.eye-media-play');
     figure.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true }));
     figure.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
     playButton.click();
@@ -1182,27 +1196,27 @@ try {
 
     // (6) Un error tardío de A no puede marcar B como no disponible.
     player.setContext({ key: 'earth:view', generation: 1 });
-    const firstImage = dossierHost.querySelector('.eye-media-image');
+    const firstImage = mediaHost.querySelector('.eye-media-image');
     player.setContext({ key: 'earth:view', generation: 2 });
-    const secondImage = dossierHost.querySelector('.eye-media-image');
+    const secondImage = mediaHost.querySelector('.eye-media-image');
     firstImage.dispatchEvent(new Event('error'));
     await settle(120);
     const staleImage = {
       differentElement: firstImage !== secondImage,
       stateAfterStaleError:
-        dossierHost.querySelector('.eye-media')?.dataset.mediaState ?? null,
+        mediaHost.querySelector('.eye-media')?.dataset.mediaState ?? null,
       captionAfterStaleError:
-        dossierHost.querySelector('.eye-media-caption')?.textContent ?? null,
+        mediaHost.querySelector('.eye-media-caption')?.textContent ?? null,
     };
     secondImage.dispatchEvent(new Event('error'));
     await settle(120);
     staleImage.stateAfterOwnError =
-      dossierHost.querySelector('.eye-media')?.dataset.mediaState ?? null;
+      mediaHost.querySelector('.eye-media')?.dataset.mediaState ?? null;
     staleImage.captionAfterOwnError =
-      dossierHost.querySelector('.eye-media-caption')?.textContent ?? null;
+      mediaHost.querySelector('.eye-media-caption')?.textContent ?? null;
 
     player.destroy();
-    capsule.destroy();
+    ops.destroy();
     mountedDossier.destroy();
     sandbox.remove();
     return { terminalRetry, autoplay, staleImage };
@@ -1261,11 +1275,13 @@ try {
 
     const dossierHost = document.createElement('div');
     const activityHost = document.createElement('div');
-    sandbox.append(dossierHost, activityHost);
+    // P3.1: cada colaborador tiene su propio host, como en el dock real.
+    const mediaHost = document.createElement('div');
+    sandbox.append(dossierHost, mediaHost, activityHost);
     const mountedDossier = dossier.mountEyeDossier({ host: dossierHost });
     const mountedActivity = activity.mountEyeActivity({ host: activityHost });
     const mountedMedia = media.mountEyeMedia({
-      host: mountedDossier.getMediaHost(),
+      host: mediaHost,
       reducedMotion: () => false,
     });
     let published = 0;

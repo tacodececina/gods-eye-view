@@ -127,6 +127,29 @@ export function mountEyeMissionDock({
 
   host.replaceChildren(rail, tabs, body);
 
+  // El dock publica la FRANJA que ocupa desde el borde inferior de la ventana,
+  // no sólo su altura: también está separado del borde, y quien se aparta por
+  // encima necesita el total. Con la altura sola la telemetría quedaba 5 px
+  // dentro del dock (medido en p31-02). Un margen fijo tampoco vale: la franja
+  // cambia al desplegar.
+  const publishBand = () => {
+    const view = doc.defaultView;
+    const band =
+      host.hidden || !view
+        ? 0
+        : Math.max(
+            0,
+            Math.round(view.innerHeight - host.getBoundingClientRect().top),
+          );
+    doc.documentElement.style.setProperty('--eye-dock-band', `${band}px`);
+  };
+  const sizeObserver =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(publishBand)
+      : null;
+  sizeObserver?.observe(host);
+  publishBand();
+
   const emit = (type) =>
     onAction?.({ type, contextKey: currentView?.contextKey || '' });
 
@@ -206,6 +229,11 @@ export function mountEyeMissionDock({
     ]);
 
   const renderTabs = (view) => {
+    // Repintar la pestañera destruye el nodo enfocado y el foco cae al body, de
+    // modo que la siguiente tecla (Escape) ya no llega al dock (medido en
+    // p31-06). Se recuerda si el foco estaba aquí para devolverlo a la pestaña
+    // que quedó seleccionada — nunca se roba si estaba en otro sitio.
+    const hadFocus = tabs.contains(doc.activeElement);
     tabs.replaceChildren();
     for (const pane of view.panes) {
       const selected = pane.id === view.pane;
@@ -240,6 +268,10 @@ export function mountEyeMissionDock({
       } else tab.removeAttribute('aria-label');
       tabs.append(tab);
     }
+    if (hadFocus)
+      tabs
+        .querySelector('[aria-selected="true"]')
+        ?.focus?.({ preventScroll: true });
     for (const [id, panel] of panels)
       panel.hidden = !(view.expanded && id === view.pane);
   };
@@ -319,6 +351,7 @@ export function mountEyeMissionDock({
 
       renderActions(view);
       renderTabs(view);
+      publishBand();
     },
     /**
      * Brújula viva: refleja el rumbo real de la cámara y ofrece su alternativa
@@ -355,6 +388,8 @@ export function mountEyeMissionDock({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      sizeObserver?.disconnect();
+      doc.documentElement.style.removeProperty('--eye-dock-band');
       host.replaceChildren();
     },
   };

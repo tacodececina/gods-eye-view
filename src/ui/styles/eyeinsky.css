@@ -808,29 +808,45 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 .eye-mission-dock {
   position: fixed;
   z-index: 49;
-  bottom: var(--eye-safe-bottom);
+  /* Anclado por los CUATRO lados en vez de por un ancho calculado con `vw`.
+   * Con zoom de página al 200 % `100vw` sigue informando el viewport sin
+   * escalar, así que un `width: min(…, 100vw - x)` se desbordaba por la
+   * derecha (medido en p31-11). Un `left`/`right` fijos no pueden desbordar:
+   * el bloque contenedor ya está escalado. `max-width` sólo evita que la barra
+   * se estire de lado a lado en una pantalla ancha. */
+  right: calc(var(--eye-safe-right) + 116px);
+  /* La atribución de Cesium vive pegada al borde inferior izquierdo y tiene que
+   * poder pulsarse: no es adorno. El dock se apoya POR ENCIMA de esa franja en
+   * vez de mover los créditos, que ya tienen una posición verificada (medido en
+   * p3-11: «Powered by Esri» y «Data attribution» quedaban debajo del dock). */
+  bottom: calc(var(--eye-safe-bottom) + 18px);
   left: var(--eye-safe-left);
   display: flex;
-  width: min(
-    var(--eye-dock-width, 760px),
-    calc(100vw - var(--eye-safe-left) - var(--eye-safe-right) - 116px)
-  );
+  width: auto;
+  max-width: var(--eye-dock-width, 760px);
   max-height: calc(var(--eye-viewport-height, 100dvh) - 132px);
   flex-direction: column;
   border-radius: var(--eye-radius);
 }
 
+/* El riel NUNCA se encoge ni se recorta: es donde viven las acciones. Con
+ * `flex: 0 1 auto` el `max-height` del dock lo comprimía y los botones
+ * quedaban fuera de la ventana, de modo que `elementFromPoint` no encontraba
+ * nada en su centro (medido en p31-12 a 390 y 744 px). Envuelve en filas y lo
+ * que cede altura es el cuerpo, que ya sabe desplazarse. */
 .eye-mission-dock .eye-dock-rail {
   display: flex;
   min-height: 74px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   padding: 8px 10px 8px 16px;
-  gap: 14px;
+  gap: 8px 14px;
 }
 
 .eye-dock-identity {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 1 1 180px;
 }
 
 .eye-dock-kicker {
@@ -851,7 +867,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 .eye-dock-status {
   margin: 0;
   color: var(--text-secondary);
-  font: 12px var(--font-mono);
+  font: 13px var(--font-mono);
 }
 
 .eye-dock-status[data-status='missing'] {
@@ -876,7 +892,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 
 .eye-dock-camera-badge {
   color: var(--text-dim);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
   font-weight: 400;
   letter-spacing: 0.13em;
 }
@@ -887,7 +903,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 
 .eye-dock-camera-detail {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.35;
 }
 
@@ -906,7 +922,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 .eye-dock-keyvalue dt {
   margin-bottom: 3px;
   color: var(--text-dim);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
   letter-spacing: 0.12em;
 }
 
@@ -933,19 +949,20 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 .eye-dock-needle {
   display: block;
   color: var(--accent);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1;
   transition: transform 220ms var(--eye-ease-out);
 }
 
 .eye-dock-heading-text {
   color: var(--text-dim);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
 }
 
 .eye-dock-actions {
   display: flex;
   flex: 0 0 auto;
+  margin-left: auto;
   gap: 6px;
 }
 
@@ -1005,7 +1022,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
   border-radius: 999px;
   background: rgb(166 215 194 / 16%);
   color: var(--text-primary);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
   font-style: normal;
   text-align: center;
 }
@@ -1015,8 +1032,13 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
   color: var(--eye-danger);
 }
 
+/* Lo que se limita en altura es el CUERPO, nunca el riel ni la pestañera: ésos
+ * son controles y tienen que verse enteros. Un tope sobre el dock completo
+ * recortaba las pestañas en un teléfono apaisado (medido en p31-12 a 844x390). */
 .eye-dock-body {
   min-height: 0;
+  max-height: 340px;
+  flex: 1 1 auto;
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-color: #507662 #0b1815;
@@ -1050,7 +1072,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
 .eye-dossier-fields dt {
   margin-bottom: 5px;
   color: var(--text-dim);
-  font: 12px var(--font-mono);
+  font: 13px var(--font-mono);
   letter-spacing: 0.1em;
 }
 
@@ -1071,14 +1093,17 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
   align-items: center;
 }
 
-/* El dock ocupa el borde inferior izquierdo: la telemetría sube para no
- * solaparse en vez de quedar medio tapada. */
+/* El dock ocupa el borde inferior: la telemetría y el HUD suben por encima de
+ * la FRANJA que ocupa, que el propio dock publica en `--eye-dock-band` desde un
+ * ResizeObserver: la distancia del borde inferior de la ventana a su borde
+ * superior. Un margen fijo se quedaba corto en cuanto el dock se desplegaba, y
+ * su altura sola dejaba la telemetría 5 px dentro (medido en p31-02). */
 .eyeinsky:has(#eye-mission-dock:not([hidden])) .eye-telemetry {
-  bottom: calc(var(--eye-safe-bottom) + 104px);
+  bottom: calc(var(--eye-dock-band, 0px) + 14px);
 }
 
 .eyeinsky:has(#eye-mission-dock:not([hidden])) .eye-hud-details {
-  bottom: calc(var(--eye-safe-bottom) + 180px);
+  bottom: calc(var(--eye-dock-band, 0px) + 90px);
 }
 
 .eye-primary {
@@ -1360,6 +1385,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
   max-width: calc(100vw - 28px);
   font: 9px var(--font-sans) !important;
 }
+
 
 .eyeinsky .cesium-credit-lightbox {
   background: #142c25 !important;
@@ -1734,39 +1760,46 @@ body.eyeinsky.ui-clean-view
    * globo siga libre para arrastrar con el dedo. */
   .eye-mission-dock {
     right: var(--eye-safe-right);
-    bottom: var(--eye-safe-bottom);
+    bottom: calc(var(--eye-safe-bottom) + 18px);
     left: var(--eye-safe-left);
-    width: auto;
-    max-height: min(52dvh, calc(var(--eye-viewport-height) - 132px));
+    max-width: none;
+    max-height: none;
     border-radius: 18px;
+  }
+  .eye-dock-body {
+    max-height: min(40dvh, 300px);
   }
   .eye-mission-dock .eye-dock-rail {
     padding: 9px 8px 9px 13px;
-    flex-wrap: wrap;
-    gap: 8px 11px;
+    gap: 8px 10px;
+  }
+  /* Tres filas, no cuatro: el cierre comparte fila con la identidad en vez de
+   * caer solo a una fila propia. Esas ~54 px de más empujaban la telemetría
+   * hasta el 54 % de la pantalla, justo donde el recorrido base arrastra el
+   * globo con el dedo (medido en touch-cdp-globe-390x844). */
+  .eye-dock-identity,
+  .eye-dock-close {
+    order: -1;
   }
   .eye-dock-identity {
-    flex: 1 1 60%;
+    flex: 1 1 auto;
   }
+  /* Dos filas como máximo en un teléfono: identidad y estado arriba, acciones
+   * abajo. La frase de cámara y los valores medidos se leen en el panel
+   * OBJETIVO; en el riel se queda la insignia, que es el estado. */
   .eye-dock-camera {
     max-width: none;
-    flex: 1 1 100%;
-    order: 4;
+    flex: 0 0 auto;
     padding: 0;
     border-left: 0;
   }
+  .eye-dock-camera-detail,
   .eye-dock-keyvalues {
-    flex: 1 1 100%;
-    order: 5;
-    gap: 0;
-  }
-  .eye-dock-keyvalue:first-child {
-    padding-left: 0;
-    border-left: 0;
+    display: none;
   }
   .eye-dock-actions {
     flex: 1 1 100%;
-    order: 6;
+    margin-left: 0;
   }
   .eye-dock-action {
     min-width: 0;
@@ -1894,13 +1927,33 @@ body.eyeinsky.ui-clean-view
   /* Apaisado bajo: el dock se queda en una sola fila corta y su cuerpo no pasa
    * de media pantalla, que es toda la altura que hay. */
   .eye-mission-dock {
+    right: 96px;
     left: 82px;
-    width: min(520px, calc(100vw - 210px));
-    max-height: min(56dvh, calc(var(--eye-viewport-height) - 96px));
+    max-width: 520px;
+    max-height: none;
   }
+  .eye-dock-body {
+    max-height: min(34dvh, 140px);
+  }
+  /* 390 px de alto es todo lo que hay: el riel se queda en UNA fila —título,
+   * brújula, acciones y cierre— y lo demás se lee desplegando. Con el rótulo,
+   * el estado y la cámara el riel ocupaba el 45 % de la pantalla y el arrastre
+   * del globo caía dentro del dock (medido en touch-cdp-globe a 844x390). */
   .eye-dock-camera,
-  .eye-dock-keyvalues {
+  .eye-dock-keyvalues,
+  .eye-mission-dock .eye-dock-kicker,
+  .eye-mission-dock .eye-dock-status {
     display: none;
+  }
+  .eye-mission-dock .eye-dock-rail {
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+  .eye-dock-title {
+    margin: 0;
+  }
+  .eye-dock-actions {
+    margin-left: auto;
   }
   .eye-dossier-fields dt,
   .eye-dossier-fields dd {
@@ -2790,7 +2843,7 @@ body.eyeinsky {
 
 .eye-ops-mark {
   color: var(--accent-strong);
-  font: 12px var(--font-mono);
+  font: 13px var(--font-mono);
   font-weight: 500;
   letter-spacing: 0.17em;
 }
@@ -2800,7 +2853,7 @@ body.eyeinsky {
   align-items: center;
   gap: 6px;
   color: var(--text-dim);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
   letter-spacing: 0.15em;
 }
 
@@ -2841,13 +2894,13 @@ body.eyeinsky {
 .eye-ops-summary {
   margin-left: auto;
   color: var(--text-secondary);
-  font: 12px var(--font-mono);
+  font: 13px var(--font-mono);
 }
 
 .eye-ops-history-title {
   margin: 16px 0 0;
   color: var(--text-dim);
-  font: 11px var(--font-mono);
+  font: 13px var(--font-mono);
   font-weight: 400;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -2931,12 +2984,25 @@ body.eyeinsky {
    * `[data-eye-active-add]` y el catálogo dejaba de poder abrirse (medido en
    * output/eyeinsky-p3/build/diag-mobile-1/result.json). Con un objetivo, el
    * rail de capas ya se apaga solo y el dock recupera toda su altura. */
-  .eyeinsky[data-eye-inspecting='false'] .eye-mission-dock {
-    max-height: min(26dvh, 208px);
+  .eyeinsky[data-eye-inspecting='false'] .eye-dock-body {
+    max-height: min(28dvh, 220px);
+  }
+
+  /* En un teléfono el dock ES la superficie inferior. Apilar además la
+   * telemetría y el HUD avanzado sobre él empujaba las tres barras hasta el
+   * 54 % de la pantalla y el arrastre del globo caía encima de ellas (medido
+   * en touch-cdp-globe-390x844). Los mismos datos —mapa activo, altura y
+   * rumbo— los publica el panel OBJETIVO del dock, y «Compartir vista
+   * pública» sigue en la paleta de Acciones: no se pierde ninguna función. */
+  .eyeinsky:has(#eye-mission-dock:not([hidden]))
+    :is(.eye-telemetry, .eye-hud-details) {
+    display: none;
   }
 
   .eye-mission-dock :is(.eye-kicker, .eye-dock-title, .eye-dock-status),
   .eye-mission-dock :is(.eye-dock-camera-detail, .eye-dock-tab, dt, dd),
+  .eye-mission-dock
+    :is(.eye-dock-camera-badge, .eye-dock-heading-text, .eye-dock-tab-badge),
   .eye-dossier :is(p, span, b, dt, dd, button, a, figcaption),
   .eye-dossier-status,
   .eye-dossier-source,
@@ -2955,4 +3021,13 @@ body.eyeinsky {
   .eye-activity-empty {
     font-size: 14px;
   }
+}
+
+/* El panel de trabajo termina POR ENCIMA del dock. Sin esto su lista queda
+ * parcialmente debajo de la barra inferior y las filas bajas no reciben el
+ * clic: el segundo sismo de una selección A -> B nunca llegaba a seleccionarse
+ * (medido en live-selection-a-b). En móvil el dock ya se suspende cuando el
+ * panel ocupa la pantalla, así que la regla no llega a aplicarse. */
+.eyeinsky:has(#eye-mission-dock:not([hidden])) .eye-workspace {
+  bottom: calc(var(--eye-dock-band, 0px) + 14px);
 }

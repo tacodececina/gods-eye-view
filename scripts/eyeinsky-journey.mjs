@@ -91,7 +91,10 @@ try {
   );
   await page.click('#eye-home');
   await new Promise((r) => setTimeout(r, 1100));
-  await page.click('.eye-nav [data-eye-view="signals"]');
+  // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+  // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-connect');
   await page.waitForFunction(() => window.__eyeinsky.rows.length >= 2, {
     timeout: 60000,
   });
@@ -119,7 +122,7 @@ try {
           window.__godsEyeView.viewer.selectedEntity?.properties?.usgsId?.getValue() ===
             id &&
           document
-            .querySelector('#eye-inspector-content')
+            .querySelector('#eye-dock-panel-objetivo')
             .textContent.includes(id),
         id,
       ),
@@ -128,7 +131,9 @@ try {
   await shot('journey-inspector-1440');
   await page.select('#eye-filter-hours', '6');
   await page.select('#eye-filter-mag', '2.5');
-  await page.click('.eye-nav [data-eye-view="operations"]');
+  // Operación vive bajo Más desde el rediseño P0-P2.
+  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.type('#eye-operation-name', 'Prueba Pacífico real');
   await page.type(
     '#eye-operation-note',
@@ -150,7 +155,9 @@ try {
   );
   await page.reload({ waitUntil: 'domcontentloaded' });
   await ready();
-  await page.click('.eye-nav [data-eye-view="operations"]');
+  // Operación vive bajo Más desde el rediseño P0-P2.
+  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.click('[data-operation-action="open"]');
   await page.waitForFunction(
     () =>
@@ -239,7 +246,7 @@ try {
           .length === 0,
     ),
   );
-  await page.click('#eye-inspector-close');
+  await page.click('#eye-mission-dock-close');
   await page.click('#eye-panel-close');
   await page.click('#eye-home');
   await new Promise((r) => setTimeout(r, 1100));
@@ -280,16 +287,19 @@ try {
     );
   }
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-  await page.click('.eye-nav [data-eye-view="signals"]');
+  // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
+  // lleva a Instrumentos y desde ahí se abre el registro sísmico.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-connect');
   await page.waitForSelector('#eye-signal-list button');
   await page.click('#eye-signal-list button');
   await new Promise((r) => setTimeout(r, 1100));
   await shot('mobile-inspector-390');
   check(
     'mobile inspector and sheet close work',
-    await page.$eval('#eye-inspector', (e) => !e.hidden),
+    await page.$eval('#eye-mission-dock', (e) => !e.hidden),
   );
-  await page.click('#eye-inspector-close');
+  await page.click('#eye-mission-dock-close');
   check(
     'mobile list returns',
     await page.$eval('#eye-workspace', (e) => !e.hidden),

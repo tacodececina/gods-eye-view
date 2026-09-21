@@ -392,9 +392,9 @@ try {
     const signal = '#eye-signal-list [data-signal-id]';
     await page.click(signal);
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    await page.click('#eye-inspector-close');
+    await page.click('#eye-mission-dock-close');
     await page.waitForFunction(
-      () => document.querySelector('#eye-inspector')?.hidden,
+      () => document.querySelector('#eye-mission-dock')?.hidden,
     );
     await page.click(signal);
     await new Promise((resolve) => setTimeout(resolve, 80));
@@ -949,12 +949,12 @@ try {
           document.querySelector('#eye-signal-list [data-signal-id]')?.click(),
         );
         await page.waitForFunction(
-          () => !document.querySelector('#eye-inspector')?.hidden,
+          () => !document.querySelector('#eye-mission-dock')?.hidden,
         );
         await new Promise((resolve) => setTimeout(resolve, 250));
         row.inspector = await page.evaluate(() => {
           const rect = document
-            .querySelector('#eye-inspector')
+            .querySelector('#eye-mission-dock')
             .getBoundingClientRect();
           const target = { x: innerWidth / 2, y: innerHeight / 2 };
           return {
@@ -978,9 +978,9 @@ try {
           path: path.join(outputDir, `${label}-inspector.png`),
         });
         row.inspector.screenshot = `${label}-inspector.png`;
-        await page.click('#eye-inspector-close');
+        await page.click('#eye-mission-dock-close');
         await page.waitForFunction(
-          () => document.querySelector('#eye-inspector')?.hidden,
+          () => document.querySelector('#eye-mission-dock')?.hidden,
         );
         await page.click('#eye-home');
         await new Promise((resolve) => setTimeout(resolve, 350));
@@ -1034,11 +1034,11 @@ try {
       document.querySelector('#eye-signal-list [data-signal-id]')?.click(),
     );
     await page.waitForFunction(
-      () => !document.querySelector('#eye-inspector')?.hidden,
+      () => !document.querySelector('#eye-mission-dock')?.hidden,
     );
     const measurement = await page.evaluate(() => {
       const panel = document
-        .querySelector('#eye-inspector')
+        .querySelector('#eye-mission-dock')
         .getBoundingClientRect();
       const target = { x: innerWidth / 2, y: innerHeight / 2 };
       return {
@@ -1064,9 +1064,9 @@ try {
       false,
       'Selected target at the camera center must stay above the mobile sheet',
     );
-    await page.click('#eye-inspector-close');
+    await page.click('#eye-mission-dock-close');
     await page.waitForFunction(
-      () => document.querySelector('#eye-inspector')?.hidden,
+      () => document.querySelector('#eye-mission-dock')?.hidden,
     );
     await page.click('#eye-home');
     await new Promise((resolve) => setTimeout(resolve, 250));

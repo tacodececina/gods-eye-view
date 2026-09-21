@@ -1,5 +1,43 @@
 # EYEINSKY — punto de reanudación
 
+## Actualización 2026-09-21 — P3.1 (Mission Dock) implementada y verificada; P4 sigue sin iniciar
+
+P3.1 está implementada en `eyeinsky/p3.1-mission-dock`
+(`C:/Users/Alex/orca/eyeinsky-p31-mission-dock`), sobre la base `8811666`, con
+`claude-opus-5` como único escritor. Es un corte de presentación y autoridad
+sobre P3; no añade fuentes de datos nuevas.
+
+Qué cambió, en una línea cada uno:
+
+- El expediente lateral derecho es ahora un **Mission Dock inferior**: riel
+  siempre visible (identidad, estado de cámara, valores medidos, brújula,
+  SEGUIR/CENTRAR/NORTE/MÁS) y cuerpo desplegable con OBJETIVO, MEDIOS y OPS.
+- La cápsula de Actividad es ahora la terminal **`EYEINSKY OPS // LIVE`**,
+  tercer panel del dock, sobre el mismo modelo y las mismas fuentes de P3.
+- **Autoridad de cámara ≠ identidad de selección.** Un gesto físico suelta la
+  cámara y conserva el objetivo: `releaseCameraOwnership({origin})` frente a
+  `stopTracking({origin})`, y `refocusTrackedById` para volver a engancharla.
+- **`bhote-koshi-locator` retirado del runtime.** Sin capa, sin registro de
+  serialización (token `z` retirado, no reutilizado), sin receta ejecutable y
+  sin entrada de interfaz. El módulo y sus pruebas siguen en el árbol.
+
+Evidencia local de esta fase (no versionada): `output/eyeinsky-p31/`.
+Servidor usado: `http://127.0.0.1:4201/` (vite dev). Comprobar por HTTP antes de
+asumir que sigue vivo. No es un deployment.
+
+Bhote Koshi queda **aplazado**, no cancelado: futura experiencia contextual y
+**no permanente**. Reintroducirlo requiere una fase propia con su diseño; no es
+un interruptor que volver a encender.
+
+Límites honestos de P3.1: no hay teléfono físico, no se afirma FPS sostenido, y
+cuatro arneses heredados (`eyeinsky-focus`, `-journey`, `-mobile`, `-states`)
+siguen fallando por selectores obsoletos del rediseño P0–P2. Se comprobó
+ejecutándolos contra la base `8811666`: fallan **igual** allí, así que no son
+regresiones de P3.1. En esta fase sólo se les parametrizó la URL y se reparó la
+ruta de navegación a Señales/Operación.
+
+P4 sigue **sin iniciar** y es lo siguiente. No empezarlo sin orden separada.
+
 ## Actualización 2026-09-20 — P3 aceptada; P4 sólo planificada
 
 P0–P3 están implementadas en `eyeinsky/p3-opus5`. P3 fue construida con la sesión Claude Code `32cfb7bc-04f0-47e2-a38c-a6278aacda8b`, modelo efectivo `claude-opus-5`, y aceptada por KRÓNOS después de gates independientes y reparación RED→GREEN. La autoridad final es `output/eyeinsky-p3/supervisor/FINAL-ACCEPTANCE.md` y `.json`, no el handoff anterior del constructor.
