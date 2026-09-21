@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EYE_ICONS } from './ui/eyeinskyIcons.js';
 
 const SRC_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const REPO_ROOT = path.resolve(SRC_ROOT, '..');
@@ -75,16 +76,15 @@ function referencedGlyphs() {
 
 /** The `icon_names` list index.html asks Google for. */
 function subsettedGlyphs(html = readFileSync(INDEX_HTML, 'utf8')) {
-  const match =
-    /Material\+Symbols\+Outlined[^"]*[?&]icon_names=([a-z0-9_,]+)/.exec(html);
-  assert.ok(
-    match,
-    'index.html must request Material Symbols with an icon_names subset',
+  assert.doesNotMatch(
+    html,
+    /fonts\.googleapis\.com|fonts\.gstatic\.com/,
+    'All type and icon assets are local',
   );
-  return new Set(match[1].split(','));
+  return new Set(Object.keys(EYE_ICONS));
 }
 
-test('every glyph the sources render is in the icon_names subset', () => {
+test('every glyph the sources render has an original local SVG path', () => {
   const subset = subsettedGlyphs();
   const missing = [...referencedGlyphs()]
     .filter(([glyph]) => !subset.has(glyph))

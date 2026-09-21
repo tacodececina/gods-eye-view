@@ -19,9 +19,12 @@ export function createApplicationTools({
   loadingScreen,
   placeSearch,
   voice = {},
+  initializeVoice = initGevVoiceCommands,
   startChrome,
   onSceneDirector,
   sceneDataPacks,
+  sceneOptions,
+  scopeAppearance,
   signal,
   defer,
 }) {
@@ -29,6 +32,7 @@ export function createApplicationTools({
   const { styleManager, weatherEffects, cockpitCloudEffects } = controls;
   const { dataManager } = data;
   const sceneDirector = new SceneDirector(viewer, styleManager, dataManager, {
+    ...sceneOptions,
     dataPacks: sceneDataPacks,
     isMapStackAvailable: (id) =>
       mapStackController?.isStackAvailable(id) === true,
@@ -61,7 +65,7 @@ export function createApplicationTools({
   installRenderGovernor(viewer);
 
   // Install the explicit scope mask used by the DISPLAY controls.
-  installScopeMask(viewer);
+  installScopeMask(viewer, { appearance: scopeAppearance });
   defer(() => destroyScopeMask());
 
   // The follow camera recomputes the tracked target's dead-reckon position
@@ -118,7 +122,7 @@ export function createApplicationTools({
   defer(() => {
     if (window.__godsEyeView === debug) delete window.__godsEyeView;
   });
-  const voiceCommands = initGevVoiceCommands({
+  const voiceCommands = initializeVoice({
     ...voice,
     floorServices: operations.surface.groundFloor,
     annotationResolver: operations.annotationResolver,

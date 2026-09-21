@@ -1,0 +1,289 @@
+{
+  "startedAt": "2026-09-19T00:26:53.583Z",
+  "checks": [
+    {
+      "id": "1440-empty-active-list-and-navigation",
+      "ok": true,
+      "detail": {
+        "enabled": [],
+        "rows": 0,
+        "nav": [
+          "explore",
+          "display",
+          "instruments",
+          "more"
+        ]
+      }
+    },
+    {
+      "id": "1440-complete-catalog-description-and-source",
+      "ok": true,
+      "detail": {
+        "runtimeCount": 21,
+        "rowCount": 24,
+        "unexplained": []
+      }
+    },
+    {
+      "id": "1440-actual-active-layer-row",
+      "ok": true,
+      "detail": {
+        "rows": [
+          "local-datacenters"
+        ],
+        "visible": true,
+        "button": "Apagar"
+      }
+    },
+    {
+      "id": "1440-off-undo-real-layer",
+      "ok": true,
+      "detail": {
+        "identity": "local-datacenters",
+        "source": "local public dataset, not fixture"
+      }
+    },
+    {
+      "id": "1440-new-list-hidden-in-clean-view",
+      "ok": true,
+      "detail": {
+        "activeListPainted": false,
+        "exitVisible": true,
+        "credits": [
+          {
+            "text": "",
+            "topOwned": true
+          },
+          {
+            "text": "Powered by Esri",
+            "topOwned": true
+          },
+          {
+            "text": "Data attribution",
+            "topOwned": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "1440-instrument-panel-not-catalog",
+      "ok": true,
+      "detail": {}
+    },
+    {
+      "id": "1440-interactive-data-plot",
+      "ok": true,
+      "detail": {
+        "action": "plot opens seismic registry and filters",
+        "plotVisible": true,
+        "noSyntheticActivityAsserted": true
+      }
+    },
+    {
+      "id": "1440-painted-layout-and-topmost-credits",
+      "ok": true,
+      "detail": {
+        "intersections": [],
+        "small": [],
+        "credits": [
+          {
+            "topOwned": true
+          },
+          {
+            "topOwned": true
+          },
+          {
+            "topOwned": true
+          }
+        ],
+        "peers": [
+          {
+            "selector": ".eye-function-dock",
+            "rect": {
+              "x": 198,
+              "y": 14,
+              "width": 832,
+              "height": 52,
+              "top": 14,
+              "right": 1030,
+              "bottom": 66,
+              "left": 198
+            }
+          },
+          {
+            "selector": ".eye-search",
+            "rect": {
+              "x": 1066,
+              "y": 14,
+              "width": 360,
+              "height": 52,
+              "top": 14,
+              "right": 1426,
+              "bottom": 66,
+              "left": 1066
+            }
+          },
+          {
+            "selector": ".eye-utility-cluster",
+            "rect": {
+              "x": 1331,
+              "y": 80,
+              "width": 95,
+              "height": 44,
+              "top": 80,
+              "right": 1426,
+              "bottom": 124,
+              "left": 1331
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "390-empty-active-list-and-navigation",
+      "ok": true,
+      "detail": {
+        "enabled": [],
+        "rows": 0,
+        "nav": [
+          "explore",
+          "display",
+          "instruments",
+          "more"
+        ]
+      }
+    },
+    {
+      "id": "390-complete-catalog-description-and-source",
+      "ok": true,
+      "detail": {
+        "runtimeCount": 21,
+        "rowCount": 24,
+        "unexplained": []
+      }
+    },
+    {
+      "id": "390-actual-active-layer-row",
+      "ok": true,
+      "detail": {
+        "rows": [
+          "local-datacenters"
+        ],
+        "visible": true,
+        "button": "Apagar"
+      }
+    },
+    {
+      "id": "390-off-undo-real-layer",
+      "ok": true,
+      "detail": {
+        "identity": "local-datacenters",
+        "source": "local public dataset, not fixture"
+      }
+    },
+    {
+      "id": "390-new-list-hidden-in-clean-view",
+      "ok": true,
+      "detail": {
+        "activeListPainted": false,
+        "exitVisible": true,
+        "credits": [
+          {
+            "text": "",
+            "topOwned": true
+          },
+          {
+            "text": "Powered by Esri",
+            "topOwned": true
+          },
+          {
+            "text": "Data attribution",
+            "topOwned": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "390-instrument-panel-not-catalog",
+      "ok": true,
+      "detail": {}
+    },
+    {
+      "id": "390-mobile-signals-instrument-route",
+      "ok": true,
+      "detail": {
+        "action": "mobile compact layout reaches registry through Instrumentos",
+        "plotVisible": false,
+        "noSyntheticActivityAsserted": true
+      }
+    },
+    {
+      "id": "390-painted-layout-and-topmost-credits",
+      "ok": true,
+      "detail": {
+        "intersections": [],
+        "small": [],
+        "credits": [
+          {
+            "topOwned": true
+          },
+          {
+            "topOwned": true
+          },
+          {
+            "topOwned": true
+          }
+        ],
+        "peers": [
+          {
+            "selector": ".eye-search",
+            "rect": {
+              "x": 68,
+              "y": 10,
+              "width": 312,
+              "height": 48,
+              "top": 10,
+              "right": 380,
+              "bottom": 58,
+              "left": 68
+            }
+          },
+          {
+            "selector": ".eye-utility-cluster",
+            "rect": {
+              "x": 66,
+              "y": 72,
+              "width": 314,
+              "height": 44,
+              "top": 72,
+              "right": 380,
+              "bottom": 116,
+              "left": 66
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "snapshots": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "httpStatus": 200,
+      "url": "http://127.0.0.1:4197/#v=2&lat=18.0000&lon=-92.0000&alt=18000000&heading=0&pitch=-90&roll=0&style=normal&bloom=0&sharpen=1&bi=0&bv=2&si=49&hud=tactical&hv=1&dm=DENSE&dd=75&da=elastic&kf=7&ko=1&cr=0&sc=1&scf=11&map=esri-imagery&l=e.d&lo=f.e.1&ui=c.c.0_c.p.0_l.c.0_l.p.0_d.c.0_v.c.0_r.c.1_s.c.0_g.c.0_p.c.0_m.c.0"
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "httpStatus": 200,
+      "url": "http://127.0.0.1:4197/#v=2&lat=18.0000&lon=-92.0000&alt=26000000&heading=360&pitch=-90&roll=0&style=normal&bloom=0&sharpen=1&bi=0&bv=2&si=49&hud=tactical&hv=1&dm=DENSE&dd=75&da=elastic&kf=7&ko=1&cr=0&sc=1&scf=11&map=esri-imagery&l=d&lo=f.e.1&ui=c.c.0_c.p.0_l.c.0_l.p.0_d.c.0_v.c.0_r.c.1_s.c.0_g.c.0_p.c.0_m.c.0"
+    }
+  ],
+  "status": "passed",
+  "completedAt": "2026-09-19T00:27:15.461Z"
+}

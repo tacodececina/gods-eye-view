@@ -1,0 +1,49 @@
+{
+  "url": "http://127.0.0.1:4197/",
+  "mode": "fresh temporary profile, native GPU default",
+  "startedAt": "2026-09-19T00:33:07.782Z",
+  "checks": [
+    {
+      "id": "live-flight-render-and-pick",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "x": 339.12340212240684,
+        "y": 700.6333097844926,
+        "id": "8a02e9"
+      }
+    },
+    {
+      "id": "live-flight-same-identity",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "expected": "8a02e9",
+        "tracked": "8a02e9",
+        "viewer": "flights:8a02e9"
+      }
+    },
+    {
+      "id": "cockpit-same-identity",
+      "ok": true,
+      "kind": "LIVE",
+      "detail": {
+        "id": "8a02e9"
+      }
+    },
+    {
+      "id": "cockpit-home-release",
+      "ok": true,
+      "detail": {
+        "active": "false",
+        "cockpit": false,
+        "tracked": false,
+        "altitude": 21913933.19001584
+      },
+      "kind": "LIVE"
+    }
+  ],
+  "pageErrors": [],
+  "status": "pass",
+  "completedAt": "2026-09-19T00:33:25.750Z"
+}

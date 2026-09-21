@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://cesium.com/learn/cesiumjs/ref-doc/Moon.html",
+      "title": "CesiumJS — Moon",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 2,
+      "url": "https://cesium.com/learn/cesiumjs/ref-doc/Globe.html",
+      "title": "CesiumJS — Globe y ellipsoid",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 3,
+      "url": "https://svs.gsfc.nasa.gov/4720",
+      "title": "NASA SVS — CGI Moon Kit, LROC y LOLA",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 4,
+      "url": "https://svs.gsfc.nasa.gov/4851",
+      "title": "NASA SVS — Deep Star Maps 2020",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 5,
+      "url": "https://naif.jpl.nasa.gov/naif/spiceconcept.html",
+      "title": "NASA/JPL NAIF — SPICE",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 6,
+      "url": "https://celestrak.org/NORAD/documentation/gp-data-formats.php",
+      "title": "CelesTrak — GP, OMM y límites de TLE",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 7,
+      "url": "https://science.nasa.gov/3d-resources",
+      "title": "NASA — 3D Resources",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 8,
+      "url": "https://www.nasa.gov/nasa-brand-center/images-and-media",
+      "title": "NASA — Images and Media Usage Guidelines",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 9,
+      "url": "https://science.nasa.gov/moon/facts",
+      "title": "NASA — Moon Facts",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 10,
+      "url": "https://science.nasa.gov/earth/earth-observatory/the-blue-marble-true-color-global-imagery-at-1km-resolution",
+      "title": "NASA Earth Observatory — Blue Marble 2002",
+      "accessed": "2026-09-18"
+    },
+    {
+      "id": 11,
+      "url": "https://science.nasa.gov/mission/hubble/overview/about-hubble",
+      "title": "NASA — About Hubble",
+      "accessed": "2026-09-18"
+    }
+  ]
+}

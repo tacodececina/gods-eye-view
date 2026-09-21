@@ -1,0 +1,386 @@
+<a
+  class="eye-orbit-brand eye-glass-surface"
+  href="#"
+  aria-label="EYEINSKY, vista global"
+>
+  <img src="/identity/logos/iris-orbital-symbol-accent.svg" alt="" />
+  <span>EYEINSKY<small>RED ORBITAL</small></span>
+</a>
+
+<div
+  class="eye-search eye-glass-surface"
+  role="search"
+  aria-label="Buscar un lugar"
+>
+  <span class="eye-search-mark" aria-hidden="true">⌖</span>
+  <div id="eye-search-host"></div>
+  <kbd>↵</kbd>
+</div>
+
+<nav
+  class="eye-function-dock eye-glass-surface eye-view-controls"
+  aria-label="Navegación principal"
+>
+  <button data-eye-view="explore" aria-pressed="true">
+    <span aria-hidden="true">◎</span><strong>Explorar</strong>
+  </button>
+  <button data-eye-view="display" aria-pressed="false">
+    <span aria-hidden="true">◐</span><strong>Vistas</strong>
+  </button>
+  <button data-eye-view="instruments" aria-pressed="false">
+    <span aria-hidden="true">⌁</span><strong>Instrumentos</strong
+    ><i id="eye-active-layer-count">0</i>
+  </button>
+  <button data-eye-view="more" aria-pressed="false">
+    <span aria-hidden="true">•••</span><strong>Más</strong>
+  </button>
+</nav>
+
+<nav
+  class="eye-utility-cluster eye-view-controls"
+  aria-label="Comandos y configuración"
+>
+  <button
+    class="eye-glass-surface"
+    id="eye-command-open"
+    data-eye-short="CMD"
+    aria-label="Buscar acciones"
+  >
+    <span aria-hidden="true">⌘</span><b>Acciones</b>
+  </button>
+  <button
+    class="eye-glass-surface"
+    id="eye-help"
+    data-eye-short="?"
+    aria-label="Ayuda y créditos"
+  >
+    <span aria-hidden="true">?</span><b>Ayuda</b>
+  </button>
+</nav>
+
+<aside
+  id="eye-active-layers"
+  class="eye-active-layers eye-glass-surface"
+  aria-labelledby="eye-active-title"
+>
+  <header>
+    <div>
+      <span class="eye-kicker">CAPAS EN ESCENA</span>
+      <strong id="eye-active-title"
+        >Activas <b data-eye-active-count>0</b></strong
+      >
+    </div>
+    <button data-eye-active-add aria-label="Agregar una capa">Agregar</button>
+  </header>
+  <p data-eye-active-empty>
+    Ninguna capa activa. El globo queda listo para explorar.
+  </p>
+  <ul data-eye-active-list></ul>
+</aside>
+
+<aside
+  class="eye-signal-glance eye-glass-surface"
+  aria-label="Estado de la fuente sísmica"
+>
+  <div>
+    <span class="eye-kicker">SEÑALES / USGS</span
+    ><strong id="eye-source-state" role="status">Sin consultar</strong>
+  </div>
+  <span class="eye-signal-count"><b id="eye-total">—</b> M2.5+</span>
+  <p id="eye-source-detail">Fuente pública · sin consulta completada.</p>
+  <button
+    id="eye-source-plot"
+    class="eye-source-plot"
+    data-eye-view="signals"
+    aria-label="Abrir señales y su actividad reciente"
+  >
+    <svg viewBox="0 0 180 28" aria-hidden="true">
+      <polyline id="eye-source-trend" points="0,24 180,24"></polyline>
+    </svg>
+    <span id="eye-source-trend-label">Sin muestras</span>
+  </button>
+</aside>
+
+<div class="eye-field-reticle" aria-hidden="true">
+  <span></span><i></i><b>N / 000°</b>
+</div>
+
+<nav class="eye-instruments" aria-label="Cámara del globo">
+  <button id="eye-zoom-in" aria-label="Acercar">
+    <span aria-hidden="true">＋</span><strong>Acercar</strong></button
+  ><button id="eye-zoom-out" aria-label="Alejar">
+    <span aria-hidden="true">−</span><strong>Alejar</strong></button
+  ><button id="eye-home" aria-label="Vista global">
+    <span aria-hidden="true">◎</span><strong>Global</strong></button
+  ><button id="eye-north" aria-label="Orientar al norte">
+    <span aria-hidden="true">N</span><strong>Norte</strong></button
+  ><button id="eye-grid" aria-label="Retícula geográfica" aria-pressed="true">
+    <span aria-hidden="true">⊞</span><strong>Retícula</strong></button
+  ><button id="eye-clean" aria-label="Vista limpia" aria-pressed="false">
+    <span aria-hidden="true">⛶</span><strong>Limpia</strong>
+  </button>
+</nav>
+<button id="eye-clean-exit" class="eye-glass-surface" hidden>
+  Volver a la consola · Esc
+</button>
+
+<aside
+  class="eye-telemetry eye-glass-surface"
+  aria-label="Telemetría de la vista"
+>
+  <div><span>COORDENADAS</span><strong id="eye-camera-position">—</strong></div>
+  <div><span>ALTURA</span><strong id="eye-camera-altitude">—</strong></div>
+  <div class="eye-heading-readout">
+    <span>RUMBO</span><strong id="eye-camera-heading">—</strong>
+  </div>
+  <div class="eye-map-readout">
+    <span>MAPA</span><strong id="eye-map-label">NATURAL EARTH · LOCAL</strong>
+  </div>
+  <div class="eye-sector-readout">
+    <span>CAMPO</span><strong id="eye-sector-name">GLOBAL</strong>
+  </div>
+  <button id="eye-share">Compartir ↗</button>
+</aside>
+
+<details class="eye-hud-details eye-glass-surface">
+  <summary>Datos avanzados de vista</summary>
+  <div id="eye-hud-host"></div>
+</details>
+
+<section
+  class="eye-workspace eye-glass-surface"
+  id="eye-workspace"
+  aria-label="Panel de trabajo"
+  hidden
+>
+  <header class="eye-panel-heading">
+    <div>
+      <span class="eye-kicker" id="eye-panel-kicker">02 / SEÑALES</span>
+      <h2 id="eye-panel-title">Registro sísmico</h2>
+    </div>
+    <button id="eye-panel-close" aria-label="Cerrar panel">×</button>
+  </header>
+  <div class="eye-workspace-content">
+    <section data-eye-panel="signals" hidden>
+      <p class="eye-source-description">
+        USGS · M2.5+ · últimas 24 horas<br /><small
+          >Eventos publicados, sujetos a revisión.</small
+        >
+      </p>
+      <div class="eye-filter-grid">
+        <label
+          >Magnitud mínima<select id="eye-filter-mag">
+            <option value="2.5">M2.5+</option>
+            <option value="4">M4+</option>
+            <option value="5">M5+</option>
+            <option value="6">M6+</option>
+          </select></label
+        >
+        <label
+          >Antigüedad<select id="eye-filter-hours">
+            <option value="24">24 horas</option>
+            <option value="6">6 horas</option>
+            <option value="1">1 hora</option>
+          </select></label
+        >
+      </div>
+      <label
+        >Sector<select id="eye-filter-sector">
+          <option value="all">Todo el planeta</option>
+          <option value="americas">Américas · 170°O a 30°O</option>
+          <option value="europe">Europa · norte de 35°N</option>
+          <option value="africa">África · sur de 35°N</option>
+          <option value="asia">Asia · norte del ecuador</option>
+          <option value="oceania">Oceanía · sur del ecuador</option>
+        </select></label
+      >
+      <div class="eye-list-toolbar">
+        <span id="eye-filter-count">Sin consulta</span
+        ><button id="eye-refresh">Actualizar</button>
+      </div>
+      <p id="eye-feed-status" role="status"></p>
+      <ol id="eye-signal-list" class="eye-signal-list"></ol>
+    </section>
+    <section data-eye-panel="operations" hidden>
+      <p class="eye-source-description">
+        Guardado en este dispositivo.<br /><small
+          >Sin cuenta ni sincronización. Máximo 30 operaciones.</small
+        >
+      </p>
+      <form id="eye-operation-form">
+        <label
+          >Nombre de operación<input
+            id="eye-operation-name"
+            required
+            maxlength="80"
+            placeholder="Ej. Observación del Pacífico"
+        /></label>
+        <label
+          >Nota privada<small>(máx. 2,000 caracteres)</small
+          ><textarea
+            id="eye-operation-note"
+            rows="3"
+            maxlength="2000"
+            placeholder="Añade contexto para tu próxima revisión"
+          ></textarea>
+        </label>
+        <button class="eye-primary" type="submit" id="eye-operation-save">
+          Guardar operación</button
+        ><button type="button" id="eye-operation-new">Nueva</button>
+      </form>
+      <p id="eye-operation-status" role="status"></p>
+      <button id="eye-operation-recover" hidden>
+        Restablecer archivo local…
+      </button>
+      <div id="eye-note-history"></div>
+      <h3>Operaciones guardadas</h3>
+      <div id="eye-operation-list"></div>
+      <button data-eye-view="display">Anotar sobre el globo →</button>
+      <p>
+        <small
+          >Las marcas del globo duran esta sesión. Conserva el contexto
+          permanente como una nota privada.</small
+        >
+      </p>
+      <button id="eye-director-open">Director de escenas →</button>
+    </section>
+    <section data-eye-panel="catalog" hidden>
+      <button id="eye-catalog-back">← Volver a capas activas</button>
+      <p>
+        Activa sólo las fuentes que necesitas. Cada registro conserva su
+        procedencia.
+      </p>
+      <button
+        id="clear-selected-layers"
+        aria-label="Apagar las capas seleccionadas"
+      >
+        Apagar todas las capas
+      </button>
+      <div id="eye-catalog"></div>
+      <details class="eye-native-options">
+        <summary>Opciones avanzadas por fuente</summary>
+        <div id="eye-native-layers"></div>
+      </details>
+    </section>
+    <section data-eye-panel="instruments" hidden>
+      <p>
+        Abre una función real o usa los controles de cámara y escala que
+        permanecen sobre el globo.
+      </p>
+      <div class="eye-route-grid">
+        <button id="eye-connect" data-eye-view="signals">
+          <strong id="eye-connect-label">Señales sísmicas</strong>
+          <span id="eye-nav-count">Sin consulta</span>
+        </button>
+        <button data-eye-view="sensors">
+          <strong>Cámaras y radio</strong><span>Medios públicos</span>
+        </button>
+        <button id="eye-instrument-data">
+          <strong>Datos avanzados</strong><span>HUD de la escena</span>
+        </button>
+        <button id="eye-instrument-layers">
+          <strong>Capas activas</strong><span>Lista de la izquierda</span>
+        </button>
+        <button id="eye-instrument-dossier" data-eye-dossier-open>
+          <strong>Expediente</strong><span>Ficha de vista u objetivo</span>
+        </button>
+      </div>
+    </section>
+    <section data-eye-panel="more" hidden>
+      <p>Herramientas de continuidad, dirección y preferencias.</p>
+      <div class="eye-route-grid">
+        <button data-eye-view="operations">
+          <strong>Operación</strong><span>Guardar y restaurar</span>
+        </button>
+        <button data-eye-view="director">
+          <strong>Director</strong><span>Escenas y recorridos</span>
+        </button>
+        <button data-eye-view="preferences">
+          <strong>Cabina y voz</strong><span>Contexto opcional</span>
+        </button>
+        <button id="eye-more-help">
+          <strong>Ayuda y créditos</strong><span>Fuentes y teclado</span>
+        </button>
+      </div>
+    </section>
+    <section data-eye-panel="display" hidden>
+      <p>
+        Los modos CRT, visión nocturna y térmico son tratamientos visuales, no
+        sensores.
+      </p>
+      <div id="eye-display-host"></div>
+      <div id="eye-location-host"></div>
+    </section>
+    <section data-eye-panel="director" hidden>
+      <p>
+        Secuencia cámaras y capas con el director existente. Las notas privadas
+        de operaciones quedan fuera de sus enlaces y exportaciones.
+      </p>
+      <div id="eye-director-host"></div>
+    </section>
+    <section data-eye-panel="sensors" hidden>
+      <h3>Cámaras y radio</h3>
+      <p>
+        Los catálogos públicos se consultan mediante el runtime local y
+        conservan su atribución. La cobertura depende de cada fuente; no se
+        solicita acceso a cámaras privadas y el audio sólo inicia por acción
+        explícita.
+      </p>
+      <div id="eye-sensor-host"></div>
+    </section>
+    <section data-eye-panel="preferences" hidden>
+      <h3>Contactos y cabina</h3>
+      <p>
+        El seguimiento, los contactos y la cabina usan las fuentes públicas
+        activas. Un fallo del proveedor se muestra como tal; no se presenta un
+        vuelo simulado como contacto real.
+      </p>
+      <div id="eye-context-host"></div>
+      <h3>Voz opcional</h3>
+      <p>
+        La voz necesita una clave OpenAI configurada en el runtime local. El
+        micrófono permanece apagado hasta una acción explícita.
+      </p>
+      <h3>Movimiento</h3>
+      <p>
+        Se respeta la preferencia de movimiento reducido. Ningún audio se
+        reproduce automáticamente.
+      </p>
+    </section>
+  </div>
+</section>
+
+<aside
+  id="eye-inspector"
+  class="eye-inspector eye-glass-surface"
+  aria-labelledby="eye-inspector-title"
+  hidden
+>
+  <header class="eye-panel-heading">
+    <span class="eye-kicker">INSPECCIONAR / USGS</span
+    ><button id="eye-inspector-close" aria-label="Cerrar expediente">×</button>
+  </header>
+  <div id="eye-inspector-content"></div>
+</aside>
+
+<div id="eye-notice" role="status" aria-live="polite" hidden></div>
+<dialog id="eye-dialog" aria-labelledby="eye-dialog-title">
+  <h2 id="eye-dialog-title"></h2>
+  <div id="eye-dialog-body"></div>
+  <form method="dialog">
+    <button id="eye-dialog-cancel" value="cancel">Cerrar</button
+    ><button id="eye-dialog-confirm" value="confirm" hidden>Confirmar</button>
+  </form>
+</dialog>
+<dialog id="eye-commands" aria-labelledby="eye-commands-title">
+  <h2 id="eye-commands-title">Acciones de la consola</h2>
+  <label
+    >Buscar acción<input
+      id="eye-command-search"
+      type="search"
+      placeholder="Señales, globo, guardar…"
+      autocomplete="off"
+  /></label>
+  <div id="eye-command-list"></div>
+  <form method="dialog"><button>Cerrar</button></form>
+</dialog>

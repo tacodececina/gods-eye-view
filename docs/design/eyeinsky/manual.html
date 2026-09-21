@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>EYEINSKY - Manual Iris orbital</title>
+    <style>
+      @font-face {
+        font-family: Space;
+        src: url('/identity/fonts/SpaceGrotesk.ttf');
+      }
+      @font-face {
+        font-family: Mono;
+        src: url('/identity/fonts/IBMPlexMono-Regular.ttf');
+      }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #071110;
+        color: #eef1e9;
+        font:
+          14px/1.6 Space,
+          sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 18mm 17mm;
+        break-after: page;
+        position: relative;
+        overflow: hidden;
+      }
+      .page:last-child {
+        break-after: auto;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #38564b;
+        padding-bottom: 7mm;
+        font: 9px Mono;
+        color: #a6d7c2;
+        letter-spacing: 1px;
+      }
+      h1 {
+        font-size: 53px;
+        font-weight: 400;
+        line-height: 1.05;
+        letter-spacing: -2px;
+        margin: 19mm 0 7mm;
+      }
+      h2 {
+        font-size: 32px;
+        font-weight: 400;
+        line-height: 1.15;
+        margin: 13mm 0 6mm;
+      }
+      h3 {
+        font: 12px Mono;
+        color: #a6d7c2;
+        margin-top: 8mm;
+      }
+      p {
+        color: #b2c4b9;
+        margin: 0 0 5mm;
+      }
+      .hero {
+        width: 100%;
+        display: block;
+        margin: 7mm 0;
+        border: 1px solid #38564b;
+      }
+      .mark {
+        width: 47mm;
+        height: 47mm;
+        margin: 12mm 0 4mm;
+      }
+      .lockup {
+        width: 90mm;
+        max-height: 24mm;
+        object-fit: contain;
+        object-position: left;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 3mm;
+        margin: 7mm 0;
+      }
+      .swatches div {
+        font: 8px Mono;
+        color: #b2c4b9;
+      }
+      .swatches i {
+        display: block;
+        height: 15mm;
+        margin-bottom: 3mm;
+        border: 1px solid #38564b;
+      }
+      .columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10mm;
+      }
+      .sample {
+        font-size: 28px;
+        line-height: 1.3;
+        color: #eef1e9;
+      }
+      .mono {
+        font: 13px/1.8 Mono;
+      }
+      .rule {
+        border-top: 1px solid #38564b;
+        margin-top: 6mm;
+        padding-top: 5mm;
+      }
+      .micros {
+        display: flex;
+        align-items: center;
+        gap: 9mm;
+        margin: 6mm 0;
+      }
+      .micros img {
+        display: block;
+      }
+      footer {
+        position: absolute;
+        bottom: 12mm;
+        left: 17mm;
+        right: 17mm;
+        border-top: 1px solid #38564b;
+        padding-top: 3mm;
+        display: flex;
+        justify-content: space-between;
+        font: 9px Mono;
+        color: #a6d7c2;
+      }
+      a {
+        color: #a6d7c2;
+      }
+      small {
+        font-size: 11px;
+        line-height: 1.6;
+        color: #b2c4b9;
+      }
+      .page:first-child .mark {
+        width: 35mm;
+        height: 35mm;
+        margin: 7mm 0 0;
+      }
+      .page:first-child h1 {
+        margin-top: 12mm;
+        font-size: 48px;
+      }
+      .hero {
+        height: 85mm;
+        object-fit: contain;
+        border: 0;
+      }
+      .page:last-child p {
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 4mm;
+      }
+      .page:last-child h2 {
+        margin-top: 10mm;
+      }
+      .page:last-child h3 {
+        margin-top: 6mm;
+      }
+      .page:last-child .rule {
+        margin-top: 5mm;
+        padding-top: 4mm;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page">
+      <header>
+        <span>EYEINSKY / IDENTIDAD 01</span><span>IRIS ORBITAL / FASE 2</span>
+      </header>
+      <img
+        class="mark"
+        src="/identity/logos/iris-orbital-symbol-accent.svg"
+        alt="Iris orbital"
+      />
+      <h1>El mundo,<br />en perspectiva.</h1>
+      <p>
+        Una consola para explorar el planeta, inspeccionar señales públicas y
+        conservar contexto. Instrumentación real, lectura precisa y una
+        identidad de verde mineral sobre negro.
+      </p>
+      <img
+        class="hero"
+        src="application.png"
+        alt="Captura real de la aplicación EYEINSKY"
+      /><small
+        >Aplicación real en Chrome, 1440 × 960. Cartografía local Natural Earth.
+        La captura es evidencia visual del producto, no una imagen que sustituya
+        el globo.</small
+      >
+      <footer>
+        <span>MANUAL BREVE · 17 SEPTIEMBRE 2026</span><span>01 / 03</span>
+      </footer>
+    </section>
+    <section class="page">
+      <header>
+        <span>EYEINSKY / SISTEMA</span><span>COLOR · TIPO · SÍMBOLO</span>
+      </header>
+      <h2>Iris orbital.</h2>
+      <img
+        class="lockup"
+        src="/identity/logos/iris-orbital-lockup-accent.svg"
+        alt="EYEINSKY"
+      />
+      <p class="rule">
+        Conservar proporciones y órbita. Reservar al menos un cuarto de la
+        altura del símbolo como margen de protección. Usar la versión micro en
+        tamaños pequeños; no reducir el símbolo general a 16 px.
+      </p>
+      <div class="micros">
+        <img
+          width="16"
+          height="16"
+          src="/identity/logos/iris-orbital-micro-accent.svg"
+        /><img
+          width="24"
+          height="24"
+          src="/identity/logos/iris-orbital-micro-accent.svg"
+        /><img
+          width="32"
+          height="32"
+          src="/identity/logos/iris-orbital-micro-accent.svg"
+        /><span class="mono">16 / 24 / 32 px</span>
+      </div>
+      <div class="swatches">
+        <div><i style="background: #071110"></i>NEGRO<br />#071110</div>
+        <div><i style="background: #a6d7c2"></i>MINERAL<br />#A6D7C2</div>
+        <div><i style="background: #eef1e9"></i>BLANCO<br />#EEF1E9</div>
+        <div><i style="background: #e6b46d"></i>ÁMBAR<br />#E6B46D</div>
+        <div><i style="background: #b2c4b9"></i>SECUNDARIO<br />#B2C4B9</div>
+      </div>
+      <div class="columns">
+        <div>
+          <h3>SPACE GROTESK</h3>
+          <p class="sample">Explorar.<br />Señales.<br />Operación.</p>
+          <p>
+            Navegación, títulos, lectura y formularios. El espacio y la
+            jerarquía hacen el trabajo; evitar mayúsculas largas en prosa.
+          </p>
+        </div>
+        <div>
+          <h3>IBM PLEX MONO</h3>
+          <p class="mono">
+            23.00° / -102.00°<br />M4.2 · USGS<br />ALT / 18,000 km
+          </p>
+          <p>
+            Coordenadas, IDs, fechas y magnitudes. Distinguir siempre el momento
+            del evento del momento de consulta.
+          </p>
+        </div>
+      </div>
+      <h3>ESTADO Y FOCO</h3>
+      <p>
+        Verde mineral para selección. Ámbar para foco y atención. El error,
+        retraso y vacío se explican con texto. El color nunca es la única señal.
+      </p>
+      <p>
+        Fondos opacos debajo de rótulos del mapa. Objetivo AA de 4.5:1 para
+        texto normal; foco visible y controles principales de 44 px. Las
+        animaciones se reducen con la preferencia del sistema.
+      </p>
+      <footer>
+        <span>FUENTES LOCALES / LICENCIAS OFL INCLUIDAS</span
+        ><span>02 / 03</span>
+      </footer>
+    </section>
+    <section class="page">
+      <header>
+        <span>EYEINSKY / USO</span><span>CONTEXTOS Y LÍMITES</span>
+      </header>
+      <h2>De la señal<br />al contexto.</h2>
+      <h3>01 / EXPLORAR</h3>
+      <p>
+        Rotar y acercar el globo. Volver a la vista global, orientar al norte y
+        alternar la cuadrícula geográfica. Las lecturas inferiores corresponden
+        a la cámara activa. Los filtros térmicos y nocturnos son tratamientos
+        visuales.
+      </p>
+      <h3>02 / SEÑALES</h3>
+      <p>
+        USGS bajo demanda: eventos M2.5+ del conjunto de las últimas 24 horas.
+        Filtrar magnitud, antigüedad y sector. Seleccionar una fila abre el
+        mismo ID en el globo y el expediente. Si la consulta falla, los
+        registros anteriores permanecen identificados como antiguos.
+      </p>
+      <h3>03 / OPERACIÓN</h3>
+      <p>
+        Guardar cámara, capas, filtros, selección y notas. Reabrir después de
+        recargar restaura la vista y vuelve a consultar la fuente. El
+        almacenamiento es local a este navegador y origen: no hay cuentas ni
+        sincronización.
+      </p>
+      <p>
+        El enlace público excluye nombre y notas privadas. Las marcas dibujadas
+        duran la sesión. Las escenas del director son documentos independientes
+        con sus propias atribuciones.
+      </p>
+      <div class="rule">
+        <h3>PROCEDENCIA</h3>
+        <p>
+          Natural Earth: raster local de dominio público, sin imagen en vivo.
+          USGS: registro público sujeto a revisión. Infraestructura: snapshots
+          ODbL sin fecha de extracción registrada. Otros proveedores requieren
+          backend, configuración o autorización de licencia.
+        </p>
+        <small
+          >Código original: God's Eye View, Bilawal Sidhu, MIT. CesiumJS: Apache
+          2.0. Conservar los créditos del visor y las licencias en distribución.
+          Los derechos del código no sustituyen los términos de datos o
+          medios.</small
+        >
+      </div>
+      <div class="rule">
+        <small
+          >Fuentes primarias:<br />naturalearthdata.com/about/terms-of-use/<br />earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php<br />openstreetmap.org/copyright<br /><br />Detalle
+          técnico y restricciones: source-scope.md. Tokens: tokens.json.<br />Esta
+          guía acompaña una revisión local; no acredita publicación ni auditoría
+          independiente.</small
+        >
+      </div>
+      <footer>
+        <span>GUARDADO EN ESTE DISPOSITIVO</span><span>03 / 03</span>
+      </footer>
+    </section>
+  </body>
+</html>

@@ -39,6 +39,36 @@ const row = {
   place: 'Fixture',
   time: 1000,
 };
+test('filtered globe geometry and overlay labels use the same stable IDs without losing source records', async () => {
+  const h = harness({
+    getSnapshot: async () => [
+      row,
+      { ...row, stableId: 'event-b', usgsId: 'event-b', mag: 5 },
+    ],
+  });
+  await h.layer.update(h.viewer);
+  assert.equal(typeof h.layer.setVisibleIds, 'function');
+  h.layer.setVisibleIds(['event-b']);
+  assert.deepEqual(
+    h.sources[0].entities.values
+      .filter((e) => e.show)
+      .map((e) => e.properties.usgsId.getValue()),
+    ['event-b'],
+  );
+  assert.deepEqual(
+    h.events.at(-1)[1].map((e) => e.id),
+    ['event-b'],
+  );
+  assert.equal(h.layer.getAnalystRecords().length, 2);
+  await h.layer.update(h.viewer);
+  assert.deepEqual(
+    h.events.at(-1)[1].map((e) => e.id),
+    ['event-b'],
+  );
+  h.layer.setVisibleIds(null);
+  assert.equal(h.sources[0].entities.values.filter((e) => e.show).length, 2);
+  h.layer.destroy();
+});
 test('late refresh cannot publish after disable, re-enable, or destroy', async () => {
   for (const action of ['disable', 'destroy']) {
     let resolve, signal;

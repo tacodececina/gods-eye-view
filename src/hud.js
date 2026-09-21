@@ -25,6 +25,7 @@ import {
 } from './data/geoid.js';
 import { getBasemapLabelContext } from './voice/gevActions.js';
 import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
+import { setTextIfChanged } from './ui/domText.js';
 
 /** Color palettes keyed by shader mode; applied as CSS custom properties. */
 const HUD_COLORS = {
@@ -249,7 +250,7 @@ export class IntelHUD {
     // Timestamp — every second
     this._timestampInterval = setInterval(() => {
       const el = document.getElementById('hud-timestamp');
-      if (el) el.textContent = this._formatUTC();
+      setTextIfChanged(el, this._formatUTC());
     }, 1000);
 
     // REC blink — every 800ms
@@ -345,19 +346,20 @@ export class IntelHUD {
       const formatted = this._formatMGRS(mgrsStr);
       mgrsLabel = formatted;
       const el = document.getElementById('hud-mgrs');
-      if (el) el.textContent = `MGRS: ${formatted}`;
+      setTextIfChanged(el, `MGRS: ${formatted}`);
     } catch {
       const el = document.getElementById('hud-mgrs');
-      if (el) el.textContent = 'MGRS: ---';
+      setTextIfChanged(el, 'MGRS: ---');
     }
 
     // Lat/Lon DMS
     const llEl = document.getElementById('hud-latlon');
-    if (llEl) llEl.textContent = `${latDMS} ${lonDMS}`;
+    setTextIfChanged(llEl, `${latDMS} ${lonDMS}`);
     const bottomEl = document.getElementById('hud-bottom-line');
-    if (bottomEl) {
-      bottomEl.textContent = `MGRS: ${mgrsLabel}  LAT: ${latDMS}  LON: ${lonDMS}`;
-    }
+    setTextIfChanged(
+      bottomEl,
+      `MGRS: ${mgrsLabel}  LAT: ${latDMS}  LON: ${lonDMS}`,
+    );
 
     // GSD (Ground Sample Distance): approximate resolution in meters per pixel
     // derived from camera altitude. NIIRS (National Imagery Interpretability
@@ -370,8 +372,10 @@ export class IntelHUD {
       Math.min(9, 10.25 - 3.32 * Math.log10(gsdInches)),
     );
     const gsdEl = document.getElementById('hud-gsd');
-    if (gsdEl)
-      gsdEl.textContent = `GSD: ${gsd.toFixed(2)}m  NIIRS: ${niirs.toFixed(1)}`;
+    setTextIfChanged(
+      gsdEl,
+      `GSD: ${gsd.toFixed(2)}m  NIIRS: ${niirs.toFixed(1)}`,
+    );
 
     // Altitude — reported as height above MEAN SEA LEVEL. `altM` is the raw
     // ellipsoidal camera height, which reads far below zero wherever the geoid
@@ -382,8 +386,10 @@ export class IntelHUD {
     const geoidN = this._geoidUndulationM(latDeg, lonDeg);
     const altMslM = ellipsoidalToMslDisplayM(altM, geoidN);
     const sunEl = this._estimateSunElevation(latDeg, lonDeg);
-    if (altEl)
-      altEl.textContent = `ALT: ${Math.round(altMslM)}m   SUN: ${sunEl.toFixed(1)}° EL`;
+    setTextIfChanged(
+      altEl,
+      `ALT: ${Math.round(altMslM)}m   SUN: ${sunEl.toFixed(1)}° EL`,
+    );
 
     // Collection timestamp
     const collEl = document.getElementById('hud-coll');
@@ -392,7 +398,7 @@ export class IntelHUD {
       const h = String(now.getUTCHours()).padStart(2, '0');
       const m = String(now.getUTCMinutes()).padStart(2, '0');
       const s = String(now.getUTCSeconds()).padStart(2, '0');
-      collEl.textContent = `COLL: ${h}:${m}:${s}Z`;
+      setTextIfChanged(collEl, `COLL: ${h}:${m}:${s}Z`);
     }
 
     // Off-nadir angle (ONA): camera pitch of -90 deg is nadir (straight down),
@@ -400,7 +406,7 @@ export class IntelHUD {
     const pitchDeg = Cesium.Math.toDegrees(camera.pitch);
     const ona = Math.max(0, 90 + pitchDeg);
     const onaEl = document.getElementById('hud-ona');
-    if (onaEl) onaEl.textContent = `ONA: ${ona.toFixed(1)}°`;
+    setTextIfChanged(onaEl, `ONA: ${ona.toFixed(1)}°`);
 
     // `altM` stays the raw ellipsoidal camera height the sensor model reads
     // (GSD/NIIRS, view band). `altMslM` is the ADDITIVE display datum — the
@@ -756,7 +762,7 @@ export class IntelHUD {
       return;
     }
     const el = document.getElementById('hud-summary');
-    if (el) el.textContent = text;
+    setTextIfChanged(el, text);
   }
 
   async _summaryContext() {
@@ -799,7 +805,7 @@ export class IntelHUD {
     const modeEl = document.getElementById('hud-mode');
     if (modeEl) {
       const modeNames = { surveillance: 'NVG', thermal: 'FLIR', retro: 'CRT' };
-      modeEl.textContent = modeNames[styleName] || styleName.toUpperCase();
+      setTextIfChanged(modeEl, modeNames[styleName] || styleName.toUpperCase());
     }
     // Update color scheme
     const colors = HUD_COLORS[styleName] || HUD_COLORS._default;

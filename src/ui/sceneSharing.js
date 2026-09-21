@@ -1,5 +1,6 @@
 /** Small owned modal for scene authoring and import review; text never becomes markup. */
 export function createSceneDialog(title, onClose) {
+  const trigger = document.activeElement;
   const dialog = document.createElement('dialog');
   dialog.dataset.directorDialog = '';
   dialog.className = 'director-sharing-dialog';
@@ -82,7 +83,7 @@ export function createSceneDialog(title, onClose) {
     body.append(wrapper);
     return node;
   }
-  button('Cancel', onClose);
+  button('Cancelar', onClose);
   listen(dialog, 'cancel', (event) => {
     event.preventDefault();
     onClose();
@@ -102,6 +103,7 @@ export function createSceneDialog(title, onClose) {
       for (const remove of listeners.splice(0)) remove();
       dialog.close();
       dialog.remove();
+      trigger?.focus?.();
     },
   };
 }
@@ -116,8 +118,8 @@ export function mountSceneSharing(
   bar.dataset.directorAuthoring = '';
   bar.className = 'scene-controls';
   const entries = [
-    ['EDIT DETAILS', edit],
-    ['SHARE SCENE', share],
+    ['EDITAR DETALLES', edit],
+    ['COMPARTIR ESCENA', share],
   ];
   const removers = [];
   for (const [text, fn] of entries) {

@@ -1190,6 +1190,40 @@ async function createMultiFeatureLodHarness({ featureCount = 150, cameraHeightM 
   };
 }
 
+// The globe-LOD budget only means something if Cesium never sees the records
+// it excludes. Visibility is read during DataSourceDisplay.update, which runs
+// BEFORE preRender: an entity handed over visible is materialized for one
+// frame — per-entity terrain clamping and ground-geometry batching — no matter
+// what the walk decides microseconds later. Measured on the shipped dataset
+// (4362 records): a 39.1 s frozen frame, 15.7 s of it billboard terrain
+// clamping and 8.7 s ground-geometry batching.
+// Evidence: output/eyeinsky-p3/build/diag-profile-1/attribution.json
+test('enable() hands the scene no visible record before the budgeted walk runs', async (t) => {
+  const env = await createMultiFeatureLodHarness({ featureCount: 150, cameraHeightM: 9_000_000 });
+  t.after(() => {
+    env.layer.destroy(env.viewer);
+    env.cleanup();
+  });
+
+  assert.equal(
+    env.dataSources[0].entities.values.length,
+    150,
+    'every feature is still materialized — this is a visibility contract, not a smaller dataset',
+  );
+  assert.equal(
+    env.shownCount(),
+    0,
+    'enable() must not publish a single visible record ahead of the globe-LOD budget',
+  );
+
+  env.preRender.raise();
+  assert.equal(
+    env.shownCount(),
+    INFRA_LOD_ACTIVE_MIN,
+    'the first walk opens exactly the global-band budget',
+  );
+});
+
 test('globe-LOD caps live stems at the camera-height budget and widens as you zoom in', async (t) => {
   const env = await createMultiFeatureLodHarness({ featureCount: 150, cameraHeightM: 9_000_000 });
   const clock = installFakeClock(t);
