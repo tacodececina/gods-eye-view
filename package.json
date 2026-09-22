@@ -39,6 +39,7 @@
     "dev:secure": "./scripts/dev-secure.sh",
     "opensky:import": "./scripts/opensky-import-client.sh",
     "build": "vite build --config server/standalone/eyeinsky.vite.config.js",
+    "start:production": "node server/production-runtime.js",
     "preview": "vite preview --config server/standalone/eyeinsky.vite.config.js",
     "test": "node scripts/run-unit-tests.mjs",
     "test:track": "node scripts/track-regression.mjs",
