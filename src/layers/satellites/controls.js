@@ -23,6 +23,24 @@ export function createControls({ state: layerState, services, parts, source }) {
 
   /** Tell the manager to re-render this layer's row (chip state / legend counts). */
 
+  /** Cached detection-overlay record of one satellite. */
+  function _detectionObjectFor(noradId) {
+    let object = layerState._detectionObjects.get(noradId);
+    if (object) return object;
+    const cat = layerState._catalog.get(noradId);
+    object = {
+      sourceId: noradId,
+      id: cat?.name || `SAT-${noradId}`,
+      type: 'SAT',
+      // Human class ("NAV · GPS"), not the raw CelesTrak tag ("GPS-OPS").
+      // The detection canvas composites ABOVE the post-FX chain, so this
+      // is how class survives NVG/FLIR once the dot colors are collapsed.
+      klass: satelliteClassLabel(cat?.group, { isIss: noradId === ISS_NORAD }),
+    };
+    layerState._detectionObjects.set(noradId, object);
+    return object;
+  }
+
   function _notifyRowControls() {
     try {
       layerState._rowControlsListener?.();
@@ -133,23 +151,12 @@ export function createControls({ state: layerState, services, parts, source }) {
         // that card instead. Only members of the tracked cluster are affected —
         // unrelated nearby satellites are never suppressed.
         if (!isTracked && layerState._dockedCompanions.has(noradId)) continue;
-        const cat = layerState._catalog.get(noradId);
-        let object = layerState._detectionObjects.get(noradId);
-        if (!object) {
-          object = {
-            sourceId: noradId,
-            id: cat?.name || `SAT-${noradId}`,
-            type: 'SAT',
-            // Human class ("NAV · GPS"), not the raw CelesTrak tag ("GPS-OPS").
-            // The detection canvas composites ABOVE the post-FX chain, so this
-            // is how class survives NVG/FLIR once the dot colors are collapsed.
-            klass: satelliteClassLabel(cat?.group, {
-              isIss: noradId === ISS_NORAD,
-            }),
-          };
-          layerState._detectionObjects.set(noradId, object);
-        }
-        object.position = point.position;
+        const object = _detectionObjectFor(noradId);
+        // The tracked bracket follows what is drawn (model or dot, P4 T5):
+        // its hidden primitive already holds the next frame's sample, which
+        // at inspect range sits hundreds of pixels off the hull.
+        object.position =
+          (isTracked && parts.models.visualPosition()) || point.position;
         object.skipLabel = isTracked;
         result.push(object);
         if (result.length >= maxCount) break;
@@ -375,6 +382,29 @@ export function createControls({ state: layerState, services, parts, source }) {
     },
 
     /**
+     * Switch the tracked camera between 'orbit' and 'inspect' (P4 T5). Keeps
+     * the NORAD id, the selection and the context subject.
+     * @param {'orbit'|'inspect'} framing
+     * @param {{reducedMotion?: boolean}} [options] Defaults to the
+     *   prefers-reduced-motion media query.
+     * @returns {boolean} Whether the framing is now in force.
+     */
+    setTrackedFraming(framing, options = {}) {
+      const reducedMotion =
+        options.reducedMotion ??
+        globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ===
+          true;
+      return parts.tracking._setTrackedFraming(framing, { reducedMotion });
+    },
+
+    /** @returns {'orbit'|'inspect'|null} Framing in force, null untracked. */
+    getTrackedFraming() {
+      return layerState._trackedNorad === null
+        ? null
+        : layerState._trackedFraming;
+    },
+
+    /**
      * Get info about the currently tracked satellite.
      * @returns {{ noradId: number, name: string, latitude: number, longitude: number, altitudeM: number }|null}
      */
@@ -394,6 +424,7 @@ export function createControls({ state: layerState, services, parts, source }) {
         latitude: pos.latitude,
         longitude: pos.longitude,
         altitudeM: pos.altitude,
+        framing: layerState._trackedFraming,
       };
     },
 

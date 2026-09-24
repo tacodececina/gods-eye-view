@@ -294,3 +294,65 @@ export const SAT_MODEL_CREDIT = Object.freeze({
 /** Curated satellite model manifest (public/models/satellites/manifest.json). */
 
 export const SAT_MODEL_MANIFEST_URI = '/models/satellites/manifest.json';
+
+/**
+ * Tracked camera framings (P4 T5). 'orbit' is the TRACK_VIEW_FROM_LEO/HIGH
+ * landing; 'inspect' keeps that direction at clamp(8·radiusM, 30 m, 5 km)
+ * from the resolved model asset. The change animates for
+ * SAT_FRAMING_TWEEN_MS, or lands at once under reduced motion.
+ */
+
+export const SAT_TRACK_FRAMINGS = Object.freeze(['orbit', 'inspect']);
+
+export const SAT_INSPECT_RANGE_FACTOR = 8;
+
+export const SAT_INSPECT_MIN_RANGE_M = 30;
+
+export const SAT_INSPECT_MAX_RANGE_M = 5000;
+
+export const SAT_FRAMING_TWEEN_MS = 700;
+
+/**
+ * Mission Dock bias (P4 T5 repair): on a phone (viewport ≤ this width) the
+ * dock covers the lower half of the screen, so the followed target is raised
+ * to the centre of the free area above the band the dock publishes in
+ * `--eye-dock-band`. The band ratio is capped so the target never leaves the
+ * screen; below the epsilon the camera is left alone.
+ */
+
+export const SAT_DOCK_BIAS_MAX_VIEWPORT_PX = 650;
+
+export const SAT_DOCK_BIAS_MAX_BAND_RATIO = 0.8;
+
+export const SAT_DOCK_BIAS_EPSILON_RAD = 1e-4;
+
+/**
+ * Point→model handoff (P4 T5): the tracked 14 px dot becomes a 4 px reticle
+ * at alpha 0.5 once its ready model projects larger than 24 px. The point is
+ * never removed — the follow camera needs its bounding sphere.
+ */
+
+export const SAT_TRACKED_POINT_PX = 14;
+
+export const SAT_RETICLE_PX = 4;
+
+export const SAT_RETICLE_ALPHA = 0.5;
+
+export const SAT_POINT_HANDOFF_PX = 24;
+
+/**
+ * Hull pick (P4 T5): a click inside the tracked model's projected bounding
+ * sphere keeps the selection. Minimum hit radius in CSS px, larger for a
+ * coarse (touch) pointer.
+ */
+
+export const SAT_HULL_HIT_MIN_PX = 12;
+
+export const SAT_HULL_HIT_MIN_COARSE_PX = 24;
+
+/**
+ * A model load that has not settled after this long frees its slot, counts
+ * as a failed load, and its late result is destroyed on arrival (P4 T5).
+ */
+
+export const SAT_MODEL_LOAD_TIMEOUT_MS = 20000;

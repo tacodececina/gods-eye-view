@@ -168,13 +168,30 @@ export function createTesting({ state: layerState, services, parts, source }) {
     overlayHost,
     preservePending = false,
     now = null,
+    // Extra catalog rows ({noradId, name, group, point, satrec?}), e.g. a
+    // second satellite a click can switch to.
+    others = [],
+    // Optional point collection stub, for the detection-overlay path.
+    pointCollection = null,
+    // Optional () => {bandPx, widthPx, heightPx}: the Mission Dock band.
+    dockViewport = null,
   }) {
     layerState._viewer = viewer;
+    layerState._dockViewportForTest = dockViewport;
+    if (pointCollection) layerState._pointCollection = pointCollection;
     layerState._trackedFrameNowForTest = now;
     layerState._catalog = new Map([
       [ISS_NORAD, { name: 'ISS (ZARYA)', satrec, group: 'stations' }],
     ]);
     layerState._points = new Map([[ISS_NORAD, point]]);
+    for (const row of others) {
+      layerState._catalog.set(row.noradId, {
+        name: row.name,
+        satrec: row.satrec || satrec,
+        group: row.group,
+      });
+      layerState._points.set(row.noradId, row.point);
+    }
     layerState._orbitPaths = new Map([
       [
         ISS_NORAD,
@@ -252,7 +269,31 @@ export function createTesting({ state: layerState, services, parts, source }) {
   function _satelliteModelStatsForTest() {
     return parts.models.getStats();
   }
+
+  /** Production trackedEntityChanged listener body (cross-layer untrack). */
+
+  function _satelliteTrackedEntityChangedForTest() {
+    parts.interaction._onTrackedEntityChanged();
+  }
+
+  /** Production LEFT_CLICK handler with a stub pick scene. */
+
+  function _handleSatelliteClickForTest(viewer, click) {
+    parts.interaction._handleClick(viewer, click);
+  }
+
+  /** Framing, orbit landing and tween state of the tracked camera. */
+
+  function _trackedFramingForTest() {
+    return {
+      framing: layerState._trackedFraming,
+      tweening: layerState._framingTween !== null,
+    };
+  }
   return {
+    _satelliteTrackedEntityChangedForTest,
+    _handleSatelliteClickForTest,
+    _trackedFramingForTest,
     _attachSatelliteModelsForTest,
     _satelliteModelStatsForTest,
     _setTrackedSatelliteRefreshStateForTest,

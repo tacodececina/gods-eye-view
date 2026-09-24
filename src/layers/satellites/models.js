@@ -1,11 +1,17 @@
 import * as Cesium from 'cesium';
 import {
   destroyModels,
+  modelStatus,
   releaseAllModels,
   releaseModel,
 } from './modelLifecycle.js';
 import { updateModelPoses } from './modelPose.js';
 import { prefetchModel, reconcileModels } from './modelReconcile.js';
+import {
+  modelHandoffInput,
+  modelScreenHit,
+  modelTranslation,
+} from './modelScreenHit.js';
 
 /**
  * Near-field satellite models (P4 T4). The only part of the layer that
@@ -27,6 +33,22 @@ export const SAT_MODEL_EVENT_TYPES = Object.freeze([
 ]);
 
 const defaultLoadModel = (options) => Cesium.Model.fromGltfAsync(options);
+
+const defaultToWindow = (scene, position, result) =>
+  Cesium.SceneTransforms.worldToWindowCoordinates(scene, position, result);
+
+const defaultIsCoarsePointer = () =>
+  globalThis.matchMedia?.('(pointer: coarse)')?.matches === true;
+
+const defaultTimers = Object.freeze({
+  set: (fn, ms) => {
+    const handle = setTimeout(fn, ms);
+    // Node test runs must not wait 20 s on a load watchdog.
+    handle?.unref?.();
+    return handle;
+  },
+  clear: (handle) => clearTimeout(handle),
+});
 
 /** Frustum test built on the viewer camera; true when it cannot tell. */
 function createFrustumVisibility(viewer) {
@@ -55,6 +77,8 @@ function createStore(profile) {
     pending: new Map(),
     gen: new Map(),
     failures: new Map(),
+    outcomes: new Map(),
+    timeouts: new Map(),
     vetoed: new Set(),
     cooldown: new Map(),
     collection: null,
@@ -103,6 +127,10 @@ function subscribe(store, type, listener) {
  * @param {(uri: string) => string} [options.resolveAsset]
  * @param {{register: Function, unregister: Function}|null} [options.credits]
  * @param {(position: object, radiusM: number) => boolean} [options.isVisible]
+ * @param {(scene: object, position: object, result: object) => object}
+ *   [options.toWindow] World → window CSS px (SceneTransforms by default).
+ * @param {() => boolean} [options.isCoarsePointer]
+ * @param {{set: Function, clear: Function}} [options.timers] Load timeouts.
  */
 export function createSatelliteModels({
   viewer,
@@ -115,9 +143,11 @@ export function createSatelliteModels({
   resolveAsset = (uri) => uri,
   credits = null,
   isVisible = null,
+  toWindow = defaultToWindow,
+  isCoarsePointer = defaultIsCoarsePointer,
+  timers = defaultTimers,
 }) {
   const store = createStore(profile);
-  const visible = isVisible ?? createFrustumVisibility(viewer);
   const ctx = Object.freeze({
     viewer,
     state,
@@ -128,8 +158,17 @@ export function createSatelliteModels({
     wallNow,
     resolveAsset,
     credits,
-    visible,
+    visible: isVisible ?? createFrustumVisibility(viewer),
+    toWindow,
+    isCoarsePointer,
+    timers,
   });
+  return createFacade(ctx);
+}
+
+/** Public façade over the models context. */
+function createFacade(ctx) {
+  const { store } = ctx;
   return {
     reconcile: (input) => reconcileModels(ctx, input),
     updatePoses: (frame) => updateModelPoses(ctx, frame),
@@ -142,6 +181,10 @@ export function createSatelliteModels({
       store.profile = nextProfile;
     },
     getStats: () => statsOf(store),
+    statusOf: (id) => modelStatus(store, id),
+    screenHit: (windowPosition, id) => modelScreenHit(ctx, windowPosition, id),
+    handoffInput: (id) => modelHandoffInput(ctx, id),
+    translation: (id, result) => modelTranslation(ctx, id, result),
     on: (type, listener) => subscribe(store, type, listener),
     destroy: () => destroyModels(ctx),
   };

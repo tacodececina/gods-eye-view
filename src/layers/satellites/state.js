@@ -155,9 +155,26 @@ export function createState({ services }) {
 
   state._modelProfile = null;
 
+  // P4 T5 framing of the tracked camera ('orbit' | 'inspect'), the orbit
+  // landing it returns to, the in-flight framing tween, the last point→model
+  // handoff written to the tracked dot, and the last presentation signature
+  // announced to the dossier (gev:awareness-subject-updated).
+
+  state._trackedFraming = 'orbit';
+
+  state._trackedOrbitViewFrom = null;
+
+  state._framingTween = null;
+
+  state._trackedHandoffKey = null;
+
+  state._presentationSignature = null;
+
   /** Optional deterministic clock used only by the production-frame test seam. */
 
   state._trackedFrameNowForTest = null;
+  // Test seam: () => {bandPx, widthPx, heightPx} in place of the browser read.
+  state._dockViewportForTest = null;
 
   // Scratch variables
 

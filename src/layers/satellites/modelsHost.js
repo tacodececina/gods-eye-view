@@ -93,27 +93,45 @@ function creditsFor(host, viewer) {
   };
 }
 
-/** Re-emit model events on window as gev:satellite-<type> (T6 reads them). */
+/**
+ * Re-emit model events on window as gev:satellite-<type>, and republish the
+ * tracked subject when its own model changed state (dossier chips, T6).
+ */
 function forwardEvents(host, models) {
-  const emitEvent = host.parts.tracking?._emitAwarenessEvent;
+  const tracking = host.parts.tracking;
   host.unsubscribers = SAT_MODEL_EVENT_TYPES.map((type) =>
-    models.on(type, (detail) => emitEvent?.(`gev:satellite-${type}`, detail)),
+    models.on(type, (detail) => {
+      tracking?._emitAwarenessEvent?.(`gev:satellite-${type}`, detail);
+      if (detail.noradId === host.layerState._trackedNorad)
+        tracking?._publishTrackedPresentation?.();
+    }),
   );
 }
 
+/** Optional createSatelliteModels seams a caller may inject (tests). */
+const PASS_THROUGH_OPTIONS = Object.freeze([
+  'loadModel',
+  'now',
+  'wallNow',
+  'isVisible',
+  'toWindow',
+  'isCoarsePointer',
+  'timers',
+]);
+
 function modelsFactoryOptions(host, viewer, profile) {
-  const { loadModel, now, wallNow, isVisible, resolveAsset } = host.options;
+  const injected = {};
+  for (const key of PASS_THROUGH_OPTIONS) {
+    if (host.options[key]) injected[key] = host.options[key];
+  }
   return {
     viewer,
     state: host.layerState,
     registry: host.registry,
     profile,
-    resolveAsset,
+    resolveAsset: host.options.resolveAsset,
     credits: creditsFor(host, viewer),
-    ...(loadModel ? { loadModel } : {}),
-    ...(now ? { now } : {}),
-    ...(wallNow ? { wallNow } : {}),
-    ...(isVisible ? { isVisible } : {}),
+    ...injected,
   };
 }
 
@@ -149,13 +167,37 @@ function attach(host, viewer, overrides = null) {
  * refresh so the model sits exactly on the dot, not one frame ahead.
  */
 function captureTrackedSample(host) {
-  const { layerState, shown } = host;
+  const { layerState, shown, visual } = host;
   const trackedNorad = layerState._trackedNorad;
   shown.valid = trackedNorad !== null && Boolean(layerState._trackedFrameGeo);
+  visual.valid = shown.valid;
   if (!shown.valid) return;
   shown.noradId = trackedNorad;
   Cesium.Cartesian3.clone(layerState._trackedFrameCartesian, shown.position);
   shown.dateMs = layerState._trackedFrameDateMs;
+  // Kept for the whole frame (frame() consumes `shown`): the card reads it
+  // after render, when the display cache has already moved one frame on.
+  visual.noradId = trackedNorad;
+  Cesium.Cartesian3.clone(shown.position, visual.position);
+}
+
+/**
+ * Where the tracked satellite is DRAWN this frame (trackedReadout's
+ * `gevVisualPosition` contract): its model's translation once shown, else the
+ * sample the dot and the follow camera used. Never the display cache the
+ * preRender already advanced — at 577 m that is one frame of 7.66 km/s,
+ * ≈ 240 px of card drift (P4 T5, output/eyeinsky-p4/t5/run-2).
+ * @returns {Cesium.Cartesian3|null} Null falls back to gevDisplayPosition.
+ */
+function visualPosition(host) {
+  const { layerState, visual } = host;
+  const trackedNorad = layerState._trackedNorad;
+  if (trackedNorad === null) return null;
+  const drawn = layerState._models?.translation(trackedNorad, visual.model);
+  if (drawn) return drawn;
+  return visual.valid && visual.noradId === trackedNorad
+    ? visual.position
+    : null;
 }
 
 /** The displayed tracked sample, falling back to the current cache. */
@@ -200,14 +242,37 @@ function prepareTarget(host, noradId) {
   host.options.prefetchAsset(url);
 }
 
-/** Whether this satellite resolves to a manifest asset in the active profile. */
-function hasAsset(host, noradId) {
+/** The manifest asset this satellite resolves to in the active profile. */
+function assetFor(host, noradId) {
   const sat = host.layerState._catalog?.get(noradId);
-  if (!sat || sat.group === 'dense') return false;
+  if (!sat || sat.group === 'dense') return null;
   const profile = host.layerState._modelProfile?.name ?? null;
-  return Boolean(
-    host.registry.resolve({ noradId, group: sat.group }, { profile }),
+  return (
+    host.registry.resolve({ noradId, group: sat.group }, { profile }) ?? null
   );
+}
+
+/** Model status of a satellite ('inactivo' when no models are attached). */
+function statusOf(host, noradId) {
+  return host.layerState._models?.statusOf(noradId) ?? 'inactivo';
+}
+
+/** Whether a click (window CSS px) falls on the TRACKED model's hull. */
+function screenHit(host, windowPosition) {
+  const trackedNorad = host.layerState._trackedNorad;
+  if (trackedNorad === null) return false;
+  return (
+    host.layerState._models?.screenHit(windowPosition, trackedNorad) === true
+  );
+}
+
+/** Point→model handoff input for the tracked satellite. */
+function handoffInput(host) {
+  const trackedNorad = host.layerState._trackedNorad;
+  const models = host.layerState._models;
+  if (trackedNorad === null || !models)
+    return { modelReady: false, modelPx: 0 };
+  return models.handoffInput(trackedNorad);
 }
 
 /** The previous target's model leaves at once (target change). */
@@ -261,13 +326,20 @@ function createHost({ state, services, parts, modelOptions }) {
       position: new Cesium.Cartesian3(),
       dateMs: Number.NaN,
     },
+    visual: {
+      valid: false,
+      noradId: null,
+      position: new Cesium.Cartesian3(),
+      model: new Cesium.Cartesian3(),
+    },
   };
 }
 
 /**
  * @param {{state: object, services: object, parts: object,
  *   modelOptions?: object}} context `modelOptions` may override resolveAsset,
- *   fetchText, loadModel, prefetchAsset, readSignals, now, wallNow, isVisible.
+ *   fetchText, loadModel, prefetchAsset, readSignals, now, wallNow, isVisible,
+ *   toWindow, isCoarsePointer, timers.
  */
 export function createModelsHost({
   state,
@@ -282,7 +354,12 @@ export function createModelsHost({
     frame: () => frame(host),
     releaseTarget: (noradId) => releaseTarget(host, noradId),
     prepareTarget: (noradId) => prepareTarget(host, noradId),
-    hasAsset: (noradId) => hasAsset(host, noradId),
+    hasAsset: (noradId) => assetFor(host, noradId) !== null,
+    assetFor: (noradId) => assetFor(host, noradId),
+    statusOf: (noradId) => statusOf(host, noradId),
+    screenHit: (windowPosition) => screenHit(host, windowPosition),
+    handoffInput: () => handoffInput(host),
+    visualPosition: () => visualPosition(host),
     releaseAll: (reason) => state._models?.releaseAll(reason),
     destroy: () => destroy(host),
     getStats: () => getStats(host),

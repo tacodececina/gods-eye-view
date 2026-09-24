@@ -908,6 +908,20 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
       notice('El contacto ya no está disponible para seguirlo.');
     applyDossier();
   }
+  /**
+   * INSPECCIONAR / ÓRBITA (P4 T5): la capa de satélites es la única dueña de
+   * la cámara y del encuadre; el dock sólo le pide el contrario del vigente.
+   * @returns {void}
+   */
+  function toggleInspectCurrentTarget() {
+    const module = dataManager.layers.get('satellites')?.module;
+    if (dossierState.context.layerId !== 'satellites' || !module) return;
+    const next =
+      module.getTrackedFraming?.() === 'inspect' ? 'orbit' : 'inspect';
+    if (!module.setTrackedFraming?.(next, { reducedMotion: reduced() }))
+      notice('Este satélite no tiene un modelo que inspeccionar.');
+    applyDossier();
+  }
   const missionDock = mountEyeMissionDock({
     host: $('eye-mission-dock'),
     onClose: () => closeInspector(),
@@ -920,6 +934,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
           dockView?.actions.find((item) => item.id === 'follow')?.pressed ===
             true,
         );
+      if (type === 'inspect') toggleInspectCurrentTarget();
       // Centrar reutiliza la cámara del shell; el dock nunca vuela solo.
       if (type === 'center' && dossierState.context.position)
         camera({

@@ -65,6 +65,10 @@ export function createSatellitesLayer({ services, source, modelOptions = {} }) {
       _attachSatelliteModelsForTest:
         parts.testing._attachSatelliteModelsForTest,
       _satelliteModelStatsForTest: parts.testing._satelliteModelStatsForTest,
+      _satelliteTrackedEntityChangedForTest:
+        parts.testing._satelliteTrackedEntityChangedForTest,
+      _handleSatelliteClickForTest: parts.testing._handleSatelliteClickForTest,
+      _trackedFramingForTest: parts.testing._trackedFramingForTest,
       applySatellitePointFocusDeemphasis:
         parts.rendering.applySatellitePointFocusDeemphasis,
       getNextIssPass: parts.orbits.getNextIssPass,

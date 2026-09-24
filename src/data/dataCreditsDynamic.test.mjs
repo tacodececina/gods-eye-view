@@ -33,3 +33,18 @@ test('a dynamic credit can be retired and registered again', () => {
   assert.equal(viewer.credits.length, 1, 'shown again');
   unregisterDynamicCredit(viewer, CREDIT);
 });
+
+test('unregister only retires the credit from the viewer that registered it', () => {
+  const owner = fakeViewer();
+  const stranger = fakeViewer();
+  const credit = { key: 'test-owner-credit', html: 'Source: owner' };
+  assert.equal(registerDynamicCredit(owner, credit), true);
+  assert.equal(
+    unregisterDynamicCredit(stranger, credit),
+    false,
+    'another viewer cannot retire it',
+  );
+  assert.equal(owner.credits.length, 1, 'still shown on its own viewer');
+  assert.equal(unregisterDynamicCredit(owner, credit), true);
+  assert.equal(owner.credits.length, 0);
+});

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EARTH_VIEW_KEY } from './eyeinskyDossierModel.js';
+import { EARTH_VIEW_KEY, contextFromRecord } from './eyeinskyDossierModel.js';
+import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
 import { connectDossierSources } from './eyeinskyDossierSources.js';
 
 /** Evento sintético con la misma forma que usan las capas reales. */
@@ -423,4 +424,82 @@ test('observar no arranca trabajo: no se toca cámara, capas ni fetch', () => {
     'ningún conector puede activar capas ni pedir refrescos por su cuenta',
   );
   env.cleanup();
+});
+
+// ─── P4 T6 · el satélite seguido se refresca por su propio aviso ───
+
+test('gev:awareness-subject-updated refreshes the same subject, never selects', async () => {
+  const env = createEnvironment();
+  env.storeSubject(satelliteRecord({ framing: 'orbit' }));
+  env.emit('gev:awareness-subject-selected', {
+    layerId: 'satellites',
+    id: 25544,
+    label: 'ISS (ZARYA)',
+  });
+  await new Promise((resolve) => queueMicrotask(resolve));
+  const selected = env.published.at(-1);
+  assert.equal(selected.context.key, 'satellites:25544');
+  assert.equal(selected.context.status, 'predicted');
+
+  env.storeSubject(satelliteRecord({ framing: 'inspect' }));
+  env.emit('gev:awareness-subject-updated', {
+    layerId: 'satellites',
+    id: '25544',
+  });
+  const refreshed = env.published.at(-1);
+  assert.equal(refreshed.type, 'refresh');
+  assert.equal(refreshed.explicit, false);
+  const framing = refreshed.context.fields.find((f) => f.key === 'framing');
+  assert.equal(framing.code, 'inspect');
+
+  const before = env.published.length;
+  env.emit('gev:awareness-subject-updated', { layerId: 'flights', id: 'x' });
+  assert.equal(env.published.length, before, 'someone else is ignored');
+  env.cleanup();
+});
+
+// P4-21: attitude is a label. No quaternion, no angle, no number reaches the
+// published context or the voice payload, for any asset, framing or status.
+const ATTITUDE_KEY = /attitude|quaternion|orientation|pitch|yaw|roll|euler/i;
+const FORBIDDEN_KEY = /quaternion|pitch|yaw|roll|euler/i;
+const ANGLE_TEXT = /-?\d+(?:[.,]\d+)?\s*(?:°|deg|rad)\b/i;
+
+function assertNoAttitudeNumbers(where, entries) {
+  for (const [key, value] of entries) {
+    assert.doesNotMatch(String(key), FORBIDDEN_KEY, `${where}: key ${key}`);
+    if (ATTITUDE_KEY.test(String(key)))
+      assert.doesNotMatch(String(value), /\d/, `${where}: ${key}=${value}`);
+  }
+}
+
+test('no attitude numbers in the published context or the voice payload', () => {
+  const assets = [null, 'nasa-iss', 'nasa-hubble', 'nasa-cubesat-1u'];
+  for (const assetId of assets) {
+    for (const framing of ['orbit', 'inspect']) {
+      for (const modelStatus of ['inactivo', 'cargando', 'listo', 'fallido']) {
+        const record = satelliteRecord({ assetId, framing, modelStatus });
+        const where = `${assetId}/${framing}/${modelStatus}`;
+        // What voice reads: the record's flat properties (compactProperties).
+        assertNoAttitudeNumbers(where, Object.entries(record.properties));
+        assert.ok(
+          ['lvlh-nominal-aprox', 'desconocida', 'n/a'].includes(
+            record.properties.attitude,
+          ),
+          `${where}: attitude is a label (${record.properties.attitude})`,
+        );
+        const voiceText = JSON.stringify(record.properties);
+        assert.doesNotMatch(voiceText, ANGLE_TEXT, `${where}: voice text`);
+        // What the dossier and the dock publish.
+        const context = contextFromRecord(record, { kind: 'tracked' });
+        assertNoAttitudeNumbers(
+          where,
+          context.fields.flatMap((f) => [
+            [f.key, f.value],
+            [f.label, f.value],
+          ]),
+        );
+        assert.doesNotMatch(JSON.stringify(context), ANGLE_TEXT, where);
+      }
+    }
+  }
 });

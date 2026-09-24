@@ -25,6 +25,8 @@ const STATUS_LABELS = Object.freeze({
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
   unreported: 'La fuente no informa la hora',
+  // P4: posición calculada con SGP4 desde elementos publicados, no observada.
+  predicted: 'Posición calculada (SGP4)',
 });
 
 /**
@@ -219,6 +221,7 @@ export function mountEyeMissionDock({
       view.visible,
       view.expanded,
       view.contextKey,
+      view.layerId,
       view.generation,
       view.title,
       view.status,
@@ -318,6 +321,7 @@ export function mountEyeMissionDock({
       host.dataset.visible = String(view.visible);
       host.dataset.contextKey = view.contextKey || '';
       host.dataset.contextKind = view.contextKind || '';
+      host.dataset.contextLayer = view.layerId || '';
       host.dataset.expanded = String(view.expanded);
       host.dataset.cameraStatus = view.camera.id;
 

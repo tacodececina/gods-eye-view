@@ -18,6 +18,11 @@
  *   - un panel que deja de existir devuelve el dock a OBJETIVO, no a nada.
  */
 
+import {
+  resolveInspectAction,
+  resolveSatelliteRail,
+} from './eyeinskySatelliteChips.js';
+
 /** Paneles admitidos, en el orden en que se leen de izquierda a derecha. */
 export const MISSION_DOCK_PANES = Object.freeze(['objetivo', 'medios', 'ops']);
 
@@ -144,6 +149,42 @@ function action(id, label, enabled, pressed, hint) {
 }
 
 /**
+ * SEGUIR: siguiendo, recuperable, o imposible con su motivo.
+ * @param {object} context Contexto normalizado.
+ * @param {boolean} following Si una capa tiene la cámara sobre él.
+ * @returns {Readonly<object>} Acción.
+ */
+function followAction(context, following) {
+  if (!isFollowableContext(context)) {
+    const hasTarget = Boolean(context) && context.kind !== 'view';
+    return action(
+      'follow',
+      'Seguir',
+      false,
+      false,
+      hasTarget
+        ? 'Este registro no se puede seguir'
+        : 'Sin contacto seleccionado',
+    );
+  }
+  return following === true
+    ? action(
+        'follow',
+        'Siguiendo',
+        true,
+        true,
+        `Suelta la cámara de ${context.title}`,
+      )
+    : action(
+        'follow',
+        'Seguir',
+        true,
+        false,
+        `Devuelve la cámara a ${context.title}`,
+      );
+}
+
+/**
  * Acciones del dock, en su orden fijo.
  *
  * Una acción que no puede ejecutarse se devuelve deshabilitada y con el motivo
@@ -155,33 +196,7 @@ function action(id, label, enabled, pressed, hint) {
  * @returns {ReadonlyArray<Readonly<object>>} Acciones.
  */
 export function resolveMissionDockActions({ context, following } = {}) {
-  const hasTarget = Boolean(context) && context.kind !== 'view';
-  const followable = isFollowableContext(context);
-  const follow = followable
-    ? following === true
-      ? action(
-          'follow',
-          'Siguiendo',
-          true,
-          true,
-          `Suelta la cámara de ${context.title}`,
-        )
-      : action(
-          'follow',
-          'Seguir',
-          true,
-          false,
-          `Devuelve la cámara a ${context.title}`,
-        )
-    : action(
-        'follow',
-        'Seguir',
-        false,
-        false,
-        hasTarget
-          ? 'Este registro no se puede seguir'
-          : 'Sin contacto seleccionado',
-      );
+  const follow = followAction(context, following);
   const center = context?.position
     ? action('center', 'Centrar', true, false, 'Lleva la vista a esta posición')
     : action(
@@ -191,8 +206,22 @@ export function resolveMissionDockActions({ context, following } = {}) {
         false,
         'La fuente no informa una posición',
       );
+  // P4 T5: sólo el satélite seguido ofrece INSPECCIONAR / ÓRBITA, y la
+  // ofrece deshabilitada con su motivo cuando no hay modelo que inspeccionar.
+  const inspect = resolveInspectAction(context);
   return Object.freeze([
     follow,
+    ...(inspect
+      ? [
+          action(
+            'inspect',
+            inspect.label,
+            inspect.enabled,
+            inspect.pressed,
+            inspect.hint,
+          ),
+        ]
+      : []),
     center,
     action('north', 'Norte', true, false, 'Orienta la vista al norte'),
     action('more', 'Más', true, false, 'Abre el detalle completo'),
@@ -265,6 +294,7 @@ export function buildMissionDockView({
     expanded: dock.expanded === true,
     contextKey: context?.key ?? null,
     contextKind: context?.kind ?? null,
+    layerId: context?.layerId ?? null,
     generation: dossier?.generation ?? 0,
     kicker: KIND_KICKERS[context?.kind] || KIND_KICKERS.entity,
     title: context?.title ?? null,
@@ -277,10 +307,13 @@ export function buildMissionDockView({
     panes,
     pane,
     // El riel compacto no es un resumen inventado: son los primeros campos
-    // reales del expediente, recortados al ancho que el dock puede leer.
-    keyValues: Object.freeze(
-      (context?.fields ?? []).slice(0, MISSION_DOCK_KEY_VALUE_LIMIT),
-    ),
+    // reales del expediente, recortados al ancho que el dock puede leer. El
+    // satélite seguido elige los suyos: ALT · ÉPOCA · MODELO (P4 T6).
+    keyValues:
+      resolveSatelliteRail(context) ??
+      Object.freeze(
+        (context?.fields ?? []).slice(0, MISSION_DOCK_KEY_VALUE_LIMIT),
+      ),
     fields: context?.fields ?? Object.freeze([]),
     assetIds: context?.assetIds ?? Object.freeze([]),
     camera: resolveCameraStatus({ context, following }),

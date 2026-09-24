@@ -334,7 +334,11 @@ export const BHOTE_KOSHI_LOCATOR_CREDIT = {
     '(CC BY-NC 4.0)',
 };
 
-/** @type {Map<string, Cesium.Credit>} Dynamic credits registered this session, by key. */
+/**
+ * Dynamic credits registered this session, by key, with the viewer whose
+ * credit display holds them.
+ * @type {Map<string, {credit: Cesium.Credit, viewer: object}>}
+ */
 const _dynamicCredits = new Map();
 
 /**
@@ -354,24 +358,26 @@ export function registerDynamicCredit(viewer, credit) {
   if (_dynamicCredits.has(credit.key)) return true;
   const cesiumCredit = new Cesium.Credit(credit.html, false);
   creditDisplay.addStaticCredit(cesiumCredit);
-  _dynamicCredits.set(credit.key, cesiumCredit);
+  _dynamicCredits.set(credit.key, { credit: cesiumCredit, viewer });
   return true;
 }
 
 /**
  * Retire a conditional credit when its source stops being shown (e.g. the
  * NASA 3D Resources credit once no satellite model is active).
+ * Only the viewer that registered it can retire it: a stale caller holding a
+ * different viewer must not strip the credit from the one still showing it.
  * @param {Cesium.Viewer} viewer — the viewer the credit was registered on
  * @param {{ key: string }} credit
  * @returns {boolean} True when a registered credit was removed.
  */
 export function unregisterDynamicCredit(viewer, credit) {
-  const cesiumCredit = _dynamicCredits.get(credit?.key);
-  if (!cesiumCredit) return false;
+  const registered = _dynamicCredits.get(credit?.key);
+  if (!registered || registered.viewer !== viewer) return false;
   _dynamicCredits.delete(credit.key);
   const creditDisplay = viewer?.creditDisplay;
   if (typeof creditDisplay?.removeStaticCredit === 'function') {
-    creditDisplay.removeStaticCredit(cesiumCredit);
+    creditDisplay.removeStaticCredit(registered.credit);
   }
   return true;
 }

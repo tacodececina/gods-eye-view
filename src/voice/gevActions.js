@@ -4003,7 +4003,10 @@ function summarizeEntity(viewer, entity, { includeProperties = false } = {}) {
   };
 }
 
-function summarizeContextRecord(record, { includeProperties = false } = {}) {
+export function summarizeContextRecord(
+  record,
+  { includeProperties = false } = {},
+) {
   return {
     id: String(record.id || ''),
     name:

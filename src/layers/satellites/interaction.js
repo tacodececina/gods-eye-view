@@ -43,6 +43,21 @@ export function createInteraction({
     });
   }
 
+  /**
+   * Cross-layer untrack: only ANOTHER entity taking the follow camera clears
+   * us. Our own reassignments (undefined → our entity, as a framing change or
+   * SEGUIR does) never do.
+   */
+  function _onTrackedEntityChanged() {
+    if (!layerState._enabled) return;
+    const owner = layerState._viewer?.trackedEntity;
+    if (!layerState._trackedNorad || !owner) return;
+    if (owner === layerState._trackedEntity) return;
+    parts.tracking._clearTracking(true, {
+      origin: owner.gevSelectionOrigin || 'programmatic',
+    });
+  }
+
   function _deselectUnlessSibling(picked) {
     // A pick that belongs to a sibling layer (plane, vessel, station, CCTV
     // camera…) is not "empty space" — leave OUR tracking (and crucially
@@ -66,6 +81,9 @@ export function createInteraction({
     // Clicking tracked entity itself — ignore
     if (picked && picked.id === layerState._trackedEntity) return;
     const pickedId = _pickedNorad(picked);
+    // The model loads with allowPicking:false, so a click on the tracked
+    // hull picks nothing: it is still the tracked satellite (P4 T5).
+    if (!picked && parts.models?.screenHit?.(click.position)) return;
     if (pickedId === null) {
       _deselectUnlessSibling(picked);
       return;
@@ -86,21 +104,7 @@ export function createInteraction({
     // briefly undefined mid-_trackSatellite) doesn't self-clear.
     if (!layerState._trackedEntityChangedRemove) {
       layerState._trackedEntityChangedRemove =
-        viewer.trackedEntityChanged.addEventListener(() => {
-          if (!layerState._enabled) return;
-          if (
-            layerState._trackedNorad &&
-            layerState._viewer &&
-            layerState._viewer.trackedEntity &&
-            layerState._viewer.trackedEntity !== layerState._trackedEntity
-          ) {
-            parts.tracking._clearTracking(true, {
-              origin:
-                layerState._viewer.trackedEntity?.gevSelectionOrigin ||
-                'programmatic',
-            });
-          }
-        });
+        viewer.trackedEntityChanged.addEventListener(_onTrackedEntityChanged);
     }
 
     layerState._clickHandler = new Cesium.ScreenSpaceEventHandler(
@@ -113,5 +117,10 @@ export function createInteraction({
 
     document.addEventListener('keydown', _onKeyDown);
   }
-  return { _onKeyDown, _installClickHandler, _handleClick };
+  return {
+    _onKeyDown,
+    _installClickHandler,
+    _handleClick,
+    _onTrackedEntityChanged,
+  };
 }

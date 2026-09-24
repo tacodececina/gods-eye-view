@@ -1,6 +1,7 @@
 import * as Cesium from 'cesium';
 import { gstime } from 'satellite.js';
 import { ISS_NORAD, POSITION_UPDATE_MS, RING_ROTATION_MS } from './policy.js';
+import { resolvePointModelHandoff } from './pointHandoff.js';
 
 export function createRendering({
   state: layerState,
@@ -207,9 +208,8 @@ export function createRendering({
       }
     }
 
-    // Near-field models (P4): throttled LOD reconcile plus the per-frame pose of
-    // the admitted models, after the tracked sample so they share its epoch.
-    parts.models.frame();
+    // Near-field models (P4), after the tracked sample so they share its epoch.
+    _nearFieldTick();
 
     _updatePointFocus(now);
 
@@ -222,6 +222,38 @@ export function createRendering({
       _updateOrbitPathRotations(new Date(now));
       layerState._lastRingRotation = now;
     }
+  }
+
+  /**
+   * Near-field models (P4): throttled LOD reconcile plus the per-frame pose of
+   * the admitted models, then the point→model handoff and the framing tween.
+   */
+
+  function _nearFieldTick() {
+    parts.models.frame();
+    _applyTrackedPointHandoff();
+    parts.tracking._advanceFramingTween();
+    parts.tracking._applyDockBias();
+  }
+
+  /**
+   * Point→model handoff (P4 T5): once the tracked model is ready and larger
+   * than 24 px, the tracked entity's 14 px dot becomes a 4 px reticle at
+   * alpha 0.5. It follows model-ready/model-evicted/model-failed and the
+   * projected size, and writes only on change. The point graphic itself is
+   * never removed: the follow camera takes its bounding sphere from it.
+   */
+
+  function _applyTrackedPointHandoff() {
+    const graphic = layerState._trackedEntity?.point;
+    if (!graphic) return;
+    const handoff = resolvePointModelHandoff(parts.models.handoffInput());
+    const key = `${handoff.pointSize}|${handoff.pointAlpha}`;
+    if (layerState._trackedHandoffKey === key) return;
+    layerState._trackedHandoffKey = key;
+    graphic.pixelSize = handoff.pointSize;
+    graphic.color = Cesium.Color.YELLOW.withAlpha(handoff.pointAlpha);
+    graphic.outlineWidth = handoff.reticle ? 0 : 2;
   }
 
   /** Focus alpha for satellite points, inside the existing shared preRender tick. */
@@ -322,6 +354,7 @@ export function createRendering({
     _hideOrbitPath,
     _propagateAll,
     _preRenderTick,
+    _applyTrackedPointHandoff,
     _updatePointFocus,
     applySatellitePointFocusDeemphasis,
   };

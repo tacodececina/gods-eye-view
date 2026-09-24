@@ -2,6 +2,7 @@ import * as Cesium from 'cesium';
 import {
   SAT_MODEL_CREDIT,
   SAT_MODEL_EVICT_DEBOUNCE_MS,
+  SAT_MODEL_LOAD_TIMEOUT_MS,
   SAT_MODEL_MAX_LOAD_FAILS,
 } from './policy.js';
 
@@ -13,7 +14,9 @@ import {
  * Load pattern reused from flights `_ensureModel`: the cap counts pending
  * loads BEFORE the await; the lifecycle epoch, the per-NORAD generation and
  * the catalog revision are captured before it and re-checked after it, and a
- * late or stale model is destroyed without ever entering the scene.
+ * late or stale model is destroyed without ever entering the scene. A load
+ * that has not settled after SAT_MODEL_LOAD_TIMEOUT_MS frees its slot and
+ * counts as a failure; its late result is destroyed on arrival (T5).
  */
 
 export function destroyQuietly(model) {
@@ -111,6 +114,7 @@ function recordFailure(ctx, id, asset, error) {
   store.counters.failed += 1;
   const vetoed = count >= SAT_MODEL_MAX_LOAD_FAILS;
   if (vetoed) store.vetoed.add(uri);
+  store.outcomes.set(id, 'failed');
   emit(store, 'model-failed', {
     noradId: id,
     assetId: asset.id,
@@ -123,6 +127,7 @@ function markReady(ctx, id, entry) {
   const { store } = ctx;
   if (entry.ready || entry.failed || store.active.get(id) !== entry) return;
   entry.ready = true;
+  store.outcomes.delete(id);
   emit(store, 'model-ready', {
     noradId: id,
     assetId: entry.asset.id,
@@ -229,6 +234,42 @@ function settleLoad(ctx, id, asset, model, token) {
   admitLoaded(ctx, id, asset, model);
 }
 
+/** The load never settled: free its slot and count a failure. */
+function onLoadTimeout(ctx, id, asset, token) {
+  const { store } = ctx;
+  store.timeouts.delete(token);
+  if (token.epoch !== store.epoch || store.pending.get(id) !== token) return;
+  token.timedOut = true;
+  store.pending.delete(id);
+  cleanupGen(store, id);
+  recordFailure(
+    ctx,
+    id,
+    asset,
+    new Error(`load timeout after ${SAT_MODEL_LOAD_TIMEOUT_MS} ms`),
+  );
+}
+
+function armTimeout(ctx, id, asset, token) {
+  const handle = ctx.timers.set(
+    () => onLoadTimeout(ctx, id, asset, token),
+    SAT_MODEL_LOAD_TIMEOUT_MS,
+  );
+  ctx.store.timeouts.set(token, handle);
+}
+
+function disarmTimeout(ctx, token) {
+  const { timeouts } = ctx.store;
+  if (!timeouts.has(token)) return;
+  ctx.timers.clear(timeouts.get(token));
+  timeouts.delete(token);
+}
+
+function clearAllTimeouts(ctx) {
+  for (const handle of ctx.store.timeouts.values()) ctx.timers.clear(handle);
+  ctx.store.timeouts.clear();
+}
+
 /** Start one load; the caller has already checked the cap. */
 export async function startLoad(ctx, id, asset) {
   const { store } = ctx;
@@ -236,8 +277,10 @@ export async function startLoad(ctx, id, asset) {
     epoch: store.epoch,
     gen: genOf(store, id),
     revision: ctx.state._catalogRevision,
+    timedOut: false,
   };
   store.pending.set(id, token);
+  armTimeout(ctx, id, asset, token);
   let model;
   try {
     model = await ctx.loadModel({
@@ -249,13 +292,38 @@ export async function startLoad(ctx, id, asset) {
       asynchronous: true,
     });
   } catch (error) {
-    if (token.epoch !== store.epoch) return;
+    disarmTimeout(ctx, token);
+    // A timed-out load was already counted and its slot reused.
+    if (token.epoch !== store.epoch || token.timedOut) return;
     store.pending.delete(id);
     cleanupGen(store, id);
     recordFailure(ctx, id, asset, error);
     return;
   }
+  disarmTimeout(ctx, token);
+  if (token.timedOut) {
+    destroyQuietly(model);
+    return;
+  }
   settleLoad(ctx, id, asset, model, token);
+}
+
+/**
+ * Presentation status of one satellite's model: 'listo' (ready),
+ * 'cargando' (admitted or loading), 'fallido' (its last load failed or timed
+ * out, or it was marked failed after admission) or 'inactivo'.
+ * @param {object} store Models store.
+ * @param {number} id NORAD id.
+ * @returns {'listo'|'cargando'|'fallido'|'inactivo'}
+ */
+export function modelStatus(store, id) {
+  const entry = store.active.get(id);
+  if (entry) {
+    if (entry.failed) return 'fallido';
+    return entry.ready ? 'listo' : 'cargando';
+  }
+  if (holdsModel(store, id)) return 'cargando';
+  return store.outcomes.get(id) === 'failed' ? 'fallido' : 'inactivo';
 }
 
 /**
@@ -278,6 +346,7 @@ export function releaseModel(ctx, id, reason = 'released') {
 export function releaseAllModels(ctx, reason = 'released') {
   const { store } = ctx;
   store.epoch += 1;
+  clearAllTimeouts(ctx);
   for (const id of [...store.active.keys()]) evictModel(ctx, id, reason);
   store.pending.clear();
   store.gen.clear();

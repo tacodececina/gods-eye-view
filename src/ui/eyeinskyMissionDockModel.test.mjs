@@ -10,9 +10,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  contextFromRecord,
   createDossierState,
   normalizeContext,
 } from './eyeinskyDossierModel.js';
+import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
 import { createActivityState, reduceActivity } from './eyeinskyActivityModel.js';
 import {
   buildMissionDockView,
@@ -321,4 +323,99 @@ test('a suspended or closed dossier keeps the dock off screen', () => {
     visibility: 'closed',
   });
   assert.equal(buildMissionDockView({ ...base, dossier: closed }).visible, false);
+});
+
+// ─── P4 T5 · INSPECCIONAR / ÓRBITA sobre el satélite seguido ───
+
+const satelliteDossier = (options) =>
+  createDossierState(
+    contextFromRecord(satelliteRecord(options), { kind: 'tracked' }),
+  );
+
+const satelliteView = (options) =>
+  buildMissionDockView({
+    dossier: satelliteDossier(options),
+    activity: createActivityState(),
+    dock: createMissionDockState(),
+    following: true,
+  });
+
+test('INSPECCIONAR sits after SEGUIR for a satellite with a curated model', () => {
+  const view = satelliteView({ assetId: 'nasa-iss', framing: 'orbit' });
+  assert.deepEqual(
+    view.actions.map(({ id }) => id),
+    ['follow', 'inspect', 'center', 'north', 'more'],
+  );
+  const inspect = actionById(view.actions, 'inspect');
+  assert.equal(inspect.label, 'Inspeccionar');
+  assert.equal(inspect.enabled, true);
+  assert.match(inspect.hint, /escala real/i);
+});
+
+test('in inspect framing the same action reads ÓRBITA', () => {
+  const inspect = actionById(
+    satelliteView({ assetId: 'nasa-iss', framing: 'inspect' }).actions,
+    'inspect',
+  );
+  assert.equal(inspect.label, 'Órbita');
+  assert.equal(inspect.enabled, true);
+});
+
+test('no curated model: INSPECCIONAR is offered disabled with its reason', () => {
+  const inspect = actionById(
+    satelliteView({ assetId: null, name: 'GPS BIIR-2' }).actions,
+    'inspect',
+  );
+  assert.equal(inspect.enabled, false);
+  assert.equal(inspect.hint, 'Sin modelo curado: solo punto');
+});
+
+test('expired elements: INSPECCIONAR is disabled and says why', () => {
+  const inspect = actionById(
+    satelliteView({ assetId: 'nasa-iss', ageMs: 30 * 86_400_000 }).actions,
+    'inspect',
+  );
+  assert.equal(inspect.enabled, false);
+  assert.match(inspect.hint, /caducada/i);
+});
+
+test('a failed model disables INSPECCIONAR but keeps the point', () => {
+  const inspect = actionById(
+    satelliteView({ assetId: 'nasa-iss', modelStatus: 'fallido' }).actions,
+    'inspect',
+  );
+  assert.equal(inspect.enabled, false);
+  assert.match(inspect.hint, /no disponible/i);
+});
+
+test('other layers never get an inspect action', () => {
+  const view = buildMissionDockView({
+    dossier: createDossierState(trackedContext()),
+    activity: createActivityState(),
+    dock: createMissionDockState(),
+    following: true,
+  });
+  assert.equal(actionById(view.actions, 'inspect'), undefined);
+  assert.deepEqual(
+    view.keyValues.map(({ label }) => label),
+    ['ALTURA', 'VELOCIDAD', 'RUMBO'],
+    'the flights rail is untouched',
+  );
+});
+
+test('the satellite rail reads ALT · ÉPOCA · MODELO', () => {
+  const view = satelliteView({ assetId: 'nasa-iss' });
+  assert.deepEqual(
+    view.keyValues.map(({ label, value }) => [label, value]),
+    [
+      ['ALT', '418 km'],
+      ['ÉPOCA', 'vigente'],
+      ['MODELO', 'específico'],
+    ],
+  );
+  assert.equal(view.layerId, 'satellites');
+  assert.deepEqual(
+    satelliteView({ assetId: null }).keyValues.at(-1),
+    { label: 'MODELO', value: 'punto', unit: null },
+  );
 });
