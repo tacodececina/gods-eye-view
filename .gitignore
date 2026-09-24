@@ -12,3 +12,8 @@ output/
 3d-models/
 pinokio/ENVIRONMENT
 pinokio/.installed
+.claude/plugins/
+.claude/settings.local.json
+.claude/agent-memory/
+.claude/contexts/
+out-failure.png

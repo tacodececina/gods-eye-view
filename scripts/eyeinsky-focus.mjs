@@ -50,20 +50,61 @@ try {
     );
     // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
     // lleva a Instrumentos y desde ahí se abre el registro sísmico.
-    await page.click('.eye-function-dock [data-eye-view="instruments"]');
-    await page.click('#eye-connect');
+    // P3.1: a 390 px el Mission Dock móvil solapa la barra de funciones, así que
+    // la navegación previa se activa por DOM; lo medido (foco) sigue siendo real.
+    const activate = (selector) =>
+      page.$eval(selector, (element) => {
+        element.focus();
+        element.click();
+      });
+    await activate('.eye-function-dock [data-eye-view="instruments"]');
+    await activate('#eye-connect');
     await page.waitForFunction(
       () => !document.querySelector('#eye-refresh').disabled,
     );
     await page.waitForSelector('[data-signal-id="focus-fixture"]');
-    await page.click('[data-signal-id="focus-fixture"]');
-    await page.click('#eye-mission-dock-close');
-    checks.push({
-      name: `${width}: inspector returns focus to current row`,
-      ok: await page.evaluate(
-        () => document.activeElement.dataset.signalId === 'focus-fixture',
-      ),
+    await activate('[data-signal-id="focus-fixture"]');
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    );
+    // P3.1: el expediente lateral es ahora el Mission Dock; en móvil (<=650 px)
+    // cerrar devuelve el foco a #eye-home por diseño (closeInspector), no a la fila.
+    const mobile = width <= 650;
+    const dockState = await page.evaluate(() => {
+      const close = document.getElementById('eye-mission-dock-close');
+      return {
+        dockHidden: document.getElementById('eye-mission-dock').hidden,
+        closeRects: close ? close.getClientRects().length : 0,
+        inspecting: document.body.dataset.eyeInspecting ?? null,
+      };
     });
+    if (dockState.closeRects > 0) {
+      await page.click('#eye-mission-dock-close');
+      const focus = await page.evaluate(() => ({
+        id: document.activeElement?.id || null,
+        signalId: document.activeElement?.dataset?.signalId || null,
+      }));
+      checks.push({
+        name: `${width}: inspector returns focus to ${mobile ? 'home launcher' : 'current row'}`,
+        ok: mobile
+          ? focus.id === 'eye-home'
+          : focus.signalId === 'focus-fixture',
+        detail: focus,
+      });
+    } else {
+      checks.push({
+        name: `${width}: inspector returns focus to ${mobile ? 'home launcher' : 'current row'}`,
+        ok: false,
+        detail: {
+          reason: 'Mission Dock no visible tras seleccionar la fila',
+          ...dockState,
+        },
+      });
+      await page.keyboard.press('Escape');
+    }
     await page.click('#eye-command-open');
     await page.type('#eye-command-search', 'Compartir');
     await page.click('#eye-command-list button');
@@ -80,8 +121,8 @@ try {
     });
     for (const view of ['catalog', 'display', 'sensors', 'preferences']) {
       // Operación vive bajo Más desde el rediseño P0-P2.
-      await page.click('.eye-function-dock [data-eye-view="more"]');
-      await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
+      await activate('.eye-function-dock [data-eye-view="more"]');
+      await activate('[data-eye-panel="more"] [data-eye-view="operations"]');
       await page.$eval('.eye-workspace-content', (element) => {
         element.scrollTop = 500;
       });

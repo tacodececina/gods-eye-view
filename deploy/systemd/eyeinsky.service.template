@@ -1,0 +1,43 @@
+# Render before installing (see deploy/README.md), replacing every token:
+#   NODE_BIN      absolute node path (staging: /usr/bin/node, system Node 22 LTS)
+#   APP_ROOT      staging: /opt/eyeinsky-staging   production: /opt/eyeinsky
+#   RUNTIME_PORT  staging: 4174                    production: 4173
+# Install as eyeinsky-staging.service for staging, eyeinsky.service for production.
+# APP_ROOT, releases/ and shared/ are root:root 755; the process only reads them.
+[Unit]
+Description=EYEINSKY production runtime
+After=network.target
+
+[Service]
+Type=simple
+User=eyeinsky
+Group=eyeinsky
+WorkingDirectory=APP_ROOT/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=RUNTIME_PORT
+# Secrets live only here: mode 600, owner root (systemd reads it before dropping privileges).
+EnvironmentFile=APP_ROOT/shared/eyeinsky.env
+ExecStart=NODE_BIN APP_ROOT/current/server/production-runtime.js
+Restart=on-failure
+RestartSec=5
+MemoryMax=768M
+LimitNOFILE=8192
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectKernelModules=true
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+# Only writable path: its own data dir (eyeinsky:eyeinsky 750). Never shared/ itself,
+# which holds root-run scripts, backups and the staging htpasswd.
+ReadWritePaths=APP_ROOT/shared/runtime
+
+[Install]
+WantedBy=multi-user.target

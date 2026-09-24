@@ -81,14 +81,16 @@ try {
     window.__godsEyeView.styleManager.getCameraState(),
   );
   await page.click('#eye-zoom-in');
-  await new Promise((r) => setTimeout(r, 1100));
-  check(
-    'zoom changes real camera altitude',
-    await page.evaluate(
+  // Espera acotada (no sleep fijo): con SwiftShader cargado el vuelo tarda más.
+  const zoomed = await page
+    .waitForFunction(
       (alt) => window.__godsEyeView.styleManager.getCameraState().alt < alt,
+      { timeout: 8000 },
       before.alt,
-    ),
-  );
+    )
+    .then(() => true)
+    .catch(() => false);
+  check('zoom changes real camera altitude', zoomed);
   await page.click('#eye-home');
   await new Promise((r) => setTimeout(r, 1100));
   // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
@@ -287,6 +289,11 @@ try {
     );
   }
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  // P3.1: en 390 px el Mission Dock tapa el dock de funciones; se cierra antes.
+  if (await page.$eval('#eye-mission-dock', (e) => !e.hidden)) {
+    await page.click('#eye-mission-dock-close');
+    await new Promise((r) => setTimeout(r, 800));
+  }
   // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
   // lleva a Instrumentos y desde ahí se abre el registro sísmico.
   await page.click('.eye-function-dock [data-eye-view="instruments"]');
@@ -300,11 +307,18 @@ try {
     await page.$eval('#eye-mission-dock', (e) => !e.hidden),
   );
   await page.click('#eye-mission-dock-close');
+  // P3.1: en móvil cerrar la ficha vuelve a inicio (closeInspector → explore,
+  // foco en #eye-home), no a la lista; antes se esperaba la lista de vuelta.
   check(
-    'mobile list returns',
-    await page.$eval('#eye-workspace', (e) => !e.hidden),
+    'mobile close returns home',
+    await page.evaluate(
+      () =>
+        document.getElementById('eye-workspace').hidden &&
+        document.activeElement?.id === 'eye-home',
+    ),
   );
-  await page.click('#eye-panel-close');
+  if (await page.$eval('#eye-workspace', (e) => !e.hidden))
+    await page.click('#eye-panel-close');
   await page.click('#eye-help');
   await page.keyboard.press('Escape');
   check(

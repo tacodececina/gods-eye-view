@@ -274,22 +274,39 @@ try {
     Storage.prototype.setItem = window.__originalStorageSet;
     window.__eyeinsky.openView('display');
   });
-  await page.click('[data-stack-id="ellipsoid"]');
+  // P0–P3.1 retired the ellipsoid/natural-earth stacks; OSM is the credential-free stack now.
+  const initialStack = await page.evaluate(() =>
+    window.__godsEyeView.mapStackController.getActiveId(),
+  );
+  await page.click('[data-stack-id="osm"]');
   await page.waitForFunction(
-    () => window.__godsEyeView.mapStackController.getActiveId() === 'ellipsoid',
+    () => window.__godsEyeView.mapStackController.getActiveId() === 'osm',
   );
   check(
     'explicit basemap fallback is labelled',
-    await page.$eval('#eye-map-label', (e) =>
-      e.textContent.includes('sin cartografía'),
+    await page.$eval(
+      '#eye-map-label',
+      (e) =>
+        e.textContent ===
+        window.__godsEyeView.mapStackController.getActiveStack().label,
     ),
   );
-  await page.click('[data-stack-id="natural-earth"]');
+  await page.click(`[data-stack-id="${initialStack}"]`);
   await page.waitForFunction(
-    () =>
-      window.__godsEyeView.mapStackController.getActiveId() === 'natural-earth',
+    (id) => window.__godsEyeView.mapStackController.getActiveId() === id,
+    {},
+    initialStack,
   );
-  check('local map can be restored without credentials', true);
+  check(
+    'local map can be restored without credentials',
+    await page.$eval(
+      `[data-stack-id="${initialStack}"]`,
+      (e) =>
+        e.getAttribute('aria-pressed') === 'true' ||
+        e.getAttribute('aria-checked') === 'true' ||
+        e.classList.contains('active'),
+    ),
+  );
   await page.evaluate(() => window.__eyeinsky.openView('director'));
   await page.click('#scene-capture-btn');
   check(

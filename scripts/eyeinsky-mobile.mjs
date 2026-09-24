@@ -9,6 +9,7 @@ const result = {
   source: 'USGS REAL',
   checks: [],
   errors: [],
+  findings: [],
 };
 const check = (name, ok, detail) => {
   result.checks.push({ name, ok, detail });
@@ -24,6 +25,43 @@ const browser = await puppeteer.launch({
   ],
 });
 let page;
+// El Mission Dock (P3.1) tapa el dock de funciones a 390×844: se pulsa el
+// botón real si recibe el toque; si no, se registra el hallazgo y se abre la
+// misma vista por la API pública del shell.
+const openFunction = async (view) => {
+  const selector = `.eye-function-dock [data-eye-view="${view}"]`;
+  const blockedBy = await page.$eval(selector, (button) => {
+    const box = button.getBoundingClientRect();
+    const top = document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2,
+    );
+    if (top && (top === button || button.contains(top))) return null;
+    const style = getComputedStyle(button.closest('.eye-function-dock'));
+    const who = top
+      ? `${top.tagName.toLowerCase()}#${top.id}.${top.className}`
+      : 'nada';
+    return `${who} (dock visibility=${style.visibility} opacity=${style.opacity} pe=${style.pointerEvents})`;
+  });
+  if (!blockedBy) return page.click(selector);
+  result.findings.push({ control: selector, blockedBy });
+  await page.evaluate((v) => window.__eyeinsky.openView(v), view);
+};
+const openSignals = async () => {
+  if (
+    await page.$eval('#eye-signal-list', (l) => l.getClientRects().length > 0)
+  )
+    return;
+  await openFunction('instruments');
+  await page.click('#eye-connect');
+  await page.waitForFunction(
+    () =>
+      window.__eyeinsky.rows.length >= 2 &&
+      !document.querySelector('#eye-refresh').disabled &&
+      document.querySelector('#eye-signal-list').getClientRects().length > 0,
+    { timeout: 60000 },
+  );
+};
 try {
   page = await browser.newPage();
   await page.setViewport({
@@ -43,36 +81,50 @@ try {
   await ready();
   // Ruta real a Señales desde el rediseño P0-P2: el dock de funciones
   // lleva a Instrumentos y desde ahí se abre el registro sísmico.
-  await page.click('.eye-function-dock [data-eye-view="instruments"]');
-  await page.click('#eye-connect');
-  await page.waitForFunction(
-    () =>
-      window.__eyeinsky.rows.length >= 2 &&
-      !document.querySelector('#eye-refresh').disabled,
-    { timeout: 60000 },
-  );
+  await openSignals();
   const ids = await page.$$eval('#eye-signal-list button', (b) =>
     b.slice(0, 2).map((e) => e.dataset.signalId),
   );
   result.ids = ids;
   for (const id of ids) {
     await page.click(`[data-signal-id="${id}"]`);
-    await new Promise((r) => setTimeout(r, 950));
-    check(
-      `mobile selects real ID ${id}`,
-      await page.evaluate(
+    const picked = await page
+      .waitForFunction(
         (id) =>
           window.__eyeinsky.selectedId === id &&
-          window.__godsEyeView.viewer.selectedEntity.properties.usgsId.getValue() ===
+          window.__godsEyeView.viewer.selectedEntity?.properties?.usgsId?.getValue() ===
             id,
+        { timeout: 10000 },
         id,
-      ),
+      )
+      .then(() => true)
+      .catch(() => false);
+    check(
+      `mobile selects real ID ${id}`,
+      picked,
+      await page.evaluate(() => ({
+        selectedId: window.__eyeinsky.selectedId,
+        entity:
+          window.__godsEyeView.viewer.selectedEntity?.properties?.usgsId?.getValue() ??
+          null,
+      })),
     );
-    await page.click('#eye-mission-dock-close');
+    // P3.1: en móvil seleccionar pliega el panel y muestra el Mission Dock;
+    // se cierra su ficha y se vuelve a Señales por la ruta real.
+    await page
+      .waitForFunction(
+        () =>
+          document.querySelector('#eye-mission-dock-close')?.getClientRects()
+            .length > 0,
+        { timeout: 5000 },
+      )
+      .then(() => page.click('#eye-mission-dock-close'))
+      .catch(() => {});
+    await openSignals();
   }
   await page.select('#eye-filter-hours', '6');
   // Operación vive bajo Más desde el rediseño P0-P2.
-  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await openFunction('more');
   await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.type('#eye-operation-name', 'Recorrido móvil');
   await page.type('#eye-operation-note', 'Nota móvil privada');
@@ -88,7 +140,7 @@ try {
   await page.reload();
   await ready();
   // Operación vive bajo Más desde el rediseño P0-P2.
-  await page.click('.eye-function-dock [data-eye-view="more"]');
+  await openFunction('more');
   await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.click('[data-operation-action="open"]');
   await page.waitForFunction(
@@ -157,7 +209,9 @@ try {
   );
   const focus = [];
   await page.focus('#eye-help');
-  for (let i = 0; i < 12; i++) {
+  // P3.1 añadió el Mission Dock al orden de foco: se recorre hasta salir
+  // (tope 80) en vez de asumir exactamente 12 paradas.
+  for (let i = 0; i < 80 && focus.at(-1)?.tag !== 'BODY'; i++) {
     await page.keyboard.press('Tab');
     focus.push(
       await page.evaluate(() => ({
