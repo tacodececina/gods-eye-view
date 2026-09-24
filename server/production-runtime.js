@@ -5,6 +5,58 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+export const DEFAULT_MAX_BODY_BYTES = 1024 * 1024;
+export const SERVER_TIMEOUTS = Object.freeze({
+  headersTimeout: 15_000,
+  requestTimeout: 30_000,
+  keepAliveTimeout: 5_000,
+});
+
+const MIME_TYPES = Object.freeze({
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.json': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
+  '.txt': 'text/plain; charset=utf-8',
+  '.webmanifest': 'application/manifest+json',
+});
+
+export function contentTypeFor(file) {
+  return (
+    MIME_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream'
+  );
+}
+
+function bodyTooLarge(req, maxBodyBytes) {
+  const declared = req.headers['content-length'];
+  if (declared !== undefined) return Number(declared) > maxBodyBytes;
+  // Chunked bodies of unknown size are refused on /api; browsers send a length.
+  return Boolean(req.headers['transfer-encoding']);
+}
+
+export function installProcessGuards(proc = process, log = console.error) {
+  const fail = (kind) => (error) => {
+    log(`[eyeinsky] ${kind}:`, error?.message || String(error));
+    proc.exit(1);
+  };
+  proc.on('uncaughtException', fail('uncaught exception'));
+  proc.on('unhandledRejection', fail('unhandled rejection'));
+}
+
 function json(res, status, payload) {
   res.writeHead(status, {
     'Content-Type': 'application/json',
@@ -82,7 +134,7 @@ function safeAssetPath(dist, pathname) {
     : null;
 }
 
-function staticHandler(dist) {
+function staticHandler(dist, createReadStream = fs.createReadStream) {
   return async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD')
       return json(res, 405, { error: 'Method not allowed' });
@@ -105,13 +157,8 @@ function staticHandler(dist) {
         return json(res, 404, { error: 'Not found' });
       }
     }
-    const contentType = target.endsWith('.html')
-      ? 'text/html; charset=utf-8'
-      : target.endsWith('.js')
-        ? 'text/javascript; charset=utf-8'
-        : 'application/octet-stream';
-    res.writeHead(200, {
-      'Content-Type': contentType,
+    const headers = {
+      'Content-Type': contentTypeFor(target),
       'Cache-Control':
         isFallback || target.endsWith('.html')
           ? 'no-store'
@@ -119,9 +166,34 @@ function staticHandler(dist) {
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'Content-Security-Policy': "frame-ancestors 'none'",
+    };
+    if (req.method === 'HEAD') {
+      res.writeHead(200, headers);
+      return res.end();
+    }
+    await new Promise((resolve) => {
+      const stream = createReadStream(target);
+      let started = false;
+      const start = () => {
+        if (started) return;
+        started = true;
+        res.writeHead(200, headers);
+        stream.pipe(res);
+      };
+      stream.once('error', (error) => {
+        console.error('[eyeinsky] static stream failure:', error?.message);
+        if (!res.headersSent)
+          json(res, 500, { error: 'Internal server error' });
+        else res.destroy();
+        resolve();
+      });
+      stream.once('open', start);
+      res.once('close', () => {
+        stream.destroy();
+        resolve();
+      });
+      res.once('finish', resolve);
     });
-    if (req.method === 'HEAD') return res.end();
-    fs.createReadStream(target).pipe(res);
   };
 }
 
@@ -137,6 +209,8 @@ export function createProductionRuntime({
   providers,
   host = '127.0.0.1',
   port = 4173,
+  maxBodyBytes = DEFAULT_MAX_BODY_BYTES,
+  createReadStream,
 } = {}) {
   if (!dist) throw new Error('dist is required');
   const stack = createMiddlewareStack();
@@ -147,11 +221,16 @@ export function createProductionRuntime({
       try {
         if (req.url?.split('?')[0] === '/healthz')
           return json(res, 200, { ok: true, service: 'eyeinsky' });
+        const isApi = (req.url || '').split('?')[0].startsWith('/api/');
+        if (isApi && bodyTooLarge(req, maxBodyBytes)) {
+          res.setHeader('Connection', 'close');
+          return json(res, 413, { error: 'Payload too large' });
+        }
         await stack.handle(req, res);
         if (!res.writableEnded) {
           if (req.url?.split('?')[0].startsWith('/api/'))
             return json(res, 404, { error: 'Unknown API route' });
-          await staticHandler(path.resolve(dist))(req, res);
+          await staticHandler(path.resolve(dist), createReadStream)(req, res);
         }
       } catch (error) {
         if (!res.writableEnded)
@@ -183,6 +262,7 @@ export function createProductionRuntime({
         await new Promise((resolve) => runtime.server.close(resolve));
     },
   };
+  Object.assign(runtime.server, SERVER_TIMEOUTS);
   return runtime;
 }
 
@@ -192,6 +272,7 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
+  installProcessGuards();
   const runtime = createProductionRuntime({
     dist: path.resolve(
       process.env.EYEINSKY_DIST || path.join(here, '..', 'dist'),

@@ -1,0 +1,87 @@
+# Private staging vhost: basic-auth, noindex, phase header.
+# Install as /www/server/panel/vhost/nginx/staging.eyeinsky.org.conf (aaPanel includes
+# that directory inside http{}). Needs: /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf,
+#        /opt/eyeinsky-staging/shared/staging.htpasswd (root:www, 640; nginx runs as `www` on this aaPanel host),
+#        certificate for staging.eyeinsky.org (certbot certonly --webroot).
+# Zone/map names differ from production so both vhosts can coexist.
+limit_req_zone $binary_remote_addr zone=eyeinsky_staging_api:10m rate=10r/s;
+
+map $http_upgrade $connection_upgrade_eyeinsky_staging {
+    default upgrade;
+    ''      '';
+}
+
+server {
+    listen 80;
+    server_name staging.eyeinsky.org;
+    server_tokens off;
+    location /.well-known/acme-challenge/ { root /opt/eyeinsky-staging/shared/acme; }
+    location / { return 301 https://staging.eyeinsky.org$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name staging.eyeinsky.org;
+    server_tokens off;
+    root /opt/eyeinsky-staging/current/dist;
+    ssl_certificate /etc/letsencrypt/live/staging.eyeinsky.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/staging.eyeinsky.org/privkey.pem;
+    client_max_body_size 1m;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 30s;
+
+    auth_basic "EYEINSKY staging";
+    auth_basic_user_file /opt/eyeinsky-staging/shared/staging.htpasswd;
+
+    # Headers repeated in every block that adds its own (nginx does not merge).
+    include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+    add_header X-EYEINSKY-Phase staging always;
+
+    location = /robots.txt {
+        auth_basic off;
+        include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header X-EYEINSKY-Phase staging always;
+        default_type text/plain;
+        return 200 "User-agent: *\nDisallow: /\n";
+    }
+
+    location /api/ {
+        limit_req zone=eyeinsky_staging_api burst=20 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:4174;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade_eyeinsky_staging;
+        proxy_set_header Authorization "";
+        proxy_no_cache 1;
+        include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header X-EYEINSKY-Phase staging always;
+        add_header Cache-Control no-store always;
+    }
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|webp|wasm|glb|gltf|ico|woff2?)$ {
+        try_files $uri =404;
+        include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header X-EYEINSKY-Phase staging always;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location / {
+        proxy_pass http://127.0.0.1:4174;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Authorization "";
+        include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        add_header X-EYEINSKY-Phase staging always;
+        add_header Cache-Control no-store always;
+    }
+}
