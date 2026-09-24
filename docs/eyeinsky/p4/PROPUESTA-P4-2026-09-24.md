@@ -45,7 +45,7 @@ Todos vienen de `github.com/nasa/NASA-3D-Resources`, fijado en la revisión `11e
 
 **Registro de cada activo.** Se guarda en `public/models/satellites/manifest.json`, en `docs/eyeinsky/p4/ASSET-LEDGER.md` y en `docs/eyeinsky/planning/asset-manifest.json` y `sources-ledger.json`. Además va una sección nueva en `public/models/README.md`, que hoy solo cubre aeronaves y barcos con CC BY 4.0.
 
-Campos por activo: `id`, `uri` con hash (`iss-a.70d0619a.glb`), `fidelity`, `noradIds` o `families`, `scaleMeters`, `forwardAxis`, `upAxis`, `radiusM`, `triangles`, `primitives`, `textureMaxEdge`, `bytes`, `sha256`, `sourceUrl`, `sourceRevision`, `termsUrl`, `credit` y `verifiedAt`.
+Campos por activo: `id`, `uri` con hash, nombrado `<id>-<sha8>.glb` (p. ej. `iss-70d0619a.glb`; `<id>` es el slug corto del activo, no el `id` del manifiesto, y `<sha8>` son los 8 primeros hex del SHA-256), `fidelity`, `noradIds` o `families`, `scaleMeters`, `forwardAxis`, `upAxis`, `radiusM`, `triangles`, `primitives`, `textureMaxEdge`, `bytes`, `sha256`, `sourceUrl`, `sourceRevision`, `termsUrl`, `credit` y `verifiedAt`.
 
 ## 4. Arquitectura
 

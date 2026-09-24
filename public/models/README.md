@@ -19,3 +19,26 @@ under the license listed below.
 CC BY 4.0 permits sharing and adaptation, including commercial use, provided
 appropriate credit is retained, the license is linked, and modifications are
 identified. These credits do not imply endorsement by the original creators.
+
+## Satellite models (NASA 3D Resources)
+
+The files in `satellites/` come from NASA's
+[NASA-3D-Resources](https://github.com/nasa/NASA-3D-Resources/tree/11ebb4ee043715aefbba6aeec8a61746fad67fa7)
+repository, pinned to revision `11ebb4ee043715aefbba6aeec8a61746fad67fa7`.
+They are **not** CC BY 4.0, and the repository's MIT source-code license does
+not cover them. NASA's README states that the assets are "free and without
+copyright"; their use is still subject to the
+[NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/):
+no NASA insignia or logos, no implied NASA endorsement, and the credit line
+"Source: NASA 3D Resources". The byte-identical originals are shipped with the
+short SHA-256 in the file name; measurements, scale and axes are recorded in
+`satellites/manifest.json` and `docs/eyeinsky/p4/ASSET-LEDGER.md`.
+
+| File                                 | Original work and creator                                                  | Source                                                                                                                                                                                                                                                       | License                                                                         | Project modifications                                                                                                                               |
+| ------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `satellites/iss-70d0619a.glb`        | “International Space Station (ISS) (A)” by NASA (3D Resources contributor) | [NASA-3D-Resources @ 11ebb4e](https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28A%29/International%20Space%20Station%20%28ISS%29%20%28A%29.glb) | NASA 3D Resources: free and without copyright, subject to NASA usage guidelines | None. Byte-identical copy (SHA-256 `70d0619a…3678`); renamed with its short hash. Real scale is applied at runtime (`scaleMeters` in the manifest). |
+| `satellites/hubble-e5ba4de1.glb`     | “Hubble Space Telescope (A)” by NASA (3D Resources contributor)            | [NASA-3D-Resources @ 11ebb4e](https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb)                                   | NASA 3D Resources: free and without copyright, subject to NASA usage guidelines | None. Byte-identical copy (SHA-256 `e5ba4de1…a384`); renamed with its short hash. Real scale is applied at runtime.                                 |
+| `satellites/cubesat-1u-bae308ea.glb` | “CubeSat - 1 RU Generic” by NASA (3D Resources contributor)                | [NASA-3D-Resources @ 11ebb4e](https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/CubeSat%20-%201%20RU%20Generic/CubeSat%20-%201%20RU%20Generic.glb)                                               | NASA 3D Resources: free and without copyright, subject to NASA usage guidelines | None. Byte-identical copy (SHA-256 `bae308ea…1e85`); renamed with its short hash. Used only as a family model for the CelesTrak `cubesat` group.    |
+
+Unlike the aircraft above, all three satellite GLBs require
+`KHR_draco_mesh_compression`, which Cesium decodes in its Draco workers.

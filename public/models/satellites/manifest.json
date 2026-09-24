@@ -1,0 +1,136 @@
+[
+  {
+    "id": "nasa-iss",
+    "uri": "/models/satellites/iss-70d0619a.glb",
+    "fidelity": "specific",
+    "noradIds": [25544],
+    "families": [],
+    "scaleMeters": 4.2554456,
+    "forwardAxis": "+Z",
+    "upAxis": "+Y",
+    "radiusM": 72.068,
+    "triangles": 6642,
+    "primitives": 6,
+    "textureMaxEdge": 0,
+    "bytes": 39708,
+    "sha256": "70d0619a69312a45cbf740ba9a491fad854e10226dc5936c213fb1f93f063678",
+    "requiredExtensions": ["KHR_draco_mesh_compression"],
+    "gpuBytesEstimate": 281932,
+    "budget": {
+      "std": {
+        "ok": true,
+        "exceeded": []
+      },
+      "low": {
+        "ok": true,
+        "exceeded": []
+      },
+      "draco": {
+        "decision": "accepted",
+        "decidedBy": "Alex/KRÓNOS",
+        "decidedAt": "2026-09-24",
+        "rationale": "Cesium 1.138 ships the Draco decoder (draco_decoder.wasm) and the production CSP allows 'wasm-unsafe-eval' and blob: workers; Draco worker contention with photogrammetry is measured in T7."
+      },
+      "axes": "glTF +Y up / +Z forward pass through the Cesium axis correction (Y_UP_TO_Z_UP, then Z_UP_TO_X_UP) to +Z up / +X forward in the model local frame; the T3 LVLH law maps onto that converted frame."
+    },
+    "attitudeMode": "lvlh-nominal",
+    "sourceUrl": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28A%29/International%20Space%20Station%20%28ISS%29%20%28A%29.glb",
+    "sourceRevision": "11ebb4ee043715aefbba6aeec8a61746fad67fa7",
+    "termsUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "credit": "Source: NASA 3D Resources",
+    "verifiedAt": "2026-09-24"
+  },
+  {
+    "id": "nasa-hubble",
+    "uri": "/models/satellites/hubble-e5ba4de1.glb",
+    "fidelity": "specific",
+    "noradIds": [20580],
+    "families": [],
+    "scaleMeters": 0.0251195,
+    "forwardAxis": "+Z",
+    "upAxis": "+Y",
+    "radiusM": 10.786,
+    "triangles": 7672,
+    "primitives": 5,
+    "textureMaxEdge": 1024,
+    "bytes": 1694988,
+    "sha256": "e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384",
+    "requiredExtensions": ["KHR_draco_mesh_compression"],
+    "gpuBytesEstimate": 13365456,
+    "budget": {
+      "std": {
+        "ok": false,
+        "exceeded": ["gpuBytesEstimate 13365456 > 6291456"],
+        "decision": "exception-accepted",
+        "rationale": "Memory exception: ~13.4 MB estimated decoded GPU footprint, almost all textures (4 x 512x1024 + 1 x 512x512)."
+      },
+      "low": {
+        "ok": false,
+        "exceeded": [
+          "textureMaxEdge 1024 > 512",
+          "gpuBytesEstimate 13365456 > 2097152"
+        ],
+        "decision": "no-model",
+        "rationale": "In the low profile Hubble gets no model; it renders as a point only."
+      },
+      "draco": {
+        "decision": "accepted",
+        "decidedBy": "Alex/KRÓNOS",
+        "decidedAt": "2026-09-24",
+        "rationale": "Cesium 1.138 ships the Draco decoder (draco_decoder.wasm) and the production CSP allows 'wasm-unsafe-eval' and blob: workers; Draco worker contention with photogrammetry is measured in T7."
+      },
+      "axes": "glTF +Y up / +Z forward pass through the Cesium axis correction (Y_UP_TO_Z_UP, then Z_UP_TO_X_UP) to +Z up / +X forward in the model local frame; the T3 LVLH law maps onto that converted frame."
+    },
+    "attitudeMode": "desconocida-ilustrativa",
+    "sourceUrl": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb",
+    "sourceRevision": "11ebb4ee043715aefbba6aeec8a61746fad67fa7",
+    "termsUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "credit": "Source: NASA 3D Resources",
+    "verifiedAt": "2026-09-24"
+  },
+  {
+    "id": "nasa-cubesat-1u",
+    "uri": "/models/satellites/cubesat-1u-bae308ea.glb",
+    "fidelity": "family",
+    "noradIds": [],
+    "families": ["cubesat"],
+    "scaleMeters": 0.0479943,
+    "forwardAxis": "+Z",
+    "upAxis": "+Y",
+    "radiusM": 0.149,
+    "triangles": 23570,
+    "primitives": 18,
+    "textureMaxEdge": 0,
+    "bytes": 149424,
+    "sha256": "bae308ea2e33778c93675909f7dc2e0d5d6916cd685668a463566c61224b1e85",
+    "requiredExtensions": ["KHR_draco_mesh_compression"],
+    "gpuBytesEstimate": 1836996,
+    "budget": {
+      "std": {
+        "ok": false,
+        "exceeded": ["primitives 18 > 12"],
+        "decision": "exception-accepted",
+        "rationale": "18 primitives accepted (1.84 MB estimated decoded GPU footprint, 23,570 triangles)."
+      },
+      "low": {
+        "ok": false,
+        "exceeded": ["primitives 18 > 8"],
+        "decision": "exception-accepted",
+        "rationale": "18 primitives accepted (1.84 MB estimated decoded GPU footprint, 23,570 triangles)."
+      },
+      "draco": {
+        "decision": "accepted",
+        "decidedBy": "Alex/KRÓNOS",
+        "decidedAt": "2026-09-24",
+        "rationale": "Cesium 1.138 ships the Draco decoder (draco_decoder.wasm) and the production CSP allows 'wasm-unsafe-eval' and blob: workers; Draco worker contention with photogrammetry is measured in T7."
+      },
+      "axes": "glTF +Y up / +Z forward pass through the Cesium axis correction (Y_UP_TO_Z_UP, then Z_UP_TO_X_UP) to +Z up / +X forward in the model local frame; the T3 LVLH law maps onto that converted frame."
+    },
+    "attitudeMode": "desconocida-ilustrativa",
+    "sourceUrl": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/CubeSat%20-%201%20RU%20Generic/CubeSat%20-%201%20RU%20Generic.glb",
+    "sourceRevision": "11ebb4ee043715aefbba6aeec8a61746fad67fa7",
+    "termsUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "credit": "Source: NASA 3D Resources",
+    "verifiedAt": "2026-09-24"
+  }
+]

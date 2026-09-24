@@ -1,11 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   ALLOCATION_TEST_FILES,
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
+  discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
 } from '../scripts/run-unit-tests.mjs';
 
@@ -64,4 +68,35 @@ test('npm test stays green on every supported engine, not only the calibrated on
   const runner = readFileSync(new URL('../scripts/run-unit-tests.mjs', import.meta.url), 'utf8');
   assert.match(runner, /GEV_REQUIRE_ALLOCATION_GATE/);
   assert.match(runner, /SKIPPED .*allocation microbenchmarks/);
+});
+
+test('unit discovery covers src/** and first-level scripts/*.test.mjs only', (t) => {
+  const root = mkdtempSync(path.join(tmpdir(), 'unit-discovery-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const files = [
+    'src/a.test.mjs',
+    'src/nested/deep/b.test.mjs',
+    'src/helper.mjs',
+    'scripts/c.test.mjs',
+    'scripts/tool.mjs',
+    'scripts/fixtures/d.test.mjs',
+    'scripts/nested/e.test.mjs',
+    'docs/f.test.mjs',
+  ];
+  for (const file of files) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), '');
+  }
+  assert.deepEqual(discoverUnitTestFiles(root), [
+    'scripts/c.test.mjs',
+    'src/a.test.mjs',
+    'src/nested/deep/b.test.mjs',
+  ]);
+});
+
+test('the real repository discovery includes the GLB inspector suite', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const discovered = discoverUnitTestFiles(root);
+  assert.ok(discovered.includes('scripts/eyeinsky-glb-inspect.test.mjs'));
+  assert.equal(discovered.some((file) => file.startsWith('scripts/fixtures/')), false);
 });

@@ -66,6 +66,30 @@
       "url": "https://science.nasa.gov/mission/hubble/overview/about-hubble",
       "title": "NASA — About Hubble",
       "accessed": "2026-09-18"
+    },
+    {
+      "id": 12,
+      "url": "https://github.com/nasa/NASA-3D-Resources/tree/11ebb4ee043715aefbba6aeec8a61746fad67fa7",
+      "title": "NASA — NASA-3D-Resources, revisión fijada 11ebb4e (README: free and without copyright; ISS A, Hubble A, CubeSat 1U)",
+      "accessed": "2026-09-24"
+    },
+    {
+      "id": 13,
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=json",
+      "title": "CelesTrak — grupo cubesat (83 objetos, ningún NORAD de 6 dígitos el 2026-09-24)",
+      "accessed": "2026-09-24"
+    },
+    {
+      "id": 14,
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=json",
+      "title": "CelesTrak — grupo visual (156 objetos; incluye HST 20580 e ISS 25544 el 2026-09-24)",
+      "accessed": "2026-09-24"
+    },
+    {
+      "id": 15,
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
+      "title": "CelesTrak — grupo stations (22 objetos; incluye ISS 25544, no HST, el 2026-09-24)",
+      "accessed": "2026-09-24"
     }
   ]
 }
