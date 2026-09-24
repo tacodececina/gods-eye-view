@@ -1,0 +1,23 @@
+[Unit]
+Description=EYEINSKY production runtime
+After=network.target
+
+[Service]
+Type=simple
+User=eyeinsky
+Group=eyeinsky
+WorkingDirectory=/opt/eyeinsky/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=4173
+ExecStart=/usr/bin/node /opt/eyeinsky/current/server/production-runtime.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/eyeinsky/shared
+
+[Install]
+WantedBy=multi-user.target

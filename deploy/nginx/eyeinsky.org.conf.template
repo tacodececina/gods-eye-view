@@ -1,0 +1,44 @@
+server {
+    listen 80;
+    server_name eyeinsky.org www.eyeinsky.org;
+    location /.well-known/acme-challenge/ { root /opt/eyeinsky/shared/acme; }
+    location / { return 301 https://eyeinsky.org$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.eyeinsky.org;
+    ssl_certificate PLACEHOLDER_CERTIFICATE;
+    ssl_certificate_key PLACEHOLDER_CERTIFICATE_KEY;
+    return 301 https://eyeinsky.org$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name eyeinsky.org;
+    root /opt/eyeinsky/current/dist;
+    ssl_certificate PLACEHOLDER_CERTIFICATE;
+    ssl_certificate_key PLACEHOLDER_CERTIFICATE_KEY;
+    add_header X-EYEINSKY-Phase preparacion-https always;
+    add_header X-Content-Type-Options nosniff always;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:4173;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_no_cache 1;
+        add_header Cache-Control no-store always;
+    }
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|woff2?)$ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+    location / {
+        proxy_pass http://127.0.0.1:4173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        add_header Cache-Control no-store always;
+    }
+}
