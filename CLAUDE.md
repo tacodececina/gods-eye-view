@@ -43,9 +43,8 @@ Servidor canónico compartido: `http://127.0.0.1:4204/` (Vite dev local, no es
 deployment). Compruébalo con `curl` antes de usarlo; no lo mates ni lances otro
 sin orden.
 
-Conocido: `eyeinsky-focus`, `-journey`, `-mobile` y `-states` fallan por
-selectores obsoletos del rediseño P0–P2 (fallan igual en la base `8811666`); no
-son regresiones nuevas.
+Los arneses heredados `eyeinsky-focus`, `-journey`, `-mobile` y `-states` se
+repararon el 2026-09-24 y deben seguir en verde.
 
 ## Gates obligatorios antes de cerrar cualquier tarea
 
@@ -101,10 +100,11 @@ arregla la causa; no se salta ni se silencia.
 | `docs/eyeinsky/` | `FASES.md`, `planning/`, `p3/`, entregas y evidencia documentada |
 | `docs/superpowers/` | `plans/` y `specs/` de cada fase |
 
-## Estado de fases (al 2026-09-21)
+## Estado de fases (al 2026-09-24)
 
 - **P0–P3:** hechas y aceptadas técnicamente.
 - **P3.1 (Mission Dock):** hecha y verificada; integrada en `main`.
+- **Fase A (infra):** cerrada; staging privado vivo en `staging.eyeinsky.org`.
 - **P4 (satélites 3D):** planificada, NO iniciada. Plan:
   `docs/superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`. No empezar
   sin orden separada de Alex.
@@ -115,8 +115,9 @@ Fuente de verdad del estado: `EYEINSKY-SESSION.md` y `docs/eyeinsky/FASES.md`.
 
 ## Producción
 
-- `eyeinsky.org` corre en un VPS Hostinger detrás de nginx.
-- La rama `eyeinsky/production-runtime` contiene `deploy/README.md` con el
-  procedimiento.
+- `eyeinsky.org` (placeholder) y `staging.eyeinsky.org` (P3.1, basic-auth) corren
+  en un VPS Hostinger compartido (aaPanel, nginx como `www`, Node 22 del sistema).
+- `deploy/README.md` es el procedimiento real: `deploy/release.sh` (build local,
+  hash, symlink atómico, smoke, rollback), plantillas systemd y nginx.
 - **Publicar código (push/merge a `main`) ≠ desplegar.** El deploy sólo se hace
   con una orden separada y explícita de Alex.

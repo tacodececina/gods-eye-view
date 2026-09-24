@@ -1,8 +1,9 @@
 # EYEINSKY — fases guardadas al cierre
 
 Estado: P0–P3 verificadas localmente al 20sep2026; P3.1 (Mission Dock)
-implementada y verificada localmente al 21sep2026. P4 sigue SIN iniciar y es lo
-siguiente. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
+implementada y verificada localmente al 21sep2026; Fase A de infraestructura
+(arneses, runtime, staging privado en staging.eyeinsky.org) cerrada al
+24sep2026. P4 sigue SIN iniciar y es lo siguiente. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
 
 ## P0 — cerrada como base y spike técnico
 
@@ -59,6 +60,15 @@ fase. Evidencia local: `output/eyeinsky-p31/` (no versionada).
 Bhote Koshi queda **aplazado**, no cancelado: será una experiencia contextual
 futura y NO permanente. Mientras no exista ese diseño, la retirada es el estado
 honesto; reintroducirlo exige una fase propia, no un interruptor.
+
+## Fase A (2026-09-24) — herramientas, arneses y staging privado, cerrada
+
+- [x] Bug móvil del Mission Dock corregido; arneses heredados en verde; 4.311 tests, 0 fail.
+- [x] `CLAUDE.md` y toolkit `.claude/` (everything-claude-code + antigravity).
+- [x] Runtime de producción endurecido y `deploy/` con release verificado, smoke y rollback.
+- [x] `staging.eyeinsky.org` privado (basic-auth, noindex) sirviendo P3.1 desde el VPS; `eyeinsky.org` intacto.
+- [ ] Claves de proveedores en `eyeinsky.env` del staging (sin ellas no hay 3D Tiles/ion/voz).
+- [ ] Ejecutar el release procedure contra producción sólo en P7 con orden separada.
 
 ## P4 — satélites 3D, plan preparado; implementación NO iniciada
 

@@ -1,5 +1,24 @@
 # EYEINSKY — punto de reanudación
 
+## Actualización 2026-09-24 — Fase A cerrada: herramientas, arneses, runtime y staging privado
+
+Rama `eyeinsky/fase-a-herramientas` (worktree `C:/Users/Alex/orca/workspaces/gods-eye-view/coney`), sobre `fe31165`. Roadmap aprobado por Alex el 2026-09-23: **P4→P5→P6→P7 completas antes de publicar**; la infraestructura se ejercita en staging privado desde ya.
+
+Qué cambió:
+
+- **Bug de producto corregido** (`src/ui/eyeinskyShell.js`): en móvil (≤650 px) inspeccionar un sismo dejaba el Mission Dock suspendido sin lista ni ficha. Ahora se retira la razón `mobile-workspace` al mostrar la ficha; cerrar sigue volviendo a inicio.
+- **Los cuatro arneses heredados** (`eyeinsky-focus/-journey/-mobile/-states`) vuelven a verde contra 127.0.0.1:4204, junto a P3.1 15/15. Suite unitaria: 4.311 tests, 4.301 pass, 0 fail, 10 skip.
+- **`CLAUDE.md` del proyecto** y **toolkit `.claude/`** (everything-claude-code + 8 skills de antigravity; mapa en `.claude/MAPA-HABILIDADES.md`).
+- **Runtime de producción endurecido** (`server/production-runtime.js`, 10 tests): MIME completo, límite de body 1 MiB en /api, timeouts, errores de stream, guards de proceso, arranque correcto vía symlink `current/`.
+- **`deploy/` real**: `release.sh` construye desde el commit auditado, empaqueta dist + runtime + node_modules de producción, verifica sha256 en remoto, cambia symlink atómicamente, smoke y rollback automático. Plantillas systemd (hardening + EnvironmentFile), nginx con HSTS/CSP/limit_req y snippet compartido, vhost de staging con basic-auth. Rutas adaptadas al aaPanel del VPS (`/www/server/...`).
+- `ws` pasa a dependencia de runtime (lo necesita el proveedor AIS).
+
+**Staging vivo:** https://staging.eyeinsky.org/ (basic-auth, `noindex`, `X-EYEINSKY-Phase: staging`). VPS Hostinger compartido, árbol `/opt/eyeinsky-staging`, servicio `eyeinsky-staging` en 127.0.0.1:4174 con el Node 22 del sistema. Release activa `20260924T1436Z-staging`. Credencial de basic-auth en el servidor, `/root/eyeinsky-staging-credential.txt` (root, 600); nunca en el repo ni en el vault. `eyeinsky.org` sigue siendo el placeholder `preparacion-https`, intacto.
+
+Límites honestos del staging: sin claves de proveedores (`/opt/eyeinsky-staging/shared/eyeinsky.env` está vacío: sin Google 3D Tiles, ion, OpenAI, AIS, TomTom, FIRMS); dos violaciones CSP `script-src eval` de sondas de capacidad que no afectan al render; `/api/realtime/debug-log` responde 400 sin clave OpenAI. El release se ejercitó tres veces: el primero falló y hizo rollback automático (bug de arranque vía symlink, corregido).
+
+Siguiente: **P4 (satélites 3D)** con `docs/superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`, en worktree propio desde `main` tras integrar esta rama. Cada fase termina con release a staging.
+
 ## Actualización 2026-09-21 — P3.1 (Mission Dock) implementada y verificada; P4 sigue sin iniciar
 
 P3.1 está implementada en `eyeinsky/p3.1-mission-dock`
