@@ -40,7 +40,7 @@ fase. Evidencia local: `output/eyeinsky-p31/` (no versionada).
       siempre visible y cuerpo desplegable con tres paneles — OBJETIVO, MEDIOS
       (sólo si el contexto trae activos) y OPS.
 - [x] La cápsula de Actividad bajo Ayuda pasa a ser la terminal `EYEINSKY OPS //
-      LIVE`, tercer panel del dock, sobre el mismo modelo y fuentes de P3.
+    LIVE`, tercer panel del dock, sobre el mismo modelo y fuentes de P3.
 - [x] Autoridad de cámara separada de la identidad de selección: un gesto físico
       suelta la cámara y conserva el objetivo. `releaseCameraOwnership` frente a
       `stopTracking` en vuelos, militar y satélites; `refocusTrackedById` (SEGUIR)

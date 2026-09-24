@@ -88,17 +88,17 @@ arregla la causa; no se salta ni se silencia.
 
 ## Mapa de carpetas clave
 
-| Ruta | Contenido |
-| --- | --- |
-| `src/layers/<familia>/` | Capas: fuente, registros y recursos Cesium (flights, satellites, vessels, cctv, ...) |
-| `src/director/` | Director cinematográfico: cámara, reloj, timeline, playback, packs |
-| `src/ui/` | Shell, paneles, Mission Dock, navegación, estado visual, restauración |
-| `src/app/`, `src/services/`, `src/sources/`, `src/data/` | Construcción de la app, servicios, contratos de fuente, lifecycle/estado |
-| `server/providers/` | Rutas Node de feeds públicos, cachés por proceso y cierre |
-| `server/standalone/` | Entorno, key-setup, configs Vite (`eyeinsky.vite.config.js`) |
-| `scripts/` | Tests runner, doctor, format, boundaries y arneses `eyeinsky-*.mjs` |
-| `docs/eyeinsky/` | `FASES.md`, `planning/`, `p3/`, entregas y evidencia documentada |
-| `docs/superpowers/` | `plans/` y `specs/` de cada fase |
+| Ruta                                                     | Contenido                                                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `src/layers/<familia>/`                                  | Capas: fuente, registros y recursos Cesium (flights, satellites, vessels, cctv, ...) |
+| `src/director/`                                          | Director cinematográfico: cámara, reloj, timeline, playback, packs                   |
+| `src/ui/`                                                | Shell, paneles, Mission Dock, navegación, estado visual, restauración                |
+| `src/app/`, `src/services/`, `src/sources/`, `src/data/` | Construcción de la app, servicios, contratos de fuente, lifecycle/estado             |
+| `server/providers/`                                      | Rutas Node de feeds públicos, cachés por proceso y cierre                            |
+| `server/standalone/`                                     | Entorno, key-setup, configs Vite (`eyeinsky.vite.config.js`)                         |
+| `scripts/`                                               | Tests runner, doctor, format, boundaries y arneses `eyeinsky-*.mjs`                  |
+| `docs/eyeinsky/`                                         | `FASES.md`, `planning/`, `p3/`, entregas y evidencia documentada                     |
+| `docs/superpowers/`                                      | `plans/` y `specs/` de cada fase                                                     |
 
 ## Estado de fases (al 2026-09-24)
 
