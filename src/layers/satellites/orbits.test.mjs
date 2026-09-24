@@ -52,3 +52,17 @@ test('propagateStateEcef returns null when SGP4 fails', () => {
   );
   assert.equal(propagateStateEcef(null, AT), null);
 });
+
+test('propagateStateEcef writes into a caller result without allocating it', () => {
+  const result = {
+    position: new Cesium.Cartesian3(),
+    velocity: new Cesium.Cartesian3(),
+  };
+  const state = propagateStateEcef(ISS, AT, result);
+  assert.equal(state, result, 'returns the result holder');
+  assert.equal(state.position, result.position, 'reuses the position');
+  assert.equal(state.velocity, result.velocity, 'reuses the velocity');
+  const fresh = propagateStateEcef(ISS, AT);
+  assert.ok(Cesium.Cartesian3.equals(fresh.position, result.position));
+  assert.ok(Cesium.Cartesian3.equals(fresh.velocity, result.velocity));
+});

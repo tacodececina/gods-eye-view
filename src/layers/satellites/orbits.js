@@ -35,16 +35,14 @@ function sampleSgp4(satrec, date) {
   }
 }
 
-/** ECI (km or km/s) → ECEF axes, scaled to metres (or m/s). */
-function ecefMetres(vector, gmst) {
+/** ECI (km or km/s) → ECEF axes, scaled to metres (or m/s), into `result`. */
+function ecefMetres(vector, gmst, result = new Cesium.Cartesian3()) {
   const ecf = eciToEcf(vector, gmst);
-  const result = new Cesium.Cartesian3(
-    ecf.x * 1000,
-    ecf.y * 1000,
-    ecf.z * 1000,
-  );
-  return [result.x, result.y, result.z].every((c) => Number.isFinite(c))
-    ? result
+  const x = ecf.x * 1000;
+  const y = ecf.y * 1000;
+  const z = ecf.z * 1000;
+  return [x, y, z].every((c) => Number.isFinite(c))
+    ? Cesium.Cartesian3.fromElements(x, y, z, result)
     : null;
 }
 
@@ -56,15 +54,18 @@ function ecefMetres(vector, gmst) {
  * `speedMps` that `propagatePosition` reports for the same date.
  * @param {object} satrec satellite.js satrec.
  * @param {Date} date
+ * @param {{position: Cesium.Cartesian3, velocity: Cesium.Cartesian3}} [result]
+ *   Holder to write into (per-frame model pose); allocated when omitted.
  * @returns {{position: Cesium.Cartesian3, velocity: Cesium.Cartesian3}|null}
  *   Metres and m/s, or null when SGP4 fails or returns no velocity.
  */
-export function propagateStateEcef(satrec, date) {
+export function propagateStateEcef(satrec, date, result) {
   const sample = sampleSgp4(satrec, date);
   if (!sample?.velocity) return null;
-  const position = ecefMetres(sample.position, sample.gmst);
-  const velocity = ecefMetres(sample.velocity, sample.gmst);
-  return position && velocity ? { position, velocity } : null;
+  const position = ecefMetres(sample.position, sample.gmst, result?.position);
+  const velocity = ecefMetres(sample.velocity, sample.gmst, result?.velocity);
+  if (!position || !velocity) return null;
+  return result ?? { position, velocity };
 }
 
 export function createOrbits({ state: layerState, services, parts, source }) {

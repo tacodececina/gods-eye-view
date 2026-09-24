@@ -9,20 +9,22 @@ import { createInteraction } from './interaction.js';
 import { createLifecycle } from './lifecycle.js';
 import { createIngestion } from './ingestion.js';
 import { createState } from './state.js';
+import { createModelsHost } from './modelsHost.js';
 
 /** Construct one layer with its own scene state and supplied application services. */
-export function createSatellitesLayer({ services, source }) {
+export function createSatellitesLayer({ services, source, modelOptions = {} }) {
   if (typeof source?.readGroup !== 'function')
     throw new TypeError('A satellites source is required');
   const state = createState({ services });
   const parts = {};
-  const context = { state, services, parts, source };
+  const context = { state, services, parts, source, modelOptions };
   parts.controls = createControls(context);
   parts.catalog = createCatalog(context);
   parts.labels = createLabels(context);
   parts.orbits = createOrbits(context);
   parts.rendering = createRendering(context);
   parts.tracking = createTracking(context);
+  parts.models = createModelsHost(context);
   parts.testing = createTesting(context);
   parts.interaction = createInteraction(context);
   parts.lifecycle = createLifecycle(context);
@@ -60,6 +62,9 @@ export function createSatellitesLayer({ services, source }) {
         parts.testing._removeSatelliteTrackingCandidateForTest,
       _clearSatelliteLabelLifecycleForTest:
         parts.testing._clearSatelliteLabelLifecycleForTest,
+      _attachSatelliteModelsForTest:
+        parts.testing._attachSatelliteModelsForTest,
+      _satelliteModelStatsForTest: parts.testing._satelliteModelStatsForTest,
       applySatellitePointFocusDeemphasis:
         parts.rendering.applySatellitePointFocusDeemphasis,
       getNextIssPass: parts.orbits.getNextIssPass,

@@ -167,8 +167,10 @@ export function createTesting({ state: layerState, services, parts, source }) {
     point,
     overlayHost,
     preservePending = false,
+    now = null,
   }) {
     layerState._viewer = viewer;
+    layerState._trackedFrameNowForTest = now;
     layerState._catalog = new Map([
       [ISS_NORAD, { name: 'ISS (ZARYA)', satrec, group: 'stations' }],
     ]);
@@ -233,7 +235,26 @@ export function createTesting({ state: layerState, services, parts, source }) {
     layerState._overlayHost.setVisible(ISS_OVERLAY_SOURCE_ID, false);
     layerState._overlayHost = layerState.DEFAULT_OVERLAY_HOST;
   }
+  /**
+   * Attach the models part to a viewer with injected loader/manifest/clock
+   * (replacing any attached instance), as lifecycle.init does in production.
+   * @param {object} viewer Viewer the models render through.
+   * @param {object} [overrides] modelOptions overrides (see modelsHost.js).
+   */
+
+  function _attachSatelliteModelsForTest(viewer, overrides = {}) {
+    parts.models.destroy();
+    return parts.models.attach(viewer, overrides);
+  }
+
+  /** Model stats (active, ready, pending, failed, ids, profile, manifest...). */
+
+  function _satelliteModelStatsForTest() {
+    return parts.models.getStats();
+  }
   return {
+    _attachSatelliteModelsForTest,
+    _satelliteModelStatsForTest,
     _setTrackedSatelliteRefreshStateForTest,
     _setSatelliteTrackingRefreshOutcomeForTest,
     _trackedFrameCartesianForTest,

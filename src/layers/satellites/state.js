@@ -143,6 +143,18 @@ export function createState({ services }) {
 
   state._trackedFrameCartesian = new Cesium.Cartesian3();
 
+  /** Epoch (ms) of the shared tracked sample; the tracked model's velocity uses it. */
+
+  state._trackedFrameDateMs = Number.NaN;
+
+  // P4 near-field models (modelsHost.js): the createSatelliteModels instance
+  // for the viewer's lifetime and the profile chosen at attach. Loads are
+  // invalidated by _catalogRevision, bumped on every ingestion rebuild.
+
+  state._models = null;
+
+  state._modelProfile = null;
+
   /** Optional deterministic clock used only by the production-frame test seam. */
 
   state._trackedFrameNowForTest = null;

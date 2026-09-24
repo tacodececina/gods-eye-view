@@ -124,7 +124,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
 
   function _clearTracking(
     skipViewerUntrack = false,
-    { origin = 'programmatic' } = {},
+    { origin = 'programmatic', keepModelOf = null } = {},
   ) {
     // Untracking dissolves the cluster: every companion returns to its own
     // ambient label on the next collection.
@@ -137,6 +137,9 @@ export function createTracking({ state: layerState, services, parts, source }) {
     }
     const clearedNorad = layerState._trackedNorad;
     clearFocusTarget('satellites', layerState._trackedNorad);
+    // Target change: the old target's model leaves at once (P4), unless the
+    // same satellite is being re-tracked.
+    if (clearedNorad !== keepModelOf) parts.models.releaseTarget(clearedNorad);
 
     const lastPos = layerState._points.get(layerState._trackedNorad);
 
@@ -158,6 +161,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     // Invalidate the per-frame tracked-position cache (WS-D2)
     layerState._trackedFrameNumber = -1;
     layerState._trackedFrameGeo = null;
+    layerState._trackedFrameDateMs = Number.NaN;
 
     // Remove tracked entity and orbit path (unless ISS — keep its path)
     if (layerState._trackedNorad !== ISS_NORAD) {
@@ -202,14 +206,14 @@ export function createTracking({ state: layerState, services, parts, source }) {
       frameNumber !== layerState._trackedFrameNumber ||
       layerState._trackedFrameGeo === null
     ) {
-      const pos = parts.orbits.propagatePosition(
-        sat.satrec,
-        layerState._trackedFrameNowForTest
-          ? new Date(layerState._trackedFrameNowForTest())
-          : new Date(),
-      );
+      const sampleDate = layerState._trackedFrameNowForTest
+        ? new Date(layerState._trackedFrameNowForTest())
+        : new Date();
+      const pos = parts.orbits.propagatePosition(sat.satrec, sampleDate);
       if (!pos) return layerState._trackedFrameGeo; // propagation hiccup — keep last good sample
       layerState._trackedFrameGeo = pos;
+      // The tracked model's attitude re-derives velocity at this same epoch.
+      layerState._trackedFrameDateMs = sampleDate.getTime();
       Cesium.Cartesian3.fromDegrees(
         pos.longitude,
         pos.latitude,
@@ -443,7 +447,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
   }
 
   function _trackSatellite(noradId, { origin = 'programmatic' } = {}) {
-    _clearTracking(false, { origin });
+    _clearTracking(false, { origin, keepModelOf: noradId });
 
     const point = layerState._points.get(noradId);
     const sat = layerState._catalog.get(noradId);
@@ -514,6 +518,8 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._contextRefreshedAtMs = Date.now();
 
     layerState._viewer.trackedEntity = layerState._trackedEntity;
+    // P4: reconcile at once for the new target and warm its model bytes.
+    parts.models.prepareTarget(noradId);
     console.log(`[Data:Satellites] Tracking ${name} (NORAD ${noradId})`);
   }
   return {

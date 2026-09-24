@@ -193,6 +193,10 @@ export function createRendering({
 
     if (layerState._params.showPoints) parts.catalog._propagateDenseChunk();
 
+    // The entity dot and follow camera were placed on the clock tick with the
+    // cached sample; keep it for the tracked model before the refresh below.
+    parts.models.captureTrackedSample();
+
     // Keep the tracked dot on the per-frame epoch shared with label + camera —
     // runs after _propagateAll so the per-frame sample wins over the 200ms one.
     if (layerState._trackedNorad !== null) {
@@ -202,6 +206,10 @@ export function createRendering({
         point.position = layerState._trackedFrameCartesian; // primitive setter clones
       }
     }
+
+    // Near-field models (P4): throttled LOD reconcile plus the per-frame pose of
+    // the admitted models, after the tracked sample so they share its epoch.
+    parts.models.frame();
 
     _updatePointFocus(now);
 

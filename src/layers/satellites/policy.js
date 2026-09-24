@@ -266,3 +266,31 @@ export const SAT_MODEL_EVICT_DEBOUNCE_MS = 2000;
 export const SAT_MODEL_LOW_MAX_VIEWPORT_PX = 650;
 
 export const SAT_MODEL_LOW_MAX_DEVICE_MEMORY_GB = 4;
+
+/**
+ * Per-URI load failure veto (mirror of flights TRACKED_MODEL_MAX_LOAD_FAILS):
+ * after this many failed loads (404, network, Draco/glTF decode) the URI is
+ * vetoed for the session and the satellite stays an SGP4 point. A failed
+ * URI is retried no sooner than SAT_MODEL_RETRY_BACKOFF_MS.
+ */
+
+export const SAT_MODEL_MAX_LOAD_FAILS = 3;
+
+export const SAT_MODEL_RETRY_BACKOFF_MS = 1500;
+
+/**
+ * Conditional credit for the curated NASA 3D Resources models: registered on
+ * the first satellite model-ready and retired when no model is active
+ * (public/models/README.md and the manifest `credit` field).
+ */
+
+export const SAT_MODEL_CREDIT = Object.freeze({
+  key: 'nasa-3d-resources',
+  html:
+    'Satellite models: Source: ' +
+    '<a href="https://github.com/nasa/NASA-3D-Resources" target="_blank" rel="noopener">NASA 3D Resources</a>',
+});
+
+/** Curated satellite model manifest (public/models/satellites/manifest.json). */
+
+export const SAT_MODEL_MANIFEST_URI = '/models/satellites/manifest.json';
