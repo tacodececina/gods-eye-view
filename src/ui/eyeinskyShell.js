@@ -469,8 +469,15 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
         { lon: row.lon, lat: row.lat, alt: 4500000 },
         { targetId: `earthquakes:${row.id}` },
       );
-    if (matchMedia('(max-width:650px)').matches)
+    // En móvil el panel ocupa la pantalla y mantiene viva la razón
+    // `mobile-workspace`. Ocultar sólo la superficie dejaba la ficha
+    // suspendida (dock oculto) sin lista ni expediente: se retira la razón al
+    // mostrar la ficha. La vista sigue siendo Señales para que cerrar vuelva
+    // a inicio como decide closeInspector.
+    if (matchMedia('(max-width:650px)').matches) {
       setSurface('eye-workspace', false);
+      setEyeSurfaceSuspension('mobile-workspace', false);
+    }
     lastListSignature = '';
     paintFeed();
   }
