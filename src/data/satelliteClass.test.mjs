@@ -32,6 +32,9 @@ const DENSE_TLE = tleFor('44444', 'STARLINK-TEST');
 const ALT_TLE = tleFor('33333', 'DRIFTER-1');
 const ISS_TLE = tleFor('25544', 'ISS (ZARYA)');
 
+/** Request path without the query: core groups now ask for ?FORMAT=json. */
+const pathOf = (url) => new URL(String(url), 'http://fixture.invalid').pathname;
+
 /** Poll the chip until the async dense load settles (or give up). */
 async function settleChip(maxTicks = 50) {
   for (let i = 0; i < maxTicks; i++) {
@@ -43,7 +46,7 @@ async function settleChip(maxTicks = 50) {
 }
 
 /** Every CelesTrak group the catalog ingests, plus the dense-mode tag. */
-const INGESTED_GROUPS = ['stations', 'visual', 'gps-ops', 'glonass', 'galileo', 'geo', 'dense'];
+const INGESTED_GROUPS = ['stations', 'cubesat', 'visual', 'gps-ops', 'glonass', 'galileo', 'geo', 'dense'];
 
 test('every ingested CelesTrak group resolves to a real class', () => {
   // Guards against drift: adding a group to CATALOG_GROUPS without classifying
@@ -390,7 +393,7 @@ test('a real stations-feed outage keeps STATION in the legend, matching the card
     const viewer = { scene: { primitives: { add: (p) => p, remove() {} } } };
     globalThis.fetch = async (url) => ({
       ok: true,
-      text: async () => (String(url).endsWith('/visual') ? ISS_TLE : ''),
+      text: async () => (pathOf(url).endsWith('/visual') ? ISS_TLE : ''),
     });
 
     await satellitesLayer.update(viewer);
@@ -428,7 +431,7 @@ test('a catalog rebuild refreshes the detection overlay class strings', async ()
     let homeGroup = 'geo';
     globalThis.fetch = async (url) => ({
       ok: true,
-      text: async () => (String(url).endsWith(`/${homeGroup}`) ? ALT_TLE : ''),
+      text: async () => (pathOf(url).endsWith(`/${homeGroup}`) ? ALT_TLE : ''),
     });
 
     await satellitesLayer.update(viewer);

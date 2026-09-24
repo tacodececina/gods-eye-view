@@ -49,6 +49,13 @@ export const SATELLITE_CLASSES = Object.freeze({
     color: '#c89bff',
     blurb: 'Geostationary belt — comms and weather, fixed over the equator',
   }),
+  cubesat: Object.freeze({
+    label: 'CUBESAT',
+    // Mineral green — the EYEINSKY near-field accent, kept clear of NAV cyan
+    // by hue (~155deg vs ~195deg) and of the amber military band.
+    color: '#7ee0b8',
+    blurb: 'CubeSats — CelesTrak cubesat group',
+  }),
   visual: Object.freeze({
     label: 'VISUAL',
     // Muted blue-gray. This is the catch-all bucket, so it gives up the bright
@@ -73,6 +80,7 @@ export const SATELLITE_CLASS_ORDER = Object.freeze([
   'station',
   'nav',
   'geo',
+  'cubesat',
   'visual',
   'comms',
 ]);
@@ -89,6 +97,7 @@ const GROUP_CLASS = Object.freeze({
   glonass: Object.freeze({ klass: 'nav', subtype: 'GLONASS' }),
   galileo: Object.freeze({ klass: 'nav', subtype: 'GALILEO' }),
   geo: Object.freeze({ klass: 'geo', subtype: null }),
+  cubesat: Object.freeze({ klass: 'cubesat', subtype: null }),
   dense: Object.freeze({ klass: 'comms', subtype: 'STARLINK' }),
 });
 

@@ -746,5 +746,13 @@
   "scripts/qa-director-sharing.mjs",
   "scripts/eyeinsky-glb-inspect.mjs",
   "scripts/eyeinsky-glb-inspect.test.mjs",
-  "public/models/satellites/manifest.json"
+  "public/models/satellites/manifest.json",
+  "src/layers/satellites/elements.test.mjs",
+  "src/layers/satellites/modelRegistry.test.mjs",
+  "src/layers/satellites/modelLod.test.mjs",
+  "src/layers/satellites/modelBudget.test.mjs",
+  "src/layers/satellites/attitude.test.mjs",
+  "src/layers/satellites/orbits.test.mjs",
+  "src/data/satellitesAlpha5.test.mjs",
+  "src/data/satellitesCubesat.test.mjs"
 ]

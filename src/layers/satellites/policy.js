@@ -40,16 +40,53 @@ export const RING_ROTATION_MS = 1000;
  * proxy; `tag` is the internal group key used for POINT_STYLES lookup.
  * Note: CelesTrak's GLONASS group is named 'glo-ops' (not
  * 'glonass-operational' — that name 404s upstream).
+ * 'cubesat' (P4) sits right after 'stations': a docked or station-listed
+ * object keeps its station tag, and only members of this group can receive the
+ * CubeSat 1U family model (never by name, never from 'stations').
  */
 
 export const CATALOG_GROUPS = [
   { tag: 'stations', path: 'stations' },
+  { tag: 'cubesat', path: 'cubesat' },
   { tag: 'visual', path: 'visual' },
   { tag: 'gps-ops', path: 'gps-ops' },
   { tag: 'glonass', path: 'glo-ops' },
   { tag: 'galileo', path: 'galileo' },
   { tag: 'geo', path: 'geo' },
 ];
+
+/**
+ * Element-set wire format requested per catalog (P4 T1). Core groups ask the
+ * proxy for CelesTrak OMM JSON (FORMAT=json): it carries the exact NORAD
+ * number (six digits included) and an ISO epoch. The dense Starlink shell stays
+ * on legacy TLE text: ~10K records are parsed in chunks and the TLE body is
+ * roughly a third of the JSON size. The source reports the format it actually
+ * received, so a proxy that ignores FORMAT still parses as TLE.
+ */
+
+export const CORE_ELEMENT_FORMAT = 'omm';
+
+export const DENSE_ELEMENT_FORMAT = 'tle';
+
+/**
+ * Orbital element age thresholds (P4 T1), measured from the element EPOCH —
+ * never from the cache fetch time or TTL. SGP4 error grows fastest in LEO
+ * (drag), so the regime split is by mean motion: above 11.25 rev/day
+ * (period < 128 min) is LEO. Age < FRESH → 'vigente'; age > EXPIRED →
+ * 'caducada'; in between → 'envejecida'; epoch after now → 'futura'.
+ */
+
+export const SAT_ELEMENT_LEO_MIN_REV_PER_DAY = 11.25;
+
+const ELEMENT_DAY_MS = 86_400_000;
+
+export const SAT_ELEMENT_LEO_FRESH_MS = 3 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_LEO_EXPIRED_MS = 14 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_HIGH_FRESH_MS = 14 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_HIGH_EXPIRED_MS = 60 * ELEMENT_DAY_MS;
 
 // Dense-catalog mode (setParams({ catalog: 'dense' })): Starlink shell as
 // points-only extras — no labels, no detection-overlay participation, and a
@@ -113,6 +150,13 @@ export const POINT_STYLES = {
   stations: {
     pixelSize: 8,
     color: _classColor('stations'),
+    outlineColor: POINT_OUTLINE,
+    outlineWidth: 0,
+  },
+  // CubeSats: small (the objects are 10 cm), mineral green of their class.
+  cubesat: {
+    pixelSize: 5,
+    color: _classColor('cubesat'),
     outlineColor: POINT_OUTLINE,
     outlineWidth: 0,
   },
@@ -180,3 +224,45 @@ export const DOCKED_SCAN_INTERVAL_MS = 1000;
  */
 
 export const CONTEXT_REFRESH_INTERVAL_MS = 1000;
+
+/**
+ * Satellite model profiles (P4). 'std' desktop/GPD, 'low' coarse pointer or
+ * small/low-memory devices, 'off' points only. Override: ?satModels=std|low|off.
+ */
+
+export const SAT_MODEL_PROFILE_NAMES = Object.freeze(['std', 'low', 'off']);
+
+/**
+ * Near-field model LOD (P4 T3), decided by projected diameter in CSS pixels
+ * (see modelLod.js) with hysteresis: a model is added at ADD and kept until it
+ * drops below KEEP. The tracked satellite needs only the pixel band; any other
+ * satellite also needs the camera within ADD_M (kept until KEEP_M).
+ * Provisional values from the approved proposal §5; T7 calibrates them on the
+ * GPD and records the evidence path next to each change.
+ */
+
+export const SAT_MODEL_TRACKED_ADD_PX = 6;
+
+export const SAT_MODEL_TRACKED_KEEP_PX = 3;
+
+export const SAT_MODEL_SECONDARY_ADD_PX = 16;
+
+export const SAT_MODEL_SECONDARY_KEEP_PX = 10;
+
+export const SAT_MODEL_SECONDARY_ADD_M = 25000;
+
+export const SAT_MODEL_SECONDARY_KEEP_M = 30000;
+
+/** Model admission/eviction reconcile cadence; pose still updates per frame. */
+
+export const SAT_MODEL_RECONCILE_MS = 250;
+
+/** Leaving the band evicts after this delay (target change/disable: at once). */
+
+export const SAT_MODEL_EVICT_DEBOUNCE_MS = 2000;
+
+/** Device signals that select the 'low' profile when no override is given. */
+
+export const SAT_MODEL_LOW_MAX_VIEWPORT_PX = 650;
+
+export const SAT_MODEL_LOW_MAX_DEVICE_MEMORY_GB = 4;

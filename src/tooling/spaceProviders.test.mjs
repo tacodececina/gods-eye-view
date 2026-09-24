@@ -8,6 +8,7 @@ import {
   LL2_CACHE_TTL_MS,
 } from 'gods-eye-view/server/providers/space';
 import {
+  celestrakGpUrl,
   celestrakTleUrl,
   launchLibraryRecentUrl,
 } from 'gods-eye-view/sources/space';
@@ -118,6 +119,105 @@ test('exported CelesTrak plugin coalesces refreshes, retains stale TLEs, and rea
   const disk = await install(celestrakProxy())('/api/celestrak', '/stations');
   assert.equal(disk.headers['x-tle-cache'], 'HIT');
   assert.equal(disk.body, tle);
+});
+
+test('CelesTrak GP requests select TLE or OMM JSON and keep TLE as the default', () => {
+  const json = celestrakGpUrl('stations', { format: 'json' });
+  assert.equal(json.origin, 'https://celestrak.org');
+  assert.equal(json.pathname, '/NORAD/elements/gp.php');
+  assert.equal(json.searchParams.get('GROUP'), 'stations');
+  assert.equal(json.searchParams.get('FORMAT'), 'json');
+  assert.equal(celestrakGpUrl('visual').searchParams.get('FORMAT'), 'tle');
+  assert.equal(
+    celestrakTleUrl('visual').toString(),
+    celestrakGpUrl('visual', { format: 'tle' }).toString(),
+  );
+  for (const format of ['xml', 'JSON', '', 'tle&FORMAT=json'])
+    assert.throws(() => celestrakGpUrl('visual', { format }), TypeError);
+});
+
+test('CelesTrak proxy caches OMM JSON apart from TLE with its own single-flight', async (t) => {
+  isolateDisk(t);
+  const now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(console, 'warn', () => {});
+  const omm = JSON.stringify([
+    { OBJECT_NAME: 'ISS (ZARYA)', NORAD_CAT_ID: 25544 },
+  ]);
+  const tle = 'ISS\n1 25544U fixture\n2 25544 fixture';
+  const upstream = [];
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const format = new URL(url).searchParams.get('FORMAT');
+    upstream.push(format);
+    await gate;
+    return new Response(format === 'json' ? omm : tle);
+  });
+  const request = install(celestrakProxy());
+  assert.equal(
+    (await request('/api/celestrak', '/stations?FORMAT=xml')).status,
+    400,
+  );
+  const pending = [
+    request('/api/celestrak', '/stations?FORMAT=json'),
+    request('/api/celestrak', '/stations?FORMAT=JSON'),
+    request('/api/celestrak', '/stations'),
+  ];
+  release();
+  const [first, second, legacy] = await Promise.all(pending);
+  assert.deepEqual(upstream.sort(), ['json', 'tle']);
+  assert.equal(first.body, omm);
+  assert.equal(second.body, omm);
+  assert.equal(first.headers['Content-Type'], 'application/json');
+  assert.equal(first.headers['x-tle-cache'], 'MISS');
+  assert.equal(first.headers['x-tle-fetched-at'], String(now));
+  assert.equal(legacy.body, tle);
+  assert.equal(legacy.headers['Content-Type'], 'text/plain');
+  const hit = await request('/api/celestrak', '/stations?FORMAT=json');
+  assert.equal(hit.headers['x-tle-cache'], 'HIT');
+  assert.equal(hit.body, omm);
+  const writes = fsp.writeFile.mock.calls.map((call) =>
+    String(call.arguments[0]),
+  );
+  assert.equal(new Set(writes).size, 2, 'one disk cache file per format');
+});
+
+test('CelesTrak proxy rejects JSON without NORAD ids and serves the stale OMM copy', async (t) => {
+  isolateDisk(t);
+  let now = Date.now();
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(console, 'warn', () => {});
+  const omm = JSON.stringify([{ NORAD_CAT_ID: 123456, OBJECT_NAME: 'P4' }]);
+  t.mock.method(globalThis, 'fetch', async () => new Response(omm));
+  const request = install(celestrakProxy());
+  const fresh = await request('/api/celestrak', '/cubesat?FORMAT=json');
+  assert.equal(fresh.headers['x-tle-cache'], 'MISS');
+  const fetchedAt = fresh.headers['x-tle-fetched-at'];
+  now += 6 * 3600_000;
+  for (const invalid of [
+    '[]',
+    '{"NORAD_CAT_ID":1}',
+    '[{"OBJECT_NAME":"no id"}]',
+    'No GP data found',
+    'ISS\n1 25544U fixture\n2 25544 fixture',
+  ]) {
+    t.mock.method(globalThis, 'fetch', async () => new Response(invalid));
+    const stale = await request('/api/celestrak', '/cubesat?FORMAT=json');
+    assert.equal(stale.status, 200);
+    assert.equal(stale.body, omm);
+    assert.equal(stale.headers['x-tle-cache'], 'STALE-ERROR');
+    assert.equal(stale.headers['x-tle-fetched-at'], fetchedAt);
+  }
+  const none = await install(celestrakProxy())(
+    '/api/celestrak',
+    '/visual?FORMAT=json',
+  );
+  assert.equal(none.status, 502);
+  assert.equal(none.headers['x-tle-cache'], 'NONE');
+  assert.equal(none.headers['x-tle-fetched-at'], undefined);
 });
 
 for (const preview of [false, true])

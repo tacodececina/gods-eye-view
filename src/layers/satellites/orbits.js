@@ -2,6 +2,7 @@ import * as Cesium from 'cesium';
 import {
   gstime,
   propagate,
+  eciToEcf,
   eciToGeodetic,
   degreesLong,
   degreesLat,
@@ -9,6 +10,62 @@ import {
 } from 'satellite.js';
 import { findNextIssPass } from '../../data/issPass.js';
 import { ORBIT_PATH_STEPS, ISS_NORAD } from './policy.js';
+import { normalizeNoradId, parseTleText } from './elements.js';
+
+/**
+ * One SGP4 sample: TEME position (km) and velocity (km/s) plus the GMST of
+ * `date`, or null when SGP4 fails. Every propagation helper starts here so
+ * the point, the orbit readout and the model pose share one sample path.
+ * @param {object} satrec satellite.js satrec.
+ * @param {Date} date
+ * @returns {{position: object, velocity: object|null, gmst: number}|null}
+ */
+function sampleSgp4(satrec, date) {
+  try {
+    const posVel = propagate(satrec, date);
+    const position = posVel?.position;
+    if (!position || typeof position === 'boolean') return null;
+    const velocity =
+      posVel.velocity && typeof posVel.velocity !== 'boolean'
+        ? posVel.velocity
+        : null;
+    return { position, velocity, gmst: gstime(date) };
+  } catch {
+    return null;
+  }
+}
+
+/** ECI (km or km/s) → ECEF axes, scaled to metres (or m/s). */
+function ecefMetres(vector, gmst) {
+  const ecf = eciToEcf(vector, gmst);
+  const result = new Cesium.Cartesian3(
+    ecf.x * 1000,
+    ecf.y * 1000,
+    ecf.z * 1000,
+  );
+  return [result.x, result.y, result.z].every((c) => Number.isFinite(c))
+    ? result
+    : null;
+}
+
+/**
+ * SGP4 state in ECEF axes for model pose (P4 T3).
+ * `velocity` is the inertial (TEME) velocity rotated into ECEF axes — the
+ * vector the LVLH frame is defined by — not the Earth-relative velocity
+ * (they differ by ω×r, ~0.5 km/s in LEO). Its magnitude equals the
+ * `speedMps` that `propagatePosition` reports for the same date.
+ * @param {object} satrec satellite.js satrec.
+ * @param {Date} date
+ * @returns {{position: Cesium.Cartesian3, velocity: Cesium.Cartesian3}|null}
+ *   Metres and m/s, or null when SGP4 fails or returns no velocity.
+ */
+export function propagateStateEcef(satrec, date) {
+  const sample = sampleSgp4(satrec, date);
+  if (!sample?.velocity) return null;
+  const position = ecefMetres(sample.position, sample.gmst);
+  const velocity = ecefMetres(sample.velocity, sample.gmst);
+  return position && velocity ? { position, velocity } : null;
+}
 
 export function createOrbits({ state: layerState, services, parts, source }) {
   /**
@@ -42,21 +99,7 @@ export function createOrbits({ state: layerState, services, parts, source }) {
    */
 
   function parseTLE(text) {
-    const lines = text
-      .trim()
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-    const result = [];
-    for (let i = 0; i < lines.length - 2; i += 3) {
-      const name = lines[i];
-      const line1 = lines[i + 1];
-      const line2 = lines[i + 2];
-      if (line1.startsWith('1 ') && line2.startsWith('2 ')) {
-        result.push({ name, line1, line2 });
-      }
-    }
-    return result;
+    return parseTleText(text);
   }
 
   /**
@@ -66,16 +109,11 @@ export function createOrbits({ state: layerState, services, parts, source }) {
    */
 
   function propagatePosition(satrec, date) {
+    const sample = sampleSgp4(satrec, date);
+    if (!sample) return null;
     try {
-      const posVel = propagate(satrec, date);
-      if (!posVel.position || typeof posVel.position === 'boolean') return null;
-
-      const gmst = gstime(date);
-      const geo = eciToGeodetic(posVel.position, gmst);
-      const velocity =
-        posVel.velocity && typeof posVel.velocity !== 'boolean'
-          ? posVel.velocity
-          : null;
+      const geo = eciToGeodetic(sample.position, sample.gmst);
+      const { velocity } = sample;
       const speedMps = velocity
         ? Math.hypot(velocity.x, velocity.y, velocity.z) * 1000
         : null;
@@ -224,7 +262,8 @@ export function createOrbits({ state: layerState, services, parts, source }) {
     const current = propagatePosition(satrec, referenceDate);
     if (!current) return null;
     return {
-      noradId: Number(satrec.satnum),
+      // null (not NaN) when the catalogue number is not an exact integer.
+      noradId: normalizeNoradId(satrec.satnum),
       name: String(name || '').trim(),
       current,
       periodSec: orbitalPeriodSeconds(satrec),
@@ -313,6 +352,7 @@ export function createOrbits({ state: layerState, services, parts, source }) {
     orbitFrameModelMatrix,
     parseTLE,
     propagatePosition,
+    propagateStateEcef,
     orbitalPeriodSeconds,
     computeOrbitPath,
     getNextIssPass,
