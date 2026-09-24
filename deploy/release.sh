@@ -81,7 +81,8 @@ fi
 
 test ! -e "$REL" || { echo "release $RELEASE_ID already exists" >&2; exit 1; }
 test ! -e "$BACKUP" || { echo "backup $BACKUP already exists" >&2; exit 1; }
-PREVIOUS="$(readlink -f "$APP_ROOT/current" || true)"
+# -e (not -f): empty on the first release instead of the unresolved path itself.
+PREVIOUS="$(readlink -e "$APP_ROOT/current" 2>/dev/null || true)"
 
 mkdir -p "$BACKUP" "$APP_ROOT/shared/runtime"
 chown root:root "$APP_ROOT" "$APP_ROOT/shared"
@@ -128,9 +129,12 @@ if smoke; then
 fi
 
 echo "smoke failed; rolling back" >&2
-if test -n "$PREVIOUS" && test -d "$PREVIOUS"; then
+if test -n "$PREVIOUS" && test -d "$PREVIOUS" && test "$PREVIOUS" != "$REL"; then
   switch_to "$PREVIOUS"
   systemctl restart "$SERVICE" || true
+else
+  rm -f "$APP_ROOT/current"
+  systemctl stop "$SERVICE" || true
 fi
 exit 1
 REMOTE_SCRIPT

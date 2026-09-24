@@ -266,12 +266,24 @@ export function createProductionRuntime({
   return runtime;
 }
 
+/**
+ * True when argv[1] names this module, even through symlinks such as the
+ * release `current/` link systemd starts it from.
+ */
+export function isEntryModule(argvPath, moduleUrl) {
+  try {
+    return (
+      fs.realpathSync(path.resolve(argvPath)) ===
+      fs.realpathSync(fileURLToPath(moduleUrl))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export { createMiddlewareStack, safeAssetPath };
 
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (process.argv[1] && isEntryModule(process.argv[1], import.meta.url)) {
   installProcessGuards();
   const runtime = createProductionRuntime({
     dist: path.resolve(

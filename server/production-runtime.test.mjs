@@ -9,6 +9,7 @@ import { PassThrough } from 'node:stream';
 import {
   contentTypeFor,
   createProductionRuntime,
+  isEntryModule,
   installProcessGuards,
 } from './production-runtime.js';
 
@@ -205,4 +206,18 @@ test('process guards log only the message and exit for systemd restart', () => {
   assert.equal(logs.length, 2);
   assert.match(logs[0], /boom/);
   assert.doesNotMatch(logs.join('\n'), /at .*production-runtime/);
+});
+
+test('entry detection resolves symlinked argv paths to the real module', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'eyeinsky-entry-'));
+  const real = path.join(root, 'release');
+  await fs.mkdir(real);
+  const mod = path.join(real, 'runtime.js');
+  await fs.writeFile(mod, '');
+  const link = path.join(root, 'current');
+  await fs.symlink(real, link, 'junction');
+  const url = new URL(`file:///${mod.replace(/\\/g, '/')}`).href;
+  assert.equal(isEntryModule(path.join(link, 'runtime.js'), url), true);
+  assert.equal(isEntryModule(mod, url), true);
+  assert.equal(isEntryModule(path.join(root, 'missing.js'), url), false);
 });
