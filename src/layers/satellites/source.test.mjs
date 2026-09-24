@@ -155,3 +155,60 @@ test('satellite sources accept the cubesat group', async () => {
   assert.equal(result.body, '');
   assert.equal(result.format, 'omm');
 });
+
+test('core ingestion parses a format-less source reply as the requested OMM', async (t) => {
+  t.mock.method(console, 'log', () => {});
+  t.mock.method(console, 'warn', () => {});
+  const omm = JSON.stringify([
+    {
+      OBJECT_NAME: 'ISS (ZARYA)',
+      OBJECT_ID: '1998-067A',
+      EPOCH: '2026-09-24T03:24:21.452544',
+      MEAN_MOTION: 15.49258637,
+      ECCENTRICITY: 0.00046914,
+      INCLINATION: 51.6318,
+      RA_OF_ASC_NODE: 170.3464,
+      ARG_OF_PERICENTER: 174.6338,
+      MEAN_ANOMALY: 185.4701,
+      EPHEMERIS_TYPE: 0,
+      CLASSIFICATION_TYPE: 'U',
+      NORAD_CAT_ID: 25544,
+      ELEMENT_SET_NO: 999,
+      REV_AT_EPOCH: 58709,
+      BSTAR: 0.00018115501,
+      MEAN_MOTION_DOT: 9.634e-5,
+      MEAN_MOTION_DDOT: 0,
+    },
+  ]);
+  const requested = [];
+  // A custom source (e.g. a test double or an older adapter) that does not
+  // report `format`: the core group must fall back to CORE_ELEMENT_FORMAT.
+  const source = {
+    async readGroup(group, { format } = {}) {
+      requested.push(format);
+      return group === 'stations'
+        ? { ok: true, status: 200, text: omm, body: omm }
+        : { ok: false, status: 502, text: '', body: '' };
+    },
+  };
+  const services = Object.fromEntries(
+    [
+      'picking',
+      'focus',
+      'readout',
+      'overlays',
+      'context',
+      'render',
+      'layerState',
+    ].map((key) => [key, {}]),
+  );
+  services.layerState.isExplicitLayerStateOrigin = () => false;
+  const layer = createSatellitesLayer({ source, services });
+  layer._setDenseCatalogStateForTest({});
+  t.after(() => layer._clearDenseCatalogStateForTest());
+  const viewer = { scene: { primitives: { add: (p) => p, remove() {} } } };
+  await layer.update(viewer);
+  assert.ok(requested.every((format) => format === 'omm'));
+  assert.equal(layer._catalogGroupForTest(25544), 'stations');
+  assert.equal(layer.getStats().count, 1);
+});

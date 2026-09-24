@@ -220,6 +220,49 @@ test('CelesTrak proxy rejects JSON without NORAD ids and serves the stale OMM co
   assert.equal(none.headers['x-tle-fetched-at'], undefined);
 });
 
+const TLE_FIXTURE = 'ISS\n1 25544U fixture\n2 25544 fixture';
+
+test('CelesTrak proxy only forwards allow-listed groups and answers others with a JSON 404', async (t) => {
+  isolateDisk(t);
+  t.mock.method(console, 'warn', () => {});
+  const upstream = [];
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    upstream.push(new URL(url).searchParams.get('GROUP'));
+    return new Response(TLE_FIXTURE);
+  });
+  const request = install(celestrakProxy());
+  for (const path of [
+    '/weather',
+    '/last-30-days',
+    '/STATIONS',
+    '/glonass',
+    '/active-extra?FORMAT=json',
+  ]) {
+    const res = await request('/api/celestrak', path);
+    assert.equal(res.status, 404, path);
+    assert.equal(res.headers['Content-Type'], 'application/json', path);
+    assert.deepEqual(JSON.parse(res.body), { error: 'unknown group' }, path);
+  }
+  assert.deepEqual(upstream, [], 'no upstream call for a refused group');
+  // Every group the app requests (core catalog, dense shell, launches) passes.
+  const allowed = [
+    'stations',
+    'cubesat',
+    'visual',
+    'gps-ops',
+    'glo-ops',
+    'galileo',
+    'geo',
+    'starlink',
+    'active',
+  ];
+  for (const group of allowed) {
+    const res = await request('/api/celestrak', `/${group}`);
+    assert.equal(res.status, 200, group);
+  }
+  assert.deepEqual(upstream.sort(), [...allowed].sort());
+});
+
 for (const preview of [false, true])
   test(`exported launch plugin preserves optional server auth and cache in ${preview ? 'preview' : 'development'}`, async (t) => {
     isolateDisk(t);

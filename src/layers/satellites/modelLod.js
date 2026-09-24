@@ -34,9 +34,15 @@ function assertHysteresis(add, keep, label) {
   }
 }
 
-/** Distance gate: optional; entering needs <= addM, staying needs <= keepM. */
+const finite = (...values) => values.every((value) => Number.isFinite(value));
+
+/**
+ * Distance gate: optional (both limits omitted); entering needs <= addM,
+ * staying needs <= keepM. A half-configured or non-finite ceiling fails closed.
+ */
 function withinDistance({ distanceM, addM, keepM }, current) {
   if (addM === undefined && keepM === undefined) return true;
+  if (!finite(addM, keepM)) return false;
   assertHysteresis(addM, keepM, 'distance');
   if (!Number.isFinite(distanceM)) return false;
   return distanceM <= (current === 'model' ? keepM : addM);
@@ -48,12 +54,15 @@ function withinDistance({ distanceM, addM, keepM }, current) {
  * (distanceM, addM, keepM) both the pixel and the distance gates must pass.
  * @param {{px: number, current: 'none'|'model', addPx: number, keepPx: number,
  *   distanceM?: number, addM?: number, keepM?: number}} input
- * @returns {'none'|'model'} Non-finite measurements fail closed to 'none'.
+ * @returns {'none'|'model'} Non-finite measurements and missing or
+ *   non-finite thresholds fail closed to 'none' (never a model).
+ * @throws {TypeError|RangeError} Unknown band or inverted finite hysteresis.
  */
 export function classifyModelBand(input) {
   const { px, current, addPx, keepPx } = input;
   if (!BANDS.has(current))
     throw new TypeError(`Unknown model band: ${current}`);
+  if (!finite(addPx, keepPx)) return 'none';
   assertHysteresis(addPx, keepPx, 'px');
   if (!Number.isFinite(px)) return 'none';
   const threshold = current === 'model' ? keepPx : addPx;

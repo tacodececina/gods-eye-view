@@ -28,8 +28,10 @@ export function createIngestion({
         format: CORE_ELEMENT_FORMAT,
       });
       if (!res.ok) return { ...groupDef, entries: [], ok: false };
+      // Same fallback as the dense catalog: a source that does not report
+      // the received format is parsed as the format that was requested.
       const entries = parseSatelliteElements({
-        format: res.format,
+        format: res.format ?? CORE_ELEMENT_FORMAT,
         body: res.body ?? res.text,
         group: groupDef.tag,
         fetchedAt: res.fetchedAt,

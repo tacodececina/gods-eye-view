@@ -151,3 +151,42 @@ test('band classification fails closed on bad input', () => {
     TypeError,
   );
 });
+
+test('missing or non-finite thresholds fail closed to none, never a model', () => {
+  const base = { px: 1e6, addPx: 6, keepPx: 3 };
+  const pixelCases = [
+    { addPx: undefined },
+    { keepPx: undefined },
+    { addPx: undefined, keepPx: undefined },
+    { addPx: NaN },
+    { keepPx: NaN },
+    { addPx: -Infinity, keepPx: -Infinity },
+    { addPx: null, keepPx: null },
+    { addPx: '6', keepPx: '3' },
+  ];
+  const label = (override) =>
+    Object.entries(override)
+      .map(([key, value]) => `${key}=${String(value)}`)
+      .join(',');
+  const distanceCases = [
+    { addM: 25_000 },
+    { keepM: 30_000 },
+    { addM: Infinity, keepM: Infinity },
+    { addM: NaN, keepM: 30_000 },
+    { addM: null, keepM: null },
+  ];
+  for (const current of ['none', 'model']) {
+    for (const override of pixelCases)
+      assert.equal(
+        classifyModelBand({ ...base, current, ...override }),
+        'none',
+        `${current} ${label(override)}`,
+      );
+    for (const override of distanceCases)
+      assert.equal(
+        classifyModelBand({ ...base, current, distanceM: 1, ...override }),
+        'none',
+        `${current} distance ${label(override)}`,
+      );
+  }
+});

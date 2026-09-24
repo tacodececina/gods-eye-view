@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as Cesium from 'cesium';
+import { twoline2satrec } from 'satellite.js';
 import { attitudeMatrix } from './attitude.js';
+import { propagateStateEcef } from './orbits.js';
 
 const GLTF_AXES = Object.freeze({ forwardAxis: '+Z', upAxis: '+Y' });
 const r = new Cesium.Cartesian3(7000e3, 0, 0);
@@ -161,4 +163,133 @@ test('unknown modes and invalid axes fail fast', () => {
       TypeError,
       JSON.stringify(axes),
     );
+});
+
+// Real ISS elements (CelesTrak, 2026-09-24), propagated two hours past epoch.
+const ISS = twoline2satrec(
+  '1 25544U 98067A   26267.14191496  .00009634  00000+0  18116-3 0  9999',
+  '2 25544  51.6318 170.3464 0004691 174.6338 185.4701 15.49258637587098',
+);
+const ISS_AT = new Date(Date.UTC(2026, 8, 24, 5, 24, 21));
+
+/** glTF-space axis in ECEF after Cesium's axis correction and R. */
+function gltfAxisInEcef(rotation, correction, x, y, z) {
+  const local = Cesium.Matrix4.multiplyByPointAsVector(
+    correction,
+    new Cesium.Cartesian3(x, y, z),
+    new Cesium.Cartesian3(),
+  );
+  return Cesium.Matrix3.multiplyByVector(
+    rotation,
+    local,
+    new Cesium.Cartesian3(),
+  );
+}
+
+const unit = (value) =>
+  Cesium.Cartesian3.normalize(value, new Cesium.Cartesian3());
+
+test('composed with Cesium axis correction, glTF +Z follows velocity and +Y zenith', () => {
+  // Public engine export (Cesium 1.138): the same matrix Model applies to a
+  // glTF with the default Y-up / Z-forward axes.
+  assert.equal(typeof Cesium.ModelUtility?.getAxisCorrectionMatrix, 'function');
+  const correction = Cesium.ModelUtility.getAxisCorrectionMatrix(
+    Cesium.Axis.Y,
+    Cesium.Axis.Z,
+    new Cesium.Matrix4(),
+  );
+  const iss = propagateStateEcef(ISS, ISS_AT);
+  assert.ok(iss, 'ISS propagates');
+  for (const [label, position, velocity] of [
+    ['synthetic', r, v],
+    ['ISS', iss.position, iss.velocity],
+  ]) {
+    const rotation = attitudeMatrix({
+      positionEcef: position,
+      velocityEcef: velocity,
+      mode: 'lvlh-nominal',
+      axes: GLTF_AXES,
+    });
+    const composed = Cesium.Matrix3.multiply(
+      rotation,
+      Cesium.Matrix4.getMatrix3(correction, new Cesium.Matrix3()),
+      new Cesium.Matrix3(),
+    );
+    assert.ok(
+      Math.abs(Cesium.Matrix3.determinant(composed) - 1) < 1e-9,
+      `${label}: det = 1`,
+    );
+    const forward = Cesium.Cartesian3.dot(
+      gltfAxisInEcef(rotation, correction, 0, 0, 1),
+      unit(velocity),
+    );
+    const up = Cesium.Cartesian3.dot(
+      gltfAxisInEcef(rotation, correction, 0, 1, 0),
+      unit(position),
+    );
+    assert.ok(forward >= 0.9999, `${label}: cos(glTF +Z, v) = ${forward}`);
+    assert.ok(up >= 0.9999, `${label}: cos(glTF +Y, r) = ${up}`);
+  }
+});
+
+const lvlh = (positionEcef, velocityEcef) =>
+  attitudeMatrix({
+    positionEcef,
+    velocityEcef,
+    mode: 'lvlh-nominal',
+    axes: GLTF_AXES,
+  });
+
+test('MIN_BASIS_SIN: v almost parallel to r is null, just above the limit is a pose', () => {
+  // sin(r, v) = sin(angle) for v at `angle` from r in the x–y plane.
+  const tilted = (angle) =>
+    new Cesium.Cartesian3(7.5e3 * Math.cos(angle), 7.5e3 * Math.sin(angle), 0);
+  assert.equal(lvlh(r, tilted(1e-7)), null, 'sin 1e-7 < 1e-6');
+  const above = lvlh(r, tilted(2e-6));
+  assert.ok(above instanceof Cesium.Matrix3, 'sin 2e-6 >= 1e-6');
+  assertRotation(above);
+});
+
+test('MIN_RADIUS_M: a sub-metre radius is null, a few metres is a pose', () => {
+  // v ⟂ r so only the radius guard can reject these states.
+  assert.equal(lvlh(new Cesium.Cartesian3(0.5, 0, 0), v), null, '0.5 m');
+  assert.ok(lvlh(new Cesium.Cartesian3(2, 0, 0), v) instanceof Cesium.Matrix3);
+});
+
+test('MIN_SPEED_MPS: a sub-mm/s speed is null, a few mm/s is a pose', () => {
+  // v ⟂ r so only the speed guard can reject these states.
+  assert.equal(lvlh(r, new Cesium.Cartesian3(0, 5e-4, 0)), null, '0.5 mm/s');
+  assert.ok(
+    lvlh(r, new Cesium.Cartesian3(0, 2e-3, 0)) instanceof Cesium.Matrix3,
+  );
+});
+
+test('an optional result matrix is reused across calls', () => {
+  const result = new Cesium.Matrix3();
+  const input = {
+    positionEcef: r,
+    velocityEcef: v,
+    mode: 'lvlh-nominal',
+    axes: GLTF_AXES,
+  };
+  const first = attitudeMatrix(input, result);
+  const expected = Cesium.Matrix3.clone(first);
+  const second = attitudeMatrix(input, result);
+  assert.equal(first, result);
+  assert.equal(second, result);
+  assert.ok(Cesium.Matrix3.equalsEpsilon(second, expected, 1e-15));
+  const inertial = attitudeMatrix(
+    { ...input, mode: 'desconocida-ilustrativa', gmstRad: 0.4 },
+    result,
+  );
+  assert.equal(inertial, result);
+  assert.ok(
+    Cesium.Matrix3.equalsEpsilon(
+      inertial,
+      Cesium.Matrix3.fromRotationZ(-0.4),
+      1e-15,
+    ),
+  );
+  // Without `result` every call still returns a fresh matrix.
+  assert.notEqual(attitudeMatrix(input), attitudeMatrix(input));
 });

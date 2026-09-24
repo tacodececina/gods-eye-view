@@ -195,9 +195,10 @@ oculta.
    triángulos) en `std` y en `low`.
 4. **(d) Ejes.** Los valores `upAxis +Y` / `forwardAxis +Z` del manifiesto son
    los de glTF. `Cesium.Model` los corrige con
-   `ModelUtility.getAxisCorrectionMatrix` (`Y_UP_TO_Z_UP` y después
-   `Z_UP_TO_X_UP`), así que en el marco local del modelo quedan **+Z arriba y
-   +X adelante**. La ley LVLH de T3 debe mapear sobre ese marco ya convertido,
+   `ModelUtility.getAxisCorrectionMatrix`: la matriz
+   `Y_UP_TO_Z_UP·Z_UP_TO_X_UP` (sobre el vértice se aplica primero
+   `Z_UP_TO_X_UP`); mapeo neto glTF +X→+Y, +Y→+Z, +Z→+X. Así, en el marco local
+   del modelo quedan **+Z arriba y +X adelante**. La ley LVLH de T3 debe mapear sobre ese marco ya convertido,
    no sobre los ejes glTF.
 5. **(e) Nomenclatura definitiva:** `<id>-<sha8>.glb` (p. ej.
    `iss-70d0619a.glb`, `hubble-e5ba4de1.glb`, `cubesat-1u-bae308ea.glb`).

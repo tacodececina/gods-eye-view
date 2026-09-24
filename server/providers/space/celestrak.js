@@ -9,6 +9,8 @@ import { celestrakGpUrl } from '../../../src/data/spaceProviderRequests.js';
  * satellite element sets server-side and forwards them to the browser.
  * Upstream: https://celestrak.org/NORAD/elements/gp.php?GROUP=<group>&FORMAT=<tle|json>
  * Route: /api/celestrak/<group>[?FORMAT=json] (FORMAT defaults to tle).
+ * Only ALLOWED_GROUPS are forwarded; any other well-formed group gets a JSON
+ * 404 without an upstream call (a malformed group or format is a 400).
  *
  * CelesTrak asks clients not to re-fetch GP data more than ~every 2 h and
  * throttles offenders; every dev reload used to refetch every group. Cache TTL
@@ -23,6 +25,22 @@ import { celestrakGpUrl } from '../../../src/data/spaceProviderRequests.js';
  * @returns {import('vite').Plugin}
  */
 export function celestrakProxy() {
+  // Groups the app requests: the core catalog (CATALOG_GROUPS paths in
+  // src/layers/satellites/policy.js), the dense shell (DENSE_GROUP_PATH) and
+  // the launches layer ('active'). Case-sensitive, as CelesTrak group names
+  // are. Declared inside the plugin: the proxy-error fixtures evaluate this
+  // function body in isolation.
+  const ALLOWED_GROUPS = new Set([
+    'stations',
+    'cubesat',
+    'visual',
+    'gps-ops',
+    'glo-ops',
+    'galileo',
+    'geo',
+    'starlink',
+    'active',
+  ]);
   const TLE_TTL_MS = 6 * 3600_000;
   const CACHE_DIR = path.join(process.cwd(), '.gev-cache');
   const CONTENT_TYPES = { tle: 'text/plain', json: 'application/json' };
@@ -104,12 +122,16 @@ export function celestrakProxy() {
     return { at: Date.now(), body };
   }
 
-  /** Parse `/<group>[?FORMAT=tle|json]`; `error` names the invalid part. */
+  /**
+   * Parse `/<group>[?FORMAT=tle|json]`; `error` names the invalid part and
+   * `notFound` marks a well-formed group outside ALLOWED_GROUPS.
+   */
   function parseRoute(rawUrl) {
     const [group, query = ''] = String(rawUrl || '')
       .replace(/^\//, '')
       .split('?');
     if (!/^[a-z0-9-]+$/i.test(group)) return { error: 'invalid group' };
+    if (!ALLOWED_GROUPS.has(group)) return { notFound: true };
     const requested = new URLSearchParams(query).get('FORMAT');
     const format = requested === null ? 'tle' : requested.toLowerCase();
     if (!Object.hasOwn(CONTENT_TYPES, format))
@@ -186,6 +208,11 @@ export function celestrakProxy() {
   const installMiddleware = (server) => {
     server.middlewares.use('/api/celestrak', async (req, res) => {
       const route = parseRoute(req.url);
+      if (route.notFound) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'unknown group' }));
+        return;
+      }
       if (route.error) {
         res.writeHead(400, { 'Content-Type': 'text/plain' });
         res.end(route.error);
