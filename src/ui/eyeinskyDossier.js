@@ -28,6 +28,8 @@ const STATUS_LABELS = Object.freeze({
   unreported: 'La fuente no informa la hora',
   // P4: posición calculada con SGP4 desde elementos publicados, no observada.
   predicted: 'Posición calculada (SGP4)',
+  // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
+  'propagation-failed': 'Propagación falló (SGP4): sin posición',
 });
 
 /**

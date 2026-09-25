@@ -294,6 +294,8 @@ test('a tracked satellite keeps every field, in order, with Spanish labels', () 
   assert.equal(byKey.attitude.code, 'lvlh-nominal-aprox');
   assert.equal(byKey.geometryFidelity.value, 'específico');
   assert.equal(byKey.framing.value, 'órbita');
+  assert.equal(byKey.cacheStatus.value, 'acierto');
+  assert.equal(byKey.cacheStatus.code, 'HIT');
   assert.match(byKey.elementEpoch.value, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
 });
 

@@ -40,7 +40,8 @@ const defaultToWindow = (scene, position, result) =>
 const defaultIsCoarsePointer = () =>
   globalThis.matchMedia?.('(pointer: coarse)')?.matches === true;
 
-const defaultTimers = Object.freeze({
+/** Real load-timeout timers (unref'd: never hold a Node process). */
+export const SAT_MODEL_DEFAULT_TIMERS = Object.freeze({
   set: (fn, ms) => {
     const handle = setTimeout(fn, ms);
     // Node test runs must not wait 20 s on a load watchdog.
@@ -145,7 +146,7 @@ export function createSatelliteModels({
   isVisible = null,
   toWindow = defaultToWindow,
   isCoarsePointer = defaultIsCoarsePointer,
-  timers = defaultTimers,
+  timers = SAT_MODEL_DEFAULT_TIMERS,
 }) {
   const store = createStore(profile);
   const ctx = Object.freeze({

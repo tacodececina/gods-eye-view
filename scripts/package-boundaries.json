@@ -887,6 +887,8 @@
       "src/layers/satellites/pointHandoff.js",
       "src/layers/satellites/modelScreenHit.js",
       "src/layers/satellites/contextFields.js",
+      "src/layers/satellites/trackingFraming.js",
+      "src/layers/satellites/trackingPropagation.js",
       "src/data/inputOwnership.js"
     ],
     "external": ["cesium", "satellite.js"]
@@ -1560,6 +1562,8 @@
       "src/layers/satellites/pointHandoff.js",
       "src/layers/satellites/modelScreenHit.js",
       "src/layers/satellites/contextFields.js",
+      "src/layers/satellites/trackingFraming.js",
+      "src/layers/satellites/trackingPropagation.js",
       "src/layers/submarineCables/bundledSource.js",
       "src/layers/submarineCables/geometry.js",
       "src/layers/submarineCables/index.js",
@@ -2139,6 +2143,8 @@
       "src/layers/satellites/pointHandoff.js",
       "src/layers/satellites/modelScreenHit.js",
       "src/layers/satellites/contextFields.js",
+      "src/layers/satellites/trackingFraming.js",
+      "src/layers/satellites/trackingPropagation.js",
       "src/layers/submarineCables/geometry.js",
       "src/layers/submarineCables/index.js",
       "src/layers/submarineCables/ingestion.js",

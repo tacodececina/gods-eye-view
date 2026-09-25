@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolvePointModelHandoff } from './pointHandoff.js';
 import {
+  resolvePointModelHandoff,
+  trackedCardClearance,
+} from './pointHandoff.js';
+import {
+  SAT_CARD_HULL_MARGIN_PX,
   SAT_POINT_HANDOFF_PX,
   SAT_RETICLE_ALPHA,
   SAT_RETICLE_PX,
@@ -62,4 +66,18 @@ test('the point is never removed: its size is always positive', () => {
       assert.ok(Object.isFrozen(out));
     }
   }
+});
+
+test('card clearance: over a reticle the card sits above the projected hull', () => {
+  assert.equal(SAT_CARD_HULL_MARGIN_PX, 8);
+  assert.equal(trackedCardClearance(DOT, 300), null, 'a dot keeps the default');
+  assert.equal(trackedCardClearance(RETICLE, Number.NaN), null);
+  const clear = trackedCardClearance(RETICLE, 173);
+  assert.ok(Object.isFrozen(clear));
+  assert.equal(clear.anchorRadiusPx, 0);
+  assert.ok(clear.gapPx >= 173 / 2 + SAT_CARD_HULL_MARGIN_PX, `${clear.gapPx}`);
+  assert.ok(clear.gapPx < 173 / 2 + SAT_CARD_HULL_MARGIN_PX + 4, 'no slack');
+  assert.ok(Math.abs(clear.leaderOffsetPx - 173 / 2) <= 4);
+  assert.equal(clear.gapPx % 4, 0, 'quantised: few republishes while zooming');
+  assert.deepEqual(trackedCardClearance(RETICLE, 174), clear, 'same step');
 });

@@ -265,6 +265,20 @@ export function reduceMissionDock(state, event) {
 }
 
 /**
+ * Motivo visible de una acción deshabilitada (P4 T7): hoy sólo INSPECCIONAR,
+ * cuyo porqué (sin modelo, órbita caducada, modelo no disponible) no puede
+ * vivir sólo en un `title` que ni el tacto ni muchos lectores alcanzan.
+ * @param {ReadonlyArray<object>} actions Acciones del dock.
+ * @returns {Readonly<{actionId:string, text:string}>|null}
+ */
+function resolveActionReason(actions) {
+  const inspect = actions.find((item) => item.id === 'inspect');
+  return inspect && !inspect.enabled && inspect.hint
+    ? Object.freeze({ actionId: inspect.id, text: inspect.hint })
+    : null;
+}
+
+/**
  * Vista inmutable del dock, compuesta del estado real de sus dueños.
  *
  * @param {object} options Composición.
@@ -286,6 +300,7 @@ export function buildMissionDockView({
   const pane = panes.some(({ id }) => id === dock.pane)
     ? dock.pane
     : 'objetivo';
+  const actions = resolveMissionDockActions({ context, following });
   return Object.freeze({
     visible:
       Boolean(context) &&
@@ -317,6 +332,7 @@ export function buildMissionDockView({
     fields: context?.fields ?? Object.freeze([]),
     assetIds: context?.assetIds ?? Object.freeze([]),
     camera: resolveCameraStatus({ context, following }),
-    actions: resolveMissionDockActions({ context, following }),
+    actions,
+    actionReason: resolveActionReason(actions),
   });
 }

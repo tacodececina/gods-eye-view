@@ -12,7 +12,7 @@ import {
 /**
  * Pure camera framings for the tracked satellite (P4 T5). 'orbit' is the
  * user-validated landing (TRACK_VIEW_FROM_LEO, scaled up for high orbits);
- * 'inspect' keeps the same direction at clamp(8·radiusM, 30 m, 5 km) from
+ * 'inspect' keeps the same direction at clamp(8·radiusM, 6 m, 5 km) from
  * the resolved model asset. No camera or layer state is touched here.
  */
 
@@ -91,4 +91,26 @@ export function framingTweenOffset(from, to, t, result) {
     Math.log(fromRange) + (Math.log(toRange) - Math.log(fromRange)) * k,
   );
   return Cesium.Cartesian3.multiplyByScalar(out, range, out);
+}
+
+/**
+ * Why 'inspect' cannot be entered for this subject, or null when it can.
+ * Same rule and order as the Mission Dock action (eyeinskySatelliteChips.js
+ * resolveInspectAction): a failed SGP4 propagation (P4-20), a stale orbit,
+ * no curated model, a failed model.
+ * @param {{asset?: object|null, elementAge?: string|null,
+ *   modelStatus?: string, propagationFailed?: boolean}} input
+ * @returns {'propagacion-fallida'|'orbita-caducada'|'sin-modelo'|'modelo-fallido'|null}
+ */
+export function inspectRefusal({
+  asset,
+  elementAge,
+  modelStatus,
+  propagationFailed = false,
+} = {}) {
+  if (propagationFailed) return 'propagacion-fallida';
+  if (elementAge === 'caducada') return 'orbita-caducada';
+  if (!asset || !Number.isFinite(asset.radiusM)) return 'sin-modelo';
+  if (modelStatus === 'fallido') return 'modelo-fallido';
+  return null;
 }

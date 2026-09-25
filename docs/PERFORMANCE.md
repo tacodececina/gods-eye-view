@@ -142,3 +142,59 @@ Use the same controls before attributing a difference to the application:
 
 Use this page as a regression baseline for one known hardware and browser
 configuration, not as a compatibility guarantee.
+
+## P4 satélites 3D (2026-09-24, GPD Win 4)
+
+Arnés: `scripts/eyeinsky-p4-perf.mjs <url> <salida> <off|std> [durMs]`. Usa el
+mismo método que la línea base T0 (`output/eyeinsky-p4/baseline/`):
+
+- Chrome 153 headless con ANGLE/D3D11 sobre la GPU real (`AMD Radeon(TM) 890M`,
+  no SwiftShader);
+- 1366x768 a DPR 1;
+- 60 s por escena;
+- CPU del frame de Cesium (`preUpdate` → `postRender`), `commandList` (API
+  privada) y heap de JS.
+
+La evidencia completa está en `output/eyeinsky-p4/t7/perf/`: `README.md`,
+`summary.json` y `diag/`. No se miden FPS.
+
+Todos los valores de CPU son el tiempo de CPU del frame de Cesium, en ms.
+
+| Escena                                    | CPU p50 / p95 `off` | CPU p50 / p95 `std` | commandList p50 `off` / `std` |
+| ----------------------------------------- | ------------------- | ------------------- | ----------------------------- |
+| A · core, sin selección                   | 2,6 / 5,5           | 6,8 / 11,6          | 22 / 22                       |
+| B · ISS en ÓRBITA                         | 6,2 / 13,7          | 10,6 / 21,5         | 49 / 57                       |
+| B2 · ISS en INSPECCIONAR, modelo ≥ 24 px  | no aplica (sin modelo) | 12,4 / **49,8** (146 long tasks) | — / 64            |
+| E · tras disable/enable                   | 5,1 / 8,7           | 7,1 / 11,0          | 24 / 24                       |
+| C · ISS en ÓRBITA, zoom 200 %             | 5,9 / 13,9          | 6,6 / 14,1          | 30 / 32                       |
+| D · dense (11.604 puntos)                 | 10,3 / 15,3         | 10,5 / 15,3         | 24 / 24                       |
+
+Veredicto frente a los criterios provisionales (propuesta P4 §9 y §10):
+
+- **A: `std` frente a `off`.** Los commands son iguales, 22 = 22, sin ningún
+  modelo admitido. La CPU no es concluyente por la carga concurrente.
+- **B2 frente a B: FALLA.** El p95 sube +28,3 ms, cuando el criterio permite
+  +2 ms, y las long tasks pasan de 0 a 146 en 60 s.
+  - Causa perfilada: el `DynamicEnvironmentMapManager` que `Cesium.Model`
+    activa por defecto. Da 14 commands y `readPixels` ocupa el 12,8 % del hilo
+    principal, porque se regenera al moverse la ISS más de 1 km.
+  - `models.js` no pasa `environmentMapOptions`.
+- **E frente a A-off: FALLA.**
+  - Los modelos se desmontan bien: `active 0`, `pending 0` y 0 primitivas.
+  - Pero quedan 24 commands frente a 22, también en `off`. Es la
+    `PointPrimitiveCollection` del `EntityCluster` de Cesium, que conserva un
+    punto vacío después de seguir un satélite.
+  - El heap tras GC da 115,4 MiB en E frente a 104,6 MiB en A dentro de `std`,
+    y +3,4 MiB en `off`. Es una sola lectura y la causa está sin identificar.
+
+Limitaciones:
+
+- Una sola ejecución por escena y modo.
+- El equipo estaba caliente (CPU a 85–90 °C, 21,5–23,7 W) y en modo `gaming`,
+  cuando T0 se midió en `windows` a unos 76 °C.
+- League of Legends estuvo abierto durante toda la medición.
+- Headless con GPU real y compartida.
+- Por todo ello, los Δ en ms frente a T0 **no son atribuibles a P4**.
+- No se probó el perfil `low` ni la órbita manual de 60 s de §5.
+- Hay que repetir la medición con el equipo en reposo antes de cerrar la
+  calibración.

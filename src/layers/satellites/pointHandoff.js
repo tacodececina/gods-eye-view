@@ -1,4 +1,6 @@
 import {
+  SAT_CARD_GAP_STEP_PX,
+  SAT_CARD_HULL_MARGIN_PX,
   SAT_POINT_HANDOFF_PX,
   SAT_RETICLE_ALPHA,
   SAT_RETICLE_PX,
@@ -33,4 +35,24 @@ const RETICLE = Object.freeze({
 export function resolvePointModelHandoff({ modelReady, modelPx } = {}) {
   const large = Number.isFinite(modelPx) && modelPx > SAT_POINT_HANDOFF_PX;
   return modelReady === true && large ? RETICLE : DOT;
+}
+
+/**
+ * Where the tracked card goes while the model is drawn (reticle): above the
+ * projected bounding sphere plus a margin, with the leader starting at the
+ * hull edge. Null keeps the default dot clearance (trackedReadout.js).
+ * @param {{reticle: boolean}} handoff resolvePointModelHandoff() result.
+ * @param {number} modelPx Projected model diameter (CSS px).
+ * @returns {Readonly<{anchorRadiusPx: 0, gapPx: number,
+ *   leaderOffsetPx: number}>|null}
+ */
+export function trackedCardClearance(handoff, modelPx) {
+  if (handoff?.reticle !== true || !Number.isFinite(modelPx)) return null;
+  const step = SAT_CARD_GAP_STEP_PX;
+  const radiusPx = Math.ceil(modelPx / 2 / step) * step;
+  return Object.freeze({
+    anchorRadiusPx: 0,
+    gapPx: radiusPx + SAT_CARD_HULL_MARGIN_PX,
+    leaderOffsetPx: radiusPx,
+  });
 }

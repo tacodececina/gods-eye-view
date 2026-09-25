@@ -3111,9 +3111,12 @@ body.eyeinsky {
     min-width: 0;
     flex: 1 1 100%;
   }
+  /* Ancho flexible: cada valor mide lo que su texto (MODELO va abreviado,
+   * ≤ 10 signos), así que nada se recorta con puntos suspensivos (P4 T7,
+   * medido con scrollWidth ≤ clientWidth en eyeinsky-p4). */
   .eye-mission-dock[data-context-layer='satellites'] .eye-dock-keyvalue {
     min-width: 0;
-    flex: 1 1 0;
+    flex: 1 1 auto;
     padding: 0 8px;
   }
   .eye-mission-dock[data-context-layer='satellites']
@@ -3130,4 +3133,25 @@ body.eyeinsky {
   .eye-sat-chip {
     font-size: 14px;
   }
+}
+
+/* P4 T7 · el motivo de una acción deshabilitada (INSPECCIONAR sin modelo,
+ * órbita caducada o modelo no disponible) se lee como texto bajo el riel,
+ * enlazado por aria-describedby: un `title` no lo alcanzan ni el tacto ni
+ * muchos lectores. Ocupa su propia fila completa. */
+.eye-dock-action-reason {
+  flex: 1 1 100%;
+  order: 10;
+  margin: 0;
+  color: var(--text-secondary);
+  font: 13px var(--font-mono);
+  line-height: 1.35;
+}
+
+.eye-dock-action-reason[hidden] {
+  display: none;
+}
+
+.eye-mission-dock .eye-dock-rail:has(.eye-dock-action-reason:not([hidden])) {
+  flex-wrap: wrap;
 }

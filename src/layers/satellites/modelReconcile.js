@@ -74,6 +74,8 @@ function eligibleNow(ctx, { noradId, asset }, frame, isTracked) {
   if (failure && frame.t - failure.lastAt < SAT_MODEL_RETRY_BACKOFF_MS)
     return false;
   if (state._dockedCompanions?.has(noradId)) return false;
+  // P4-20: no valid pose, no model (never at the last good sample).
+  if (isTracked && state._trackedPropagationFailed) return false;
   return !expired(state._catalog.get(noradId), frame.wallMs);
 }
 

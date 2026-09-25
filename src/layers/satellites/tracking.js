@@ -1,27 +1,17 @@
 import * as Cesium from 'cesium';
 import { satelliteClassLabel } from '../../data/satelliteClass.js';
+import { ISS_NORAD, CONTEXT_REFRESH_INTERVAL_MS } from './policy.js';
+import { orbitViewFrom } from './framing.js';
+import { createTrackingFraming } from './trackingFraming.js';
 import {
-  ISS_NORAD,
-  CONTEXT_REFRESH_INTERVAL_MS,
-  SAT_FRAMING_TWEEN_MS,
-} from './policy.js';
-import {
-  framingTweenOffset,
-  inspectViewFrom,
-  isTrackFraming,
-  orbitViewFrom,
-} from './framing.js';
+  PROPAGATION_FAILED_STATUS,
+  PROPAGATION_FAILED_TEXT,
+  createTrackingPropagation,
+} from './trackingPropagation.js';
 import {
   presentationSignature,
   satelliteContextFields,
 } from './contextFields.js';
-import {
-  dockBiasElevation,
-  readDockViewport,
-  tiltTowardElevation,
-} from './dockBias.js';
-
-const scratchTweenOffset = new Cesium.Cartesian3();
 
 /** Reset the P4 T5 framing/presentation state of a tracked subject. */
 function resetFramingState(layerState) {
@@ -29,6 +19,8 @@ function resetFramingState(layerState) {
   layerState._trackedOrbitViewFrom = null;
   layerState._framingTween = null;
   layerState._trackedHandoffKey = null;
+  layerState._trackedCardClearance = null;
+  layerState._trackedCardClearanceKey = null;
   layerState._presentationSignature = null;
 }
 
@@ -42,6 +34,15 @@ export function createTracking({ state: layerState, services, parts, source }) {
     selectTrackedSubjectContext,
   } = services.context;
   const { refreshTrackedReadout } = services.readout;
+  // P4-20: an SGP4 failure republishes the card and the context at once.
+  const propagation = createTrackingPropagation({
+    layerState,
+    parts,
+    onChange: () => {
+      _updateTrackedSatelliteLabelModel();
+      _publishTrackedPresentation();
+    },
+  });
 
   function _normalizeTrackedNorad(candidate) {
     const numeric = Number(candidate);
@@ -171,6 +172,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._trackedFrameNumber = -1;
     layerState._trackedFrameGeo = null;
     layerState._trackedFrameDateMs = Number.NaN;
+    propagation.reset();
   }
 
   function _clearTracking(
@@ -234,16 +236,17 @@ export function createTracking({ state: layerState, services, parts, source }) {
 
     const frameNumber =
       layerState._viewer?.scene?.frameState?.frameNumber ?? -1;
-    if (
-      frameNumber === -1 ||
-      frameNumber !== layerState._trackedFrameNumber ||
-      layerState._trackedFrameGeo === null
-    ) {
+    if (propagation.needsSample(frameNumber)) {
       const sampleDate = layerState._trackedFrameNowForTest
         ? new Date(layerState._trackedFrameNowForTest())
         : new Date();
       const pos = parts.orbits.propagatePosition(sat.satrec, sampleDate);
-      if (!pos) return layerState._trackedFrameGeo; // propagation hiccup — keep last good sample
+      // P4-20: no sample is no pose — never the last good one dressed as now.
+      if (!pos) {
+        propagation.markFailed(frameNumber);
+        return null;
+      }
+      if (propagation.markRecovered()) layerState._contextRefreshedAtMs = 0;
       layerState._trackedFrameGeo = pos;
       // The tracked model's attitude re-derives velocity at this same epoch.
       layerState._trackedFrameDateMs = sampleDate.getTime();
@@ -311,9 +314,12 @@ export function createTracking({ state: layerState, services, parts, source }) {
     const sat = layerState._catalog.get(noradId);
     if (!sat) return null;
     const pos = position || _getTrackedFramePosition();
-    if (!pos) return null;
+    // P4-20: a tracked subject whose SGP4 failed keeps its record, posless.
+    const failed =
+      !pos && noradId === layerState._trackedNorad && propagation.isFailed();
+    if (!pos && !failed) return null;
     const name = sat.name?.trim() || `SAT-${noradId}`;
-    const altitudeKm = Number.isFinite(pos.altitude)
+    const altitudeKm = Number.isFinite(pos?.altitude)
       ? Math.round(pos.altitude / 1000)
       : null;
     return {
@@ -322,10 +328,10 @@ export function createTracking({ state: layerState, services, parts, source }) {
       layerName: 'Satellites',
       source: 'CelesTrak',
       // SGP4 computes the position from published elements: nobody observed it.
-      status: 'predicted',
+      status: failed ? PROPAGATION_FAILED_STATUS : 'predicted',
       label: name,
-      latitude: pos.latitude,
-      longitude: pos.longitude,
+      latitude: pos?.latitude ?? null,
+      longitude: pos?.longitude ?? null,
       // Flat text only: the voice payload compacts properties through a string
       // cleaner that drops nested objects. Order: contextFields.js.
       properties: {
@@ -475,7 +481,9 @@ export function createTracking({ state: layerState, services, parts, source }) {
     const title = sat?.name?.trim() || `SAT-${layerState._trackedNorad}`;
     const altitudeM =
       layerState._trackedFrameGeo?.altitude ?? fallbackAltitudeM;
-    const detail = `${Number.isFinite(altitudeM) ? Math.round(altitudeM / 1000) : '?'} km · NORAD ${layerState._trackedNorad}`;
+    const detail = propagation.isFailed()
+      ? `${PROPAGATION_FAILED_TEXT} · NORAD ${layerState._trackedNorad}`
+      : `${Number.isFinite(altitudeM) ? Math.round(altitudeM / 1000) : '?'} km · NORAD ${layerState._trackedNorad}`;
     // Class leads the detail block: it is what tells the operator WHAT they are
     // looking at, and it stays readable under the IR styles that flatten the
     // dot colors to a single channel (the card is painted above post-FX).
@@ -497,9 +505,12 @@ export function createTracking({ state: layerState, services, parts, source }) {
       );
     }
     const current = layerState._trackedEntity.gevLabelModel;
+    // Over a drawn model the card clears its projected hull (P4 T7).
+    const clearance = layerState._trackedCardClearance;
     // Compare the WHOLE detail array: comparing only `details[0]` swallowed any
     // change confined to the companions line, so the card would never republish.
     const unchanged =
+      current?.gapPx === clearance?.gapPx &&
       current?.title === title &&
       current?.details?.length === details.length &&
       details.every((line, index) => current.details[index] === line);
@@ -508,6 +519,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
       title,
       details,
       accent: '#ffd84d',
+      ...clearance,
     };
     refreshTrackedReadout(layerState._trackedEntity);
   }
@@ -536,6 +548,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._trackedNorad = noradId;
     layerState._trackedFrameNumber = -1;
     layerState._trackedFrameGeo = null;
+    propagation.reset();
     parts.labels._syncIssOverlay();
 
     // Hide the primitive — the tracked ENTITY renders the dot below. The
@@ -549,10 +562,11 @@ export function createTracking({ state: layerState, services, parts, source }) {
 
     // Tracked entity position propagates per evaluation through the per-frame
     // cache (WS-D2) — dot, host readout, and camera share one SGP4 epoch per frame.
-    // Falls back to the point primitive's 1s-throttled position if SGP4 fails.
+    // If SGP4 fails there is no position (P4-20): the dot is not drawn at a
+    // stale pose; the card and the dossier say «propagación falló».
     const positionProperty = new Cesium.CallbackProperty(() => {
       const pos = _getTrackedFramePosition();
-      return pos ? layerState._trackedFrameCartesian : point.position;
+      return pos ? layerState._trackedFrameCartesian : undefined;
     }, false);
 
     const name = sat.name.trim();
@@ -598,124 +612,14 @@ export function createTracking({ state: layerState, services, parts, source }) {
     parts.models.prepareTarget(noradId);
     console.log(`[Data:Satellites] Tracking ${name} (NORAD ${noradId})`);
   }
-  /** Wall clock of the framing tween (the frame-test clock when seeded). */
-  function _framingNowMs() {
-    const seeded = layerState._trackedFrameNowForTest?.();
-    return seeded === undefined || seeded === null
-      ? Date.now()
-      : Number(seeded);
-  }
-
-  /** The camera follows our entity, or nobody: a framing change may move it. */
-  function _ownsOrFreeCamera() {
-    const owner = layerState._viewer?.trackedEntity;
-    return !owner || owner === layerState._trackedEntity;
-  }
-
-  /**
-   * Move the follow camera onto a framing's viewFrom: eased from the current
-   * offset while we hold the camera, or re-engaged at once (reduced motion, or
-   * a released camera). Reassigning trackedEntity to OUR entity never trips
-   * the cross-layer auto-untrack (interaction.js ignores its own entity).
-   * @param {Cesium.Cartesian3} target New viewFrom.
-   * @param {boolean} reducedMotion Land instantly.
-   */
-  function _applyFramingCamera(target, reducedMotion) {
-    const viewer = layerState._viewer;
-    const entity = layerState._trackedEntity;
-    layerState._framingTween = null;
-    if (!_ownsOrFreeCamera()) return;
-    viewer.camera?.cancelFlight?.();
-    const following = viewer.trackedEntity === entity;
-    if (!reducedMotion && following && viewer.camera?.position) {
-      layerState._framingTween = {
-        from: Cesium.Cartesian3.clone(viewer.camera.position),
-        to: Cesium.Cartesian3.clone(target),
-        startMs: _framingNowMs(),
-      };
-      return;
-    }
-    viewer.trackedEntity = undefined;
-    viewer.trackedEntity = entity;
-  }
-
-  /**
-   * Switch the tracked camera framing (P4 T5) without touching the NORAD id,
-   * the selection or the context subject. 'inspect' needs a resolved model
-   * asset; the framing is kept on the entity's viewFrom so SEGUIR
-   * (_refocusTracked) lands on it after a gesture released the camera.
-   * @param {'orbit'|'inspect'} framing
-   * @param {{reducedMotion?: boolean}} [options]
-   * @returns {boolean} Whether the framing is now in force.
-   */
-  function _setTrackedFraming(framing, { reducedMotion = false } = {}) {
-    const id = layerState._trackedNorad;
-    const orbit = layerState._trackedOrbitViewFrom;
-    if (!isTrackFraming(framing) || id === null || !orbit) return false;
-    if (!layerState._trackedEntity || !layerState._viewer) return false;
-    const target =
-      framing === 'inspect'
-        ? inspectViewFrom(orbit, parts.models.assetFor(id)?.radiusM)
-        : Cesium.Cartesian3.clone(orbit);
-    if (!target) return false;
-    layerState._trackedFraming = framing;
-    layerState._trackedEntity.viewFrom = target;
-    _applyFramingCamera(target, reducedMotion === true);
-    _publishTrackedPresentation();
-    return true;
-  }
-
-  /** One eased step of the framing tween (shared preRender tick). */
-  function _advanceFramingTween(nowMs = _framingNowMs()) {
-    const tween = layerState._framingTween;
-    if (!tween) return;
-    const viewer = layerState._viewer;
-    const entity = layerState._trackedEntity;
-    // A gesture (or anyone) took the camera: never write a released camera.
-    if (!entity || viewer?.trackedEntity !== entity || !viewer.camera) {
-      layerState._framingTween = null;
-      return;
-    }
-    const t = (nowMs - tween.startMs) / SAT_FRAMING_TWEEN_MS;
-    const offset = framingTweenOffset(
-      tween.from,
-      tween.to,
-      t,
-      scratchTweenOffset,
-    );
-    viewer.camera.lookAtTransform(viewer.camera.transform, offset);
-    if (t >= 1) layerState._framingTween = null;
-  }
-
-  /**
-   * Keep the followed target above the Mission Dock on a phone (P4 T5
-   * repair): pitch the follow camera so the target projects at the centre of
-   * the free area over `--eye-dock-band`, and back to the centre when the
-   * band or the phone viewport goes away. Runs after the framing tween, only
-   * while OUR entity holds the camera: a released camera is never written.
-   */
-  function _applyDockBias() {
-    const viewer = layerState._viewer;
-    const camera = viewer?.camera;
-    const entity = layerState._trackedEntity;
-    if (!entity || viewer.trackedEntity !== entity) return;
-    if (!camera?.position || !camera.direction || !camera.up) return;
-    const viewport = layerState._dockViewportForTest
-      ? layerState._dockViewportForTest()
-      : readDockViewport();
-    const wanted = dockBiasElevation(
-      viewport && { ...viewport, fovy: camera.frustum?.fovy },
-    );
-    const tilted = tiltTowardElevation(camera, wanted);
-    if (!tilted) return;
-    Cesium.Cartesian3.clone(tilted.direction, camera.direction);
-    Cesium.Cartesian3.clone(tilted.up, camera.up);
-  }
+  const framingParts = createTrackingFraming({
+    layerState,
+    parts,
+    publishPresentation: _publishTrackedPresentation,
+  });
 
   return {
-    _applyDockBias,
-    _setTrackedFraming,
-    _advanceFramingTween,
+    ...framingParts,
     _publishTrackedPresentation,
     _normalizeTrackedNorad,
     _emitAwarenessEvent,

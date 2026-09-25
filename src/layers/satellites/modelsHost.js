@@ -271,14 +271,17 @@ function handoffInput(host) {
   const trackedNorad = host.layerState._trackedNorad;
   const models = host.layerState._models;
   if (trackedNorad === null || !models)
-    return { modelReady: false, modelPx: 0 };
+    return { modelReady: false, modelPx: 0, anchorPx: 0 };
   return models.handoffInput(trackedNorad);
 }
 
-/** The previous target's model leaves at once (target change). */
-function releaseTarget(host, noradId) {
+/**
+ * A target's model leaves at once: target change (default) or a failed SGP4
+ * propagation of the tracked satellite (P4-20).
+ */
+function releaseTarget(host, noradId, reason = 'target-change') {
   if (noradId === null || noradId === undefined) return;
-  host.layerState._models?.release(noradId, 'target-change');
+  host.layerState._models?.release(noradId, reason);
 }
 
 function destroy(host) {
@@ -352,7 +355,7 @@ export function createModelsHost({
     attach: (viewer, overrides) => attach(host, viewer, overrides),
     captureTrackedSample: () => captureTrackedSample(host),
     frame: () => frame(host),
-    releaseTarget: (noradId) => releaseTarget(host, noradId),
+    releaseTarget: (noradId, reason) => releaseTarget(host, noradId, reason),
     prepareTarget: (noradId) => prepareTarget(host, noradId),
     hasAsset: (noradId) => assetFor(host, noradId) !== null,
     assetFor: (noradId) => assetFor(host, noradId),

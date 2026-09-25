@@ -1,7 +1,10 @@
 import * as Cesium from 'cesium';
 import { gstime } from 'satellite.js';
 import { ISS_NORAD, POSITION_UPDATE_MS, RING_ROTATION_MS } from './policy.js';
-import { resolvePointModelHandoff } from './pointHandoff.js';
+import {
+  resolvePointModelHandoff,
+  trackedCardClearance,
+} from './pointHandoff.js';
 
 export function createRendering({
   state: layerState,
@@ -247,13 +250,28 @@ export function createRendering({
   function _applyTrackedPointHandoff() {
     const graphic = layerState._trackedEntity?.point;
     if (!graphic) return;
-    const handoff = resolvePointModelHandoff(parts.models.handoffInput());
+    const input = parts.models.handoffInput();
+    const handoff = resolvePointModelHandoff(input);
+    _applyTrackedCardClearance(trackedCardClearance(handoff, input.anchorPx));
     const key = `${handoff.pointSize}|${handoff.pointAlpha}`;
     if (layerState._trackedHandoffKey === key) return;
     layerState._trackedHandoffKey = key;
     graphic.pixelSize = handoff.pointSize;
     graphic.color = Cesium.Color.YELLOW.withAlpha(handoff.pointAlpha);
     graphic.outlineWidth = handoff.reticle ? 0 : 2;
+  }
+
+  /**
+   * Keep the tracked card clear of the drawn model (P4 T7): republish the
+   * label model only when the quantised clearance changes.
+   * @param {object|null} clearance trackedCardClearance() result.
+   */
+  function _applyTrackedCardClearance(clearance) {
+    const key = clearance ? clearance.gapPx : null;
+    if (layerState._trackedCardClearanceKey === key) return;
+    layerState._trackedCardClearanceKey = key;
+    layerState._trackedCardClearance = clearance;
+    parts.tracking._updateTrackedSatelliteLabelModel();
   }
 
   /** Focus alpha for satellite points, inside the existing shared preRender tick. */

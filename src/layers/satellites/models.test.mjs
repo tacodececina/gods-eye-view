@@ -222,6 +222,7 @@ test('load options: real scale, no tint, no picking, no shadows, async', async (
     minimumPixelSize: 0,
     allowPicking: false,
     shadows: Cesium.ShadowMode.DISABLED,
+    environmentMapOptions: { enabled: false },
     asynchronous: true,
   });
   await h.loader.calls[0].resolve();
@@ -235,6 +236,18 @@ test('load options: real scale, no tint, no picking, no shadows, async', async (
     { noradId: h.events[0].noradId, assetId: h.events[0].assetId },
     { noradId: ISS, assetId: 'nasa-iss' },
   );
+});
+
+test('load options: the dynamic environment map is off (INSPECCIONAR cost, P4-24)', () => {
+  // Cesium.Model enables DynamicEnvironmentMapManager by default: at 7.7 km/s
+  // the ISS leaves its 1 km epsilon several times a second and the map is
+  // regenerated with readPixels (output/eyeinsky-p4/t7/perf/diag/diag.json).
+  const h = harness({
+    rows: [{ noradId: ISS, group: 'stations', distanceM: 5000 }],
+  });
+  h.tick({ trackedNorad: ISS });
+  assert.equal(h.loader.calls.length, 1);
+  assert.equal(h.loader.calls[0].options.environmentMapOptions?.enabled, false);
 });
 
 test('cap counts pending loads (active + pending <= cap)', async () => {

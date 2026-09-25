@@ -8,6 +8,7 @@ import {
   modelsHarness,
 } from '../../testSupport/satelliteModelHarness.mjs';
 import { SAT_MODEL_LOAD_TIMEOUT_MS } from './policy.js';
+import { SAT_MODEL_DEFAULT_TIMERS } from './models.js';
 
 const rows = [
   { noradId: ISS, group: 'stations', distanceM: 1000 },
@@ -84,4 +85,29 @@ test('destroy clears pending timers', () => {
   assert.equal(timers.size, 1);
   h.models.destroy();
   assert.equal(timers.size, 0);
+});
+
+// The production timers (not the manual ones above): a short REAL timeout
+// must call its function, `clear` must cancel it, and the handle must not
+// keep a Node process alive (the 20 s watchdog is unref'd).
+test('default load timers really fire, clear cancels, and never hold the process', async () => {
+  const fired = [];
+  const handle = SAT_MODEL_DEFAULT_TIMERS.set(() => fired.push('a'), 5);
+  const cancelled = SAT_MODEL_DEFAULT_TIMERS.set(() => fired.push('b'), 5);
+  SAT_MODEL_DEFAULT_TIMERS.clear(cancelled);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.deepEqual(fired, ['a'], 'the live timer fired, the cleared one not');
+  assert.equal(handle.hasRef?.(), false, 'unref: never holds the process');
+});
+
+test('without injected timers a pending load is failed by the real watchdog', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = modelsHarness({ rows, profile: 'low' });
+  h.tick({ trackedNorad: ISS });
+  assert.equal(h.models.getStats().pending, 1);
+  t.mock.timers.tick(SAT_MODEL_LOAD_TIMEOUT_MS - 1);
+  assert.equal(h.models.getStats().pending, 1, 'not before 20 s');
+  t.mock.timers.tick(1);
+  assert.equal(h.models.getStats().pending, 0, 'the slot is free at 20 s');
+  assert.equal(h.models.statusOf(ISS), 'fallido');
 });

@@ -4,233 +4,35 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import * as Cesium from 'cesium';
-import { twoline2satrec } from 'satellite.js';
-import satellitesLayer, {
-  _attachSatelliteModelsForTest,
+import {
+  ISS,
+  ISS_INSPECT_RANGE_M,
   _runSatellitePreRenderForTest,
-  _setSatelliteLabelLifecycleStateForTest,
   _trackedFrameCartesianForTest,
   _trackIssForTest,
-} from './satellites.js';
+  contextRecord,
+  direction,
+  flush,
+  frame as sceneFrame,
+  range,
+  satellitesLayer,
+  scene,
+  trackIss,
+  viewFromOf,
+} from '../testSupport/satelliteTrackingScene.mjs';
 import { TRACK_VIEW_FROM_LEO } from '../layers/satellites/policy.js';
 import {
   dockBiasElevation,
   targetElevation,
 } from '../layers/satellites/dockBias.js';
-import { SATELLITE_CONTEXT_KEYS } from '../layers/satellites/contextFields.js';
-import { summarizeContextRecord } from '../voice/gevActions.js';
+import {
+  ATTITUDE_SUBJECTS,
+  attitudeSubjectRows,
+  attitudeViolations,
+  walkAttitudeSubject,
+} from '../testSupport/satelliteAttitudeAudit.mjs';
 import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
-
-const ISS = 25544;
-const SATREC = twoline2satrec(
-  '1 25544U 98067A   26267.14191496  .00009634  00000+0  18116-3 0  9999',
-  '2 25544  51.6318 170.3464 0004691 174.6338 185.4701 15.49258637587098',
-);
-const MANIFEST_TEXT = readFileSync(
-  new URL('../../public/models/satellites/manifest.json', import.meta.url),
-  'utf8',
-);
-const ISS_INSPECT_RANGE_M = 8 * 72.068;
-const flush = () => new Promise((resolve) => setImmediate(resolve));
-const silentHost = { setEntries() {}, setVisible() {}, clearSource() {} };
-
-// The shared context slot hangs from `window`, as in the browser.
-globalThis.window ??= new EventTarget();
-
-// This viewer has a camera (the framing writes it) but no WebGL frame state:
-// the focus-rectangle projection has nothing to project with in Node, so it
-// reports "off screen" and the focus target is simply cleared.
-Cesium.SceneTransforms.worldToWindowCoordinates = () => undefined;
-
-function fakeModel() {
-  return {
-    show: true,
-    ready: false,
-    destroyed: false,
-    modelMatrix: Cesium.Matrix4.clone(Cesium.Matrix4.IDENTITY),
-    readyEvent: new Cesium.Event(),
-    errorEvent: new Cesium.Event(),
-    destroy() {
-      this.destroyed = true;
-    },
-    isDestroyed() {
-      return this.destroyed;
-    },
-  };
-}
-
-/** Aim a local-frame camera straight at its origin (the tracked target). */
-function aimAtOrigin(camera) {
-  const d = Cesium.Cartesian3.normalize(
-    Cesium.Cartesian3.negate(camera.position, new Cesium.Cartesian3()),
-    new Cesium.Cartesian3(),
-  );
-  const z = Cesium.Cartesian3.UNIT_Z;
-  const up = Cesium.Cartesian3.subtract(
-    z,
-    Cesium.Cartesian3.multiplyByScalar(
-      d,
-      Cesium.Cartesian3.dot(z, d),
-      new Cesium.Cartesian3(),
-    ),
-    new Cesium.Cartesian3(),
-  );
-  camera.direction = d;
-  camera.up = Cesium.Cartesian3.normalize(up, up);
-}
-
-/** Follow-camera viewer: assigning trackedEntity raises trackedEntityChanged. */
-function followViewer() {
-  const trackedEntityChanged = new Cesium.Event();
-  const assignments = [];
-  let tracked;
-  const camera = {
-    position: Cesium.Cartesian3.clone(TRACK_VIEW_FROM_LEO),
-    transform: Cesium.Matrix4.clone(Cesium.Matrix4.IDENTITY),
-    frustum: { fovy: Math.PI / 3 },
-    flightsCancelled: 0,
-    lookAts: [],
-    cancelFlight() {
-      this.flightsCancelled += 1;
-    },
-    lookAtTransform(transform, offset) {
-      this.lookAts.push(Cesium.Cartesian3.clone(offset));
-      Cesium.Cartesian3.clone(offset, this.position);
-      aimAtOrigin(this);
-    },
-  };
-  aimAtOrigin(camera);
-  return {
-    entities: new Cesium.EntityCollection(),
-    camera,
-    trackedEntityChanged,
-    assignments,
-    get trackedEntity() {
-      return tracked;
-    },
-    set trackedEntity(value) {
-      if (value === tracked) return;
-      tracked = value;
-      assignments.push(value);
-      trackedEntityChanged.raiseEvent(value);
-    },
-    scene: {
-      frameState: { frameNumber: 1 },
-      primitives: { add: (p) => p, remove() {} },
-    },
-  };
-}
-
-/** Viewer the models render through: its camera 4 km from the sample. */
-function modelsViewerNearIss() {
-  return {
-    scene: {
-      canvas: { clientHeight: 1000 },
-      primitives: { add: (p) => p, remove: () => true },
-    },
-    camera: {
-      frustum: { fovy: Math.PI / 3 },
-      // 4 km from the tracked sample: ISS ≈ 31 px across.
-      get positionWC() {
-        return Cesium.Cartesian3.add(
-          _trackedFrameCartesianForTest(),
-          new Cesium.Cartesian3(4000, 0, 0),
-          new Cesium.Cartesian3(),
-        );
-      },
-    },
-  };
-}
-
-/** Injected model seams: manifest, profile, projector and a manual loader. */
-function modelOptionsFor({ profile, window, loads }) {
-  return {
-    resolveAsset: (uri) => `/app${uri}`,
-    fetchText: async () => MANIFEST_TEXT,
-    readSignals: () => ({ override: profile }),
-    prefetchAsset: () => {},
-    isVisible: () => true,
-    toWindow: (s, position, result) =>
-      Cesium.Cartesian2.fromElements(window.x, window.y, result),
-    isCoarsePointer: () => false,
-    loadModel: (options) => {
-      const call = { options, model: fakeModel() };
-      call.promise = new Promise((resolve, reject) => {
-        call.resolve = async () => {
-          resolve(call.model);
-          await flush();
-          call.model.ready = true;
-          call.model.readyEvent.raiseEvent(call.model);
-        };
-        call.reject = async () => {
-          reject(new Error('404 Not Found'));
-          await flush();
-        };
-      });
-      loads.push(call);
-      return call.promise;
-    },
-  };
-}
-
-function scene({
-  now = () => Date.UTC(2026, 8, 24, 6, 0, 0),
-  profile = 'std',
-  others = [],
-  pointCollection = null,
-  dockViewport = null,
-} = {}) {
-  const viewer = followViewer();
-  const loads = [];
-  const window = { x: 640, y: 400 };
-  const modelsViewer = modelsViewerNearIss();
-  _setSatelliteLabelLifecycleStateForTest({
-    viewer,
-    satrec: SATREC,
-    point: {
-      position: Cesium.Cartesian3.fromDegrees(-97.7, 30.2, 420_000),
-      show: true,
-      pixelSize: 12,
-      color: Cesium.Color.RED,
-      outlineColor: Cesium.Color.WHITE,
-      outlineWidth: 2,
-      disableDepthTestDistance: 0,
-    },
-    overlayHost: silentHost,
-    now,
-    others,
-    pointCollection,
-    dockViewport,
-  });
-  // Production listener body, wired the way _installClickHandler wires it.
-  viewer.trackedEntityChanged.addEventListener(() =>
-    satellitesLayer._satelliteTrackedEntityChangedForTest(),
-  );
-  _attachSatelliteModelsForTest(
-    modelsViewer,
-    modelOptionsFor({ profile, window, loads }),
-  );
-  return { viewer, modelsViewer, loads, window };
-}
-
-const viewFromOf = (entity) =>
-  entity.viewFrom.getValue(Cesium.JulianDate.now());
-const range = (vector) => Cesium.Cartesian3.magnitude(vector);
-const direction = (vector) =>
-  Cesium.Cartesian3.normalize(vector, new Cesium.Cartesian3());
-const contextRecord = (id = ISS) =>
-  window.__gevContextStore?.entities?.get(String(id)) ?? null;
-
-async function trackIss(options) {
-  const s = scene(options);
-  await flush();
-  const entity = _trackIssForTest();
-  assert.equal(s.viewer.trackedEntity, entity, 'precondition: following');
-  s.viewer.assignments.length = 0;
-  return { ...s, entity };
-}
 
 test('INSPECCIONAR (reduced motion): same NORAD, inspect range, instant, no auto-untrack', async () => {
   const s = await trackIss();
@@ -391,6 +193,24 @@ test('a new target always starts in orbit framing', async () => {
   satellitesLayer.stopTracking({ origin: 'user' });
 });
 
+/**
+ * The reticle is still the tracked point: shown, non-zero and opaque enough
+ * to draw, so Cesium keeps it in the pick pass and the follow camera keeps
+ * its bounding sphere (kills a `graphic.show = !reticle` mutant).
+ */
+function assertPointVisibleAndPickable(entity, now, where) {
+  const graphic = entity.point;
+  assert.equal(entity.show, true, `${where}: entity shown`);
+  assert.equal(entity.isShowing, true, `${where}: entity showing`);
+  assert.equal(
+    graphic.show?.getValue(now) ?? true,
+    true,
+    `${where}: point shown`,
+  );
+  assert.ok(graphic.pixelSize.getValue(now) > 0, `${where}: point has size`);
+  assert.ok(graphic.color.getValue(now).alpha > 0, `${where}: point drawn`);
+}
+
 test('handoff: a ready model beyond 24 px turns the dot into a reticle', async () => {
   const s = await trackIss();
   try {
@@ -406,6 +226,7 @@ test('handoff: a ready model beyond 24 px turns the dot into a reticle', async (
     assert.equal(graphic.color.getValue(now).alpha, 0.5);
     assert.ok(s.entity.point, 'the point graphic is never removed');
     assert.equal(s.viewer.trackedEntity, s.entity);
+    assertPointVisibleAndPickable(s.entity, now, 'reticle');
   } finally {
     satellitesLayer.stopTracking({ origin: 'user' });
   }
@@ -588,88 +409,31 @@ test('phone with the dock open: the follow camera lifts the target above the doc
 // P4-21 on the REAL record: what tracking.js publishes to the context store
 // (and what voice compacts from it) carries only the whitelisted flat keys,
 // and attitude is a label — never a number, whatever key it hides under.
-const ATTITUDE_LABELS = ['lvlh-nominal-aprox', 'desconocida', 'n/a'];
-const QUATERNION_TEXT = /-?\d+(?:\.\d+)?(?:\s*[, ]\s*-?\d+(?:\.\d+)?){3}/;
-const ANGLE_TEXT = /-?\d+(?:[.,]\d+)?\s*(?:°|deg|rad)\b/i;
-const SUBJECTS = [
-  { noradId: ISS, name: 'ISS (ZARYA)', group: 'stations', asset: true },
-  { noradId: 20580, name: 'HST', group: 'visual', asset: true },
-  { noradId: 43000, name: 'CUBE-1U', group: 'cubesat', asset: true },
-  { noradId: 24876, name: 'GPS BIIR-2', group: 'gps-ops', asset: false },
-];
-const otherRows = SUBJECTS.filter((row) => row.noradId !== ISS).map((row) => ({
-  ...row,
-  point: {
-    position: Cesium.Cartesian3.fromDegrees(-97.6, 30.2, 540_000),
-    show: true,
-  },
-}));
-
-function assertRealRecordClean(where, record) {
-  assert.ok(record, `${where}: the layer published a record`);
-  assert.deepEqual(
-    Object.keys(record.properties),
-    [...SATELLITE_CONTEXT_KEYS],
-    `${where}: only the whitelisted flat keys`,
-  );
-  assert.ok(
-    ATTITUDE_LABELS.includes(record.properties.attitude),
-    `${where}: attitude is a label (${record.properties.attitude})`,
-  );
-  const voice = summarizeContextRecord(record, { includeProperties: true });
-  for (const [key, value] of Object.entries(voice.properties)) {
-    if (key === 'attitude')
-      assert.doesNotMatch(value, /\d/, `${where}: voice ${key}=${value}`);
-    assert.doesNotMatch(value, QUATERNION_TEXT, `${where}: voice ${key}`);
-  }
-  assert.doesNotMatch(
-    JSON.stringify(record.properties),
-    ANGLE_TEXT,
-    `${where}: no angle text`,
-  );
-}
-
-/** Drive one subject through orbit/inspect × model states; check each. */
-async function walkSubject(s, subject, settle) {
-  const seen = new Set();
-  const read = (label) => {
-    const record = contextRecord(subject.noradId);
-    assertRealRecordClean(`${subject.name}/${label}`, record);
-    seen.add(`${record.properties.framing}:${record.properties.modelStatus}`);
-  };
-  const frame = () => {
-    s.viewer.scene.frameState.frameNumber += 1;
-    _runSatellitePreRenderForTest();
-  };
-  const loadsBefore = s.loads.length;
-  assert.equal(
-    satellitesLayer.trackById(subject.noradId, { origin: 'user' }),
-    true,
-  );
-  read('selected');
-  frame();
-  for (const framing of ['orbit', 'inspect']) {
-    satellitesLayer.setTrackedFraming(framing, { reducedMotion: true });
-    read(`${framing}/before-settle`);
-  }
-  for (const load of s.loads.slice(loadsBefore)) await load[settle]();
-  frame();
-  for (const framing of ['inspect', 'orbit']) {
-    satellitesLayer.setTrackedFraming(framing, { reducedMotion: true });
-    read(`${framing}/${settle}`);
-  }
-  return seen;
-}
-
 test('P4-21: the REAL published record has only whitelisted keys and no attitude numbers', async () => {
-  const s = scene({ others: otherRows });
+  const s = scene({ others: attitudeSubjectRows() });
   await flush();
   const seen = new Set();
+  const frame = () => sceneFrame(s);
   try {
     for (const settle of ['resolve', 'reject']) {
-      for (const subject of SUBJECTS) {
-        for (const state of await walkSubject(s, subject, settle))
-          seen.add(`${subject.asset ? 'asset' : 'none'}:${state}`);
+      for (const subject of ATTITUDE_SUBJECTS) {
+        await walkAttitudeSubject(
+          s,
+          satellitesLayer,
+          subject,
+          settle,
+          (label) => {
+            const record = contextRecord(subject.noradId);
+            assert.deepEqual(
+              attitudeViolations(`${subject.name}/${label}`, record),
+              [],
+            );
+            seen.add(
+              `${subject.asset ? 'asset' : 'none'}:${record.properties.framing}:${record.properties.modelStatus}`,
+            );
+          },
+          frame,
+        );
         satellitesLayer.stopTracking({ origin: 'user' });
       }
     }

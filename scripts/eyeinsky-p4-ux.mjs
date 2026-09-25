@@ -13,10 +13,28 @@
  * El directorio de salida es OBLIGATORIO y no puede contener ya un result.json.
  * Nunca arranca servidor: apúntalo a uno vivo.
  */
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import puppeteer from 'puppeteer';
+import {
+  createRecorder,
+  finishRun,
+  launchBrowser,
+  near,
+  prepareRun,
+  screenshot as saveShot,
+  sleep,
+} from './lib/eyeinsky-p4-run.mjs';
+import {
+  clickAction,
+  dockTargets,
+  recordFramingRanges,
+  nasaCreditShown,
+  openApp as openLiveApp,
+  pickFromGroup,
+  probe,
+  targetsOk,
+  trackById,
+  waitForDock,
+  waitModelReady,
+} from './lib/eyeinsky-p4-page.mjs';
 import {
   cardOffset,
   modelScreen,
@@ -24,245 +42,16 @@ import {
 } from './eyeinsky-p4-ux-probes.mjs';
 
 const ISS = 25544;
-const MODEL_READY_TIMEOUT_MS = 20_000;
 const ISS_INSPECT_RANGE_M = 8 * 72.068;
 /** |TRACK_VIEW_FROM_LEO| = |(-450, -450, 350) km|. */
 const ORBIT_RANGE_M = Math.hypot(450_000, 450_000, 350_000);
 const HULL_OFFSET_PX = 52;
 
-const baseUrl = process.argv[2];
-const out = process.argv[3];
-if (!baseUrl || !out)
-  throw new Error('uso: eyeinsky-p4-ux.mjs <url> <directorio-de-salida>');
-const resultPath = path.join(out, 'result.json');
-try {
-  await fs.access(resultPath);
-  throw new Error(
-    `${resultPath} ya existe: usa un directorio nuevo por corrida para no sobrescribir evidencia`,
-  );
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
-await fs.mkdir(out, { recursive: true });
-
-const chrome = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const profileDir = await fs.mkdtemp(path.join(os.tmpdir(), 'eye-p4-ux-'));
-const result = {
-  startedAt: new Date().toISOString(),
-  url: baseUrl,
-  browserMode: 'perfil temporal nuevo, Chrome headless, GPU nativa',
-  checks: [],
-  snapshots: {},
-  pageErrors: [],
-  consoleErrors: [],
-  screenshots: [],
-};
-const check = (id, ok, detail) => {
-  result.checks.push({ id, ok: Boolean(ok), detail });
-  console.log(`${ok ? 'ok  ' : 'FALLA'} ${id}`);
-};
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const near = (value, target, tolerance) =>
-  Number.isFinite(value) && Math.abs(value / target - 1) <= tolerance;
-
-const browser = await puppeteer.launch({
-  executablePath: chrome,
-  headless: true,
-  args: ['--enable-webgl', '--ignore-gpu-blocklist'],
-  userDataDir: profileDir,
-});
-
-async function screenshot(page, name) {
-  const file = path.join(out, name);
-  await page.screenshot({ path: file });
-  result.screenshots.push(file);
-}
-
-/** Página nueva con registro de errores y eventos de modelo. */
-async function openApp(url, viewport) {
-  const page = await browser.newPage();
-  await page.setViewport(viewport);
-  page.on('pageerror', (error) => result.pageErrors.push(String(error)));
-  page.on('console', (message) => {
-    if (message.type() === 'error') result.consoleErrors.push(message.text());
-  });
-  await page.evaluateOnNewDocument(() => {
-    window.__p4ModelEvents = [];
-    window.__p4Cleared = 0;
-    window.addEventListener('gev:awareness-subject-cleared', () => {
-      window.__p4Cleared += 1;
-    });
-    for (const type of ['model-ready', 'model-evicted', 'model-failed']) {
-      window.addEventListener(`gev:satellite-${type}`, (event) =>
-        window.__p4ModelEvents.push({ type, ...event.detail }),
-      );
-    }
-  });
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120_000 });
-  await page.waitForFunction(
-    () =>
-      window.__godsEyeView?.viewer &&
-      window.__godsEyeView?.dataManager &&
-      window.__CESIUM__ &&
-      document.querySelector('#loading-screen')?.classList.contains('hidden'),
-    { timeout: 120_000 },
-  );
-  await page.evaluate(() =>
-    window.__godsEyeView.dataManager.setEnabled('satellites', true, {
-      origin: 'user',
-    }),
-  );
-  await page.waitForFunction(
-    (iss) => {
-      const module =
-        window.__godsEyeView.dataManager.layers.get('satellites')?.module;
-      const stats = module?._satelliteModelStatsForTest?.();
-      const ids = new Set(
-        (module?.getAllPositions?.(5000) ?? []).map((row) => row.id),
-      );
-      return stats?.manifest === 'ready' && ids.has(iss);
-    },
-    { timeout: 60_000, polling: 250 },
-    ISS,
-  );
-  return page;
-}
-
-/** Lo que el dock pinta del objetivo: clave, cámara, estado, acción, chips. */
-const dockProbe = (page) =>
-  page.evaluate(() => {
-    const inspect = document.querySelector('[data-eye-dock-action="inspect"]');
-    const dock = document.getElementById('eye-mission-dock');
-    return {
-      dockKey: dock?.dataset.contextKey ?? null,
-      cameraStatus: dock?.dataset.cameraStatus ?? null,
-      statusLine: document.querySelector('.eye-dock-status')?.textContent,
-      inspect: inspect
-        ? {
-            label: inspect.textContent,
-            disabled: inspect.disabled,
-            title: inspect.title,
-          }
-        : null,
-      chips: [...document.querySelectorAll('.eye-sat-chip')].map(
-        (chip) => chip.textContent,
-      ),
-    };
-  });
-
-/** Estado legible del objetivo: capa, cámara, contexto y retícula + dock. */
-const probe = async (page) => ({
-  ...(await layerProbe(page)),
-  ...(await dockProbe(page)),
-});
-
-const layerProbe = (page) =>
-  page.evaluate(() => {
-    const C = window.__CESIUM__;
-    const viewer = window.__godsEyeView.viewer;
-    const module =
-      window.__godsEyeView.dataManager.layers.get('satellites').module;
-    const params = module.getParams();
-    const id = params.selectedSatTrackingId;
-    const record = window.__gevContextStore?.entities?.get(String(id));
-    const tracked = viewer.trackedEntity;
-    const now = viewer.clock.currentTime;
-    const following = tracked?.gevTrackedId === `satellites:${id}`;
-    const info = module.getTrackedInfo();
-    const world = info
-      ? C.Cartesian3.fromDegrees(info.longitude, info.latitude, info.altitudeM)
-      : null;
-    return {
-      selected: id,
-      framing: module.getTrackedFraming(),
-      contextFraming: record?.properties?.framing ?? null,
-      contextStatus: record?.status ?? null,
-      following,
-      // Following: the EntityView offset IS the framing range. A world
-      // distance would mix in the sample the preRender already advanced
-      // (~100 m per frame at LEO speed).
-      cameraRangeM: following
-        ? C.Cartesian3.magnitude(viewer.camera.position)
-        : null,
-      worldRangeM: world
-        ? C.Cartesian3.distance(viewer.camera.positionWC, world)
-        : null,
-      cleared: window.__p4Cleared,
-      pointSize: tracked?.point?.pixelSize?.getValue(now) ?? null,
-      pointAlpha: tracked?.point?.color?.getValue(now)?.alpha ?? null,
-      hasPoint: Boolean(tracked?.point),
-      stats: module._satelliteModelStatsForTest(),
-    };
-  });
-
-const trackById = (page, id) =>
-  page.evaluate(
-    (norad) =>
-      window.__godsEyeView.dataManager.layers
-        .get('satellites')
-        .module.trackById(norad, { origin: 'user' }),
-    id,
-  );
-
-async function waitForDock(page, id) {
-  await page.waitForFunction(
-    (key) =>
-      document.getElementById('eye-mission-dock')?.dataset.contextKey === key,
-    { timeout: 10_000 },
-    `satellites:${id}`,
-  );
-  await sleep(400);
-}
-
-const waitModelReady = (page, id) =>
-  page
-    .waitForFunction(
-      (norad) =>
-        window.__p4ModelEvents.some(
-          (event) => event.type === 'model-ready' && event.noradId === norad,
-        ) &&
-        window.__godsEyeView.dataManager.layers
-          .get('satellites')
-          .module._satelliteModelStatsForTest()
-          .ids.includes(norad),
-      { timeout: MODEL_READY_TIMEOUT_MS, polling: 250 },
-      id,
-    )
-    .then(() => true)
-    .catch(() => false);
-
-const nasaCreditShown = (page) =>
-  page.evaluate(() =>
-    (window.__godsEyeView.viewer.creditDisplay?._staticCredits ?? []).some(
-      (credit) => String(credit?.html ?? '').includes('NASA 3D Resources'),
-    ),
-  );
-
-const clickAction = (page, id) => page.click(`[data-eye-dock-action="${id}"]`);
-
-/** Primer NORAD del grupo con elementos no caducados, o null. */
-async function pickFromGroup(page, group) {
-  const ids = await page.evaluate((wanted) => {
-    const module =
-      window.__godsEyeView.dataManager.layers.get('satellites').module;
-    return module
-      .getAllPositions(5000)
-      .map((row) => row.id)
-      .filter((id) => module._catalogGroupForTest(id) === wanted);
-  }, group);
-  for (const id of ids.slice(0, 25)) {
-    await trackById(page, id);
-    await sleep(300);
-    const age = await page.evaluate(
-      (norad) =>
-        window.__gevContextStore?.entities?.get(String(norad))?.properties
-          ?.elementAge,
-      id,
-    );
-    if (age === 'vigente' || age === 'envejecida') return { id, age };
-  }
-  return null;
-}
+const { baseUrl, out, resultPath } = await prepareRun('eyeinsky-p4-ux.mjs');
+const { result, check } = createRecorder({ url: baseUrl });
+const { browser, close } = await launchBrowser('eye-p4-ux-');
+const screenshot = (page, name) => saveShot(result, out, page, name);
+const openApp = (url, viewport) => openLiveApp(browser, result, url, viewport);
 
 async function issOrbitReadout(page) {
   await trackById(page, ISS);
@@ -293,16 +82,24 @@ async function issOrbitReadout(page) {
 
 async function inspectIss(page) {
   await issOrbitReadout(page);
-  await clickAction(page, 'inspect');
-  await sleep(150);
-  const midway = await probe(page);
-  await sleep(1400);
+  const ranges = await recordFramingRanges(page, () =>
+    clickAction(page, 'inspect'),
+  );
   const landed = await probe(page);
+  const between = ranges.filter(
+    (m) => m < 0.95 * ORBIT_RANGE_M && m > 1.05 * ISS_INSPECT_RANGE_M,
+  );
   check(
     'inspeccionar-anima-sin-reduced-motion',
-    midway.cameraRangeM > 3 * ISS_INSPECT_RANGE_M &&
+    between.length >= 3 &&
+      near(ranges.at(-1), ISS_INSPECT_RANGE_M, 0.05) &&
       near(landed.cameraRangeM, ISS_INSPECT_RANGE_M, 0.05),
-    { midwayM: midway.cameraRangeM, landedM: landed.cameraRangeM },
+    {
+      frames: ranges.length,
+      intermediateFrames: between.length,
+      firstM: ranges[0],
+      landedM: landed.cameraRangeM,
+    },
   );
   check(
     'inspeccionar-conserva-norad-y-contexto',
@@ -375,15 +172,26 @@ async function followBackToInspect(page, id) {
   );
 }
 
+/**
+ * Hasta dónde puede estar la ISS de una cámara soltada (P3.1: el pointerdown
+ * suelta la cámara) sin que nadie la haya reiniciado: el rango de inspección
+ * más lo que la ISS recorre a 7,66 km/s mientras el arnés vuelve a mirar, con
+ * 500 m de margen. Una cámara reiniciada a la órbita estaría a ~726 km.
+ */
+const releasedCameraBoundM = (elapsedMs) =>
+  8 * 72.068 * 1.1 + 7.7 * elapsedMs + 500;
+
 async function hullClick(page) {
   const screen = await modelScreen(page, ISS);
   const x = screen.x + HULL_OFFSET_PX;
   const y = screen.y;
   const pickedThere = await pickAt(page, x, y);
   const before = await probe(page);
+  const clickedAt = Date.now();
   await page.mouse.click(x, y);
   await sleep(150);
   const after = await probe(page);
+  const driftBoundM = releasedCameraBoundM(Date.now() - clickedAt);
   await screenshot(page, 'ux-02-hull-click.png');
   // P3.1: any pointerdown on the globe hands the camera back (a click cannot
   // be told from the start of a drag). What P4-17 forbids is losing the
@@ -396,7 +204,7 @@ async function hullClick(page) {
       after.selected === ISS &&
       after.framing === 'inspect' &&
       after.cleared === before.cleared &&
-      after.worldRangeM < 3000,
+      after.worldRangeM < driftBoundM,
     {
       click: {
         x,
@@ -412,6 +220,7 @@ async function hullClick(page) {
         cameraStatus: after.cameraStatus,
         subjectClearedEvents: after.cleared - before.cleared,
         cameraToIssM: after.worldRangeM,
+        driftBoundM,
       },
     },
   );
@@ -538,66 +347,6 @@ async function gnssPointOnly(page) {
   await screenshot(page, 'ux-04-gnss-point.png');
 }
 
-/** Objetivos del dock: dentro, alcanzables y ≥ 44 px; texto esencial ≥ 13 px. */
-const dockTargets = (page) =>
-  page.evaluate(() => {
-    const viewport = window.visualViewport;
-    const dock = document.getElementById('eye-mission-dock');
-    const visible = (element) =>
-      Boolean(element?.getClientRects().length) &&
-      getComputedStyle(element).visibility !== 'hidden' &&
-      getComputedStyle(element).display !== 'none';
-    const measure = (element) => {
-      const box = element.getBoundingClientRect();
-      const hit = document.elementFromPoint(
-        box.left + box.width / 2,
-        box.top + box.height / 2,
-      );
-      return {
-        label:
-          element.textContent?.trim() || element.getAttribute('aria-label'),
-        width: box.width,
-        height: box.height,
-        inside:
-          box.left >= -1 &&
-          box.top >= -1 &&
-          box.right <= viewport.width + 1 &&
-          box.bottom <= viewport.height + 1,
-        hit: Boolean(hit && (hit === element || element.contains(hit))),
-      };
-    };
-    const text = [
-      ...dock.querySelectorAll(
-        '.eye-dock-title, .eye-dock-action, .eye-dock-keyvalue dt, .eye-dock-keyvalue dd, .eye-dock-status',
-      ),
-    ]
-      .filter(visible)
-      .map((element) => ({
-        text: element.textContent?.trim(),
-        size: Number.parseFloat(getComputedStyle(element).fontSize),
-      }));
-    return {
-      scale: viewport.scale,
-      overflowX: document.documentElement.scrollWidth - window.innerWidth,
-      buttons: [...dock.querySelectorAll('button')]
-        .filter(visible)
-        .map(measure),
-      rail: [...dock.querySelectorAll('.eye-dock-keyvalue')]
-        .filter(visible)
-        .map((item) => item.textContent),
-      text,
-    };
-  });
-
-const targetsOk = (m) =>
-  m.overflowX <= 0 &&
-  m.buttons.length > 0 &&
-  m.buttons.every(
-    (b) => b.inside && b.hit && b.width >= 44 && b.height >= 44,
-  ) &&
-  m.text.length > 0 &&
-  m.text.every((t) => t.size >= 13);
-
 async function zoom200(page) {
   await trackById(page, ISS);
   await waitForDock(page, ISS);
@@ -707,22 +456,6 @@ try {
   result.fatal = String(error?.stack ?? error);
   console.error(error);
 } finally {
-  result.finishedAt = new Date().toISOString();
-  result.passed =
-    !result.fatal && result.checks.every((entry) => entry.ok === true);
-  await fs.writeFile(resultPath, `${JSON.stringify(result, null, 2)}\n`);
-  await browser.close();
-  await fs.rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  await close();
 }
-console.log(
-  JSON.stringify(
-    {
-      passed: result.passed,
-      checks: result.checks.map(({ id, ok }) => ({ id, ok })),
-      fatal: result.fatal ?? null,
-    },
-    null,
-    2,
-  ),
-);
-process.exitCode = result.passed ? 0 : 1;
+await finishRun(result, resultPath);

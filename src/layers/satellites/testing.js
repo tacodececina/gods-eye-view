@@ -175,13 +175,18 @@ export function createTesting({ state: layerState, services, parts, source }) {
     pointCollection = null,
     // Optional () => {bandPx, widthPx, heightPx}: the Mission Dock band.
     dockViewport = null,
+    // Optional element provenance of the ISS row (elementEpochMs, ...).
+    issElements = null,
   }) {
     layerState._viewer = viewer;
     layerState._dockViewportForTest = dockViewport;
     if (pointCollection) layerState._pointCollection = pointCollection;
     layerState._trackedFrameNowForTest = now;
     layerState._catalog = new Map([
-      [ISS_NORAD, { name: 'ISS (ZARYA)', satrec, group: 'stations' }],
+      [
+        ISS_NORAD,
+        { name: 'ISS (ZARYA)', satrec, group: 'stations', ...issElements },
+      ],
     ]);
     layerState._points = new Map([[ISS_NORAD, point]]);
     for (const row of others) {
@@ -189,6 +194,7 @@ export function createTesting({ state: layerState, services, parts, source }) {
         name: row.name,
         satrec: row.satrec || satrec,
         group: row.group,
+        ...row.elements,
       });
       layerState._points.set(row.noradId, row.point);
     }

@@ -4,6 +4,7 @@ import * as Cesium from 'cesium';
 import {
   framingTweenOffset,
   inspectRangeM,
+  inspectRefusal,
   inspectViewFrom,
   isTrackFraming,
   orbitViewFrom,
@@ -29,12 +30,18 @@ test('framings: only orbit and inspect exist', () => {
   }
 });
 
-test('inspect range is clamp(8·radiusM, 30 m, 5 km)', () => {
+test('inspect range is clamp(8·radiusM, 6 m, 5 km)', () => {
   assert.equal(SAT_INSPECT_RANGE_FACTOR, 8);
-  assert.equal(SAT_INSPECT_MIN_RANGE_M, 30);
+  assert.equal(SAT_INSPECT_MIN_RANGE_M, 6);
   assert.equal(SAT_INSPECT_MAX_RANGE_M, 5000);
   assert.equal(inspectRangeM(72.068), 8 * 72.068, 'ISS');
-  assert.equal(inspectRangeM(0.149), 30, 'CubeSat 1U hits the floor');
+  assert.equal(inspectRangeM(0.149), 6, 'CubeSat 1U hits the floor');
+  // At the floor a 1U CubeSat must read as a model, not a dot: ≥ 24 px on a
+  // 390×844 phone and on a 1280×800 desktop (60° vertical field of view).
+  for (const heightPx of [800, 844]) {
+    const px = (0.149 * heightPx) / (6 * Math.tan(Math.PI / 6));
+    assert.ok(px >= 24, `CubeSat at the floor: ${px.toFixed(1)} px`);
+  }
   assert.equal(inspectRangeM(2000), 5000, 'ceiling');
   for (const bad of [0, -1, Number.NaN, null, undefined, Infinity]) {
     assert.equal(inspectRangeM(bad), null, `invalid radius ${bad}`);
@@ -81,4 +88,33 @@ test('tween starts at the current offset and lands on the target', () => {
       mid > Cesium.Cartesian3.magnitude(to),
     'range moves monotonically between the two',
   );
+});
+
+test('inspectRefusal: stale orbit, no model, failed model — in the dock order', () => {
+  const asset = { radiusM: 72.068 };
+  assert.equal(inspectRefusal({ asset, elementAge: 'vigente' }), null);
+  assert.equal(
+    inspectRefusal({
+      asset,
+      elementAge: 'envejecida',
+      modelStatus: 'cargando',
+    }),
+    null,
+  );
+  assert.equal(inspectRefusal({ asset, modelStatus: 'listo' }), null);
+  assert.equal(
+    inspectRefusal({ asset, elementAge: 'caducada', modelStatus: 'fallido' }),
+    'orbita-caducada',
+    'a stale orbit wins',
+  );
+  assert.equal(inspectRefusal({ asset: null }), 'sin-modelo');
+  assert.equal(
+    inspectRefusal({ asset: { radiusM: Number.NaN } }),
+    'sin-modelo',
+  );
+  assert.equal(
+    inspectRefusal({ asset, modelStatus: 'fallido' }),
+    'modelo-fallido',
+  );
+  assert.equal(inspectRefusal(), 'sin-modelo');
 });

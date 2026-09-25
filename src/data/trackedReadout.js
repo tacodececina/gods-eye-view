@@ -170,6 +170,8 @@ export function createTrackedOverlayEntry(entity) {
       : TRACKED_BILLBOARD_SCALE,
     minAnchorGapPx: 16,
     anchorGapPaddingPx: 10,
+    gapPx: model.gapPx, // with anchorRadiusPx 0: clears a 3D hull (P4 T7)
+    leaderOffsetPx: model.leaderOffsetPx,
     verticalOnly: true,
     viewportMargin: 6,
     edgeFade: 'keyhole',

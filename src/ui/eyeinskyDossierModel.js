@@ -33,11 +33,12 @@ const VISIBILITIES = new Set(['summary', 'expanded', 'closed']);
 export const CONTEXT_FIELD_LIMIT = 16;
 
 /**
- * Estados de frescura que un registro puede declarar por sí mismo. Sólo
- * `predicted` (posición calculada por SGP4, nadie la observó); cualquier otro
- * texto del proveedor se ignora en vez de pintarse como estado.
+ * Estados de frescura que un registro puede declarar por sí mismo:
+ * `predicted` (posición calculada por SGP4, nadie la observó) y
+ * `propagation-failed` (SGP4 no dio posición: no hay pose válida, P4-20).
+ * Cualquier otro texto del proveedor se ignora en vez de pintarse como estado.
  */
-const RECORD_STATUSES = new Set(['predicted']);
+const RECORD_STATUSES = new Set(['predicted', 'propagation-failed']);
 
 /**
  * Número finito, o null. Un `0` legítimo se conserva; `NaN`, `''` y `undefined`

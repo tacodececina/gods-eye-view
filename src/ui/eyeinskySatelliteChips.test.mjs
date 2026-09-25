@@ -19,7 +19,7 @@ test('ISS: specific NASA model at real scale, approximate attitude', () => {
     'ESCALA REAL',
     'ACT. APROX.',
     'ÉPOCA · VIGENTE',
-    'CACHÉ · HIT',
+    'CACHÉ · ACIERTO',
   ]);
 });
 
@@ -29,7 +29,7 @@ test('CubeSat: family geometry, attitude unknown (illustrative)', () => {
     'ESCALA REAL',
     'ACT. DESCONOCIDA',
     'ÉPOCA · VIGENTE',
-    'CACHÉ · HIT',
+    'CACHÉ · ACIERTO',
   ]);
 });
 
@@ -37,7 +37,7 @@ test('no curated model: an SGP4 point, no scale and no attitude claims', () => {
   assert.deepEqual(texts({ assetId: null }), [
     'SIN MODELO — punto SGP4',
     'ÉPOCA · VIGENTE',
-    'CACHÉ · HIT',
+    'CACHÉ · ACIERTO',
   ]);
 });
 
@@ -49,7 +49,7 @@ test('a failed model says so and keeps every other reading', () => {
     resolveSatelliteRail(
       contextOf({ assetId: 'nasa-iss', modelStatus: 'fallido' }),
     ).map(({ value }) => value),
-    ['418 km', 'vigente', 'no disponible'],
+    ['418 km', 'vigente', 'NO DISP.'],
   );
 });
 
@@ -66,7 +66,7 @@ test('a stale cache is flagged, and nothing leaks to other layers', () => {
   const cache = resolveSatelliteChips(
     contextOf({ cacheStatus: 'STALE-ERROR' }),
   ).find(({ id }) => id === 'cache');
-  assert.deepEqual([cache.text, cache.tone], ['CACHÉ · STALE-ERROR', 'warn']);
+  assert.deepEqual([cache.text, cache.tone], ['CACHÉ · OBSOLETA', 'warn']);
   const flight = contextFromRecord({
     id: 'ae1fa4',
     layerId: 'flights',
@@ -75,4 +75,41 @@ test('a stale cache is flagged, and nothing leaks to other layers', () => {
   assert.equal(isSatelliteContext(flight), false);
   assert.deepEqual(resolveSatelliteChips(flight), []);
   assert.equal(resolveSatelliteRail(flight), null);
+});
+
+test('the cache chip reads in Spanish: ACIERTO / FALLO / OBSOLETA / SIN INFORME', () => {
+  const cacheChip = (cacheStatus) =>
+    resolveSatelliteChips(contextOf({ cacheStatus })).find(
+      ({ id }) => id === 'cache',
+    );
+  assert.deepEqual(
+    ['HIT', 'MISS', 'STALE-ERROR', 'NONE'].map((status) => {
+      const chip = cacheChip(status);
+      return [chip.text, chip.tone];
+    }),
+    [
+      ['CACHÉ · ACIERTO', 'info'],
+      ['CACHÉ · FALLO', 'info'],
+      ['CACHÉ · OBSOLETA', 'warn'],
+      ['CACHÉ · SIN INFORME', 'muted'],
+    ],
+  );
+});
+
+test('the compact rail abbreviates MODELO so it never truncates', () => {
+  const railModel = (options) =>
+    resolveSatelliteRail(contextOf(options)).at(-1).value;
+  assert.equal(railModel({ assetId: 'nasa-iss' }), 'ESPECÍF.');
+  assert.equal(railModel({ assetId: 'nasa-cubesat-1u' }), 'FAMILIA');
+  assert.equal(railModel({ assetId: null }), 'SIN MODELO');
+  assert.equal(
+    railModel({ assetId: 'nasa-iss', ageMs: 30 * 86_400_000 }),
+    'SIN MODELO',
+  );
+  assert.equal(
+    railModel({ assetId: 'nasa-iss', modelStatus: 'fallido' }),
+    'NO DISP.',
+  );
+  for (const assetId of ['nasa-iss', 'nasa-cubesat-1u', null])
+    assert.ok(railModel({ assetId }).length <= 10, 'short enough for 390 px');
 });

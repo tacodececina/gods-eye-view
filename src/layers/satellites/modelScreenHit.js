@@ -11,6 +11,7 @@ import { SAT_HULL_HIT_MIN_COARSE_PX, SAT_HULL_HIT_MIN_PX } from './policy.js';
 
 const scratchCenter = new Cesium.Cartesian3();
 const scratchWindow = new Cesium.Cartesian2();
+const scratchOrigin = new Cesium.Cartesian3();
 
 /** World sphere of the model: Cesium's real one once ready, else the asset's. */
 function sphereOf(entry) {
@@ -41,13 +42,25 @@ function modelView(ctx, id) {
   const heightPx = ctx.viewer?.scene?.canvas?.clientHeight;
   if (!camera?.positionWC) return null;
   const { center, radiusM } = sphereOf(entry);
-  const px = projectedDiameterPx({
-    radiusM,
+  const projection = {
     distanceM: Cesium.Cartesian3.distance(camera.positionWC, center),
     viewportHeightPx: heightPx,
     fovyRad: camera.frustum?.fovy,
+  };
+  const px = projectedDiameterPx({ radiusM, ...projection });
+  if (!(px > 0)) return null;
+  // The tracked card anchors to the drawn ORIGIN, not the sphere centre: the
+  // sphere around the origin that holds the hull is r + |centre − origin|.
+  const origin = Cesium.Matrix4.getTranslation(
+    entry.model.modelMatrix,
+    scratchOrigin,
+  );
+  const offsetM = Cesium.Cartesian3.distance(center, origin);
+  const anchorPx = projectedDiameterPx({
+    radiusM: radiusM + offsetM,
+    ...projection,
   });
-  return px > 0 ? { center, radiusM, px } : null;
+  return { center, radiusM, px, anchorPx };
 }
 
 /**
@@ -66,11 +79,17 @@ export function modelTranslation(ctx, id, result) {
 /**
  * @param {object} ctx Models context.
  * @param {number} id NORAD id.
- * @returns {{modelReady: boolean, modelPx: number}}
+ * @returns {{modelReady: boolean, modelPx: number, anchorPx: number}}
+ *   `modelPx` is the hull's projected diameter; `anchorPx` the diameter of
+ *   the sphere around the drawn origin (card anchor) that holds the hull.
  */
 export function modelHandoffInput(ctx, id) {
   const view = modelView(ctx, id);
-  return { modelReady: view !== null, modelPx: view?.px ?? 0 };
+  return {
+    modelReady: view !== null,
+    modelPx: view?.px ?? 0,
+    anchorPx: view?.anchorPx ?? 0,
+  };
 }
 
 /**

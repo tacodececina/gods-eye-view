@@ -147,6 +147,10 @@ export function createState({ services }) {
 
   state._trackedFrameDateMs = Number.NaN;
 
+  /** SGP4 failed for the tracked satellite: no valid pose (P4-20). */
+
+  state._trackedPropagationFailed = false;
+
   // P4 near-field models (modelsHost.js): the createSatelliteModels instance
   // for the viewer's lifetime and the profile chosen at attach. Loads are
   // invalidated by _catalogRevision, bumped on every ingestion rebuild.
@@ -166,6 +170,8 @@ export function createState({ services }) {
 
   state._framingTween = null;
 
+  state._trackedCardClearance = null;
+  state._trackedCardClearanceKey = null;
   state._trackedHandoffKey = null;
 
   state._presentationSignature = null;

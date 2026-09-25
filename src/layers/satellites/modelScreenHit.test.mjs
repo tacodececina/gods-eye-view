@@ -98,9 +98,11 @@ test('handoff input reports the ready model and its projected size', async () =>
   assert.equal(input.modelReady, true);
   const expected = (2 * 72.068 * VIEW_HEIGHT_PX) / (2 * 4000 * TAN);
   assert.ok(Math.abs(input.modelPx - expected) < 1e-6, `${input.modelPx}`);
+  assert.ok(input.anchorPx >= input.modelPx, 'clearance holds the hull');
   assert.deepEqual(h.models.handoffInput(99999), {
     modelReady: false,
     modelPx: 0,
+    anchorPx: 0,
   });
 });
 
@@ -117,4 +119,69 @@ test('statusOf: inactive, loading, failed, then ready', async () => {
   h.tick({ trackedNorad: ISS });
   await h.loader.calls[1].resolve();
   assert.equal(h.models.statusOf(ISS), 'listo', 'a later success clears it');
+});
+
+// Production wiring of the pointer floor: without an injected
+// `isCoarsePointer`, models.js asks matchMedia('(pointer: coarse)').
+async function issWithMedia(coarse) {
+  const queries = [];
+  const previous = globalThis.matchMedia;
+  globalThis.matchMedia = (query) => {
+    queries.push(query);
+    return { matches: coarse && query === '(pointer: coarse)' };
+  };
+  try {
+    const h = modelsHarness({
+      rows: [{ noradId: ISS, group: 'stations', distanceM: 12_500 }],
+      extra: {
+        toWindow: (scene, position, result) =>
+          Cesium.Cartesian2.fromElements(CENTER_PX.x, CENTER_PX.y, result),
+      },
+    });
+    h.tick({ trackedNorad: ISS });
+    await h.loader.calls[0].resolve();
+    h.models.updatePoses({
+      trackedNorad: ISS,
+      trackedPosition: h.state._points.get(ISS).position,
+      trackedDateMs: Date.now(),
+    });
+    const hits = [11, 13, 23, 25].map((dx) => h.models.screenHit(at(dx), ISS));
+    return { hits, queries };
+  } finally {
+    if (previous === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = previous;
+  }
+}
+
+test('default wiring: a coarse pointer (matchMedia) gets 24 px, a fine one 12 px', async () => {
+  const fine = await issWithMedia(false);
+  assert.deepEqual(fine.hits, [true, false, false, false], 'fine: 12 px');
+  const coarse = await issWithMedia(true);
+  assert.deepEqual(coarse.hits, [true, true, true, false], 'coarse: 24 px');
+  assert.ok(
+    coarse.queries.length > 0 &&
+      coarse.queries.every((query) => query === '(pointer: coarse)'),
+    `asks for the coarse pointer (${coarse.queries})`,
+  );
+});
+
+test('handoff input: the card clearance encloses the hull around the DRAWN origin', async () => {
+  // The card anchors to the model translation; Cesium's sphere centre sits
+  // 20 m off it. The clearance sphere around the origin is r + 20 m.
+  const origin = new Cesium.Cartesian3(7_004_000, 0, 0);
+  const center = new Cesium.Cartesian3(7_004_000, 20, 0);
+  const h = await trackedIss({
+    distanceM: 4000,
+    sphere: new Cesium.BoundingSphere(center, 72),
+  });
+  assert.ok(Cesium.Cartesian3.equals(h.position, origin), 'precondition');
+  const input = h.models.handoffInput(ISS);
+  const px = (radiusM, distanceM) =>
+    (2 * radiusM * VIEW_HEIGHT_PX) / (2 * distanceM * TAN);
+  const distance = Cesium.Cartesian3.distance(h.camera, center);
+  assert.ok(Math.abs(input.modelPx - px(72, distance)) < 1e-6, 'hull size');
+  assert.ok(
+    Math.abs(input.anchorPx - px(92, distance)) < 1e-6,
+    `clearance ${input.anchorPx} encloses the offset hull`,
+  );
 });

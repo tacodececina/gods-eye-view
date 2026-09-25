@@ -53,6 +53,12 @@ const VALUE_LABELS = Object.freeze({
       'n/a': 'no aplica',
     }),
     elementFormat: Object.freeze({ omm: 'OMM', tle: 'TLE' }),
+    cacheStatus: Object.freeze({
+      HIT: 'acierto',
+      MISS: 'fallo',
+      'STALE-ERROR': 'obsoleta',
+      NONE: 'sin informe',
+    }),
   }),
 });
 

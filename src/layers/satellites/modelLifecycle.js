@@ -289,6 +289,10 @@ export async function startLoad(ctx, id, asset) {
       minimumPixelSize: 0,
       allowPicking: false,
       shadows: Cesium.ShadowMode.DISABLED,
+      // Cesium.Model regenerates its dynamic environment map whenever the
+      // model moves > 1 km; a LEO satellite does that every frame (readPixels
+      // on the main thread, +28 ms p95 in B2: output/eyeinsky-p4/t7/perf).
+      environmentMapOptions: { enabled: false },
       asynchronous: true,
     });
   } catch (error) {

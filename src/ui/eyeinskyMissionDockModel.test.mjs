@@ -410,12 +410,30 @@ test('the satellite rail reads ALT · ÉPOCA · MODELO', () => {
     [
       ['ALT', '418 km'],
       ['ÉPOCA', 'vigente'],
-      ['MODELO', 'específico'],
+      ['MODELO', 'ESPECÍF.'],
     ],
   );
   assert.equal(view.layerId, 'satellites');
   assert.deepEqual(
     satelliteView({ assetId: null }).keyValues.at(-1),
-    { label: 'MODELO', value: 'punto', unit: null },
+    { label: 'MODELO', value: 'SIN MODELO', unit: null },
   );
+});
+
+test('a disabled INSPECCIONAR publishes its reason as visible text for the rail', () => {
+  const noModel = satelliteView({ assetId: null });
+  assert.deepEqual(noModel.actionReason, {
+    actionId: 'inspect',
+    text: 'Sin modelo curado: solo punto',
+  });
+  const stale = satelliteView({ assetId: 'nasa-iss', ageMs: 30 * 86_400_000 });
+  assert.match(stale.actionReason.text, /caducada/i);
+  assert.equal(satelliteView({ assetId: 'nasa-iss' }).actionReason, null);
+  const flights = buildMissionDockView({
+    dossier: createDossierState(trackedContext()),
+    activity: createActivityState(),
+    dock: createMissionDockState(),
+    following: true,
+  });
+  assert.equal(flights.actionReason, null, 'only the inspect action');
 });

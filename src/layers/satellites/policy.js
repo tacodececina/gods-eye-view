@@ -297,16 +297,21 @@ export const SAT_MODEL_MANIFEST_URI = '/models/satellites/manifest.json';
 
 /**
  * Tracked camera framings (P4 T5). 'orbit' is the TRACK_VIEW_FROM_LEO/HIGH
- * landing; 'inspect' keeps that direction at clamp(8·radiusM, 30 m, 5 km)
+ * landing; 'inspect' keeps that direction at clamp(8·radiusM, 6 m, 5 km)
  * from the resolved model asset. The change animates for
  * SAT_FRAMING_TWEEN_MS, or lands at once under reduced motion.
+ *
+ * Floor lowered from 30 m to 6 m in T7: at 30 m a 1U CubeSat (radiusM 0.149)
+ * projected ≈ 7 px, still a dot under the reticle threshold; at 6 m it reads
+ * ≈ 34 px. Jitter and near plane at 6 m are measured by scripts/eyeinsky-p4.mjs
+ * (projected centre over 30 frames), evidence in output/eyeinsky-p4/t7/.
  */
 
 export const SAT_TRACK_FRAMINGS = Object.freeze(['orbit', 'inspect']);
 
 export const SAT_INSPECT_RANGE_FACTOR = 8;
 
-export const SAT_INSPECT_MIN_RANGE_M = 30;
+export const SAT_INSPECT_MIN_RANGE_M = 6;
 
 export const SAT_INSPECT_MAX_RANGE_M = 5000;
 
@@ -339,6 +344,17 @@ export const SAT_RETICLE_PX = 4;
 export const SAT_RETICLE_ALPHA = 0.5;
 
 export const SAT_POINT_HANDOFF_PX = 24;
+
+/**
+ * Tracked card over a model (P4 T7): once the dot is a reticle, the card is
+ * placed above the model's projected bounding sphere plus this margin, in
+ * steps of SAT_CARD_GAP_STEP_PX so a zoom republishes it only a few times
+ * (it covered the ISS hull in inspect, output/eyeinsky-p4/t5/kronos-ux-1).
+ */
+
+export const SAT_CARD_HULL_MARGIN_PX = 8;
+
+export const SAT_CARD_GAP_STEP_PX = 4;
 
 /**
  * Hull pick (P4 T5): a click inside the tracked model's projected bounding

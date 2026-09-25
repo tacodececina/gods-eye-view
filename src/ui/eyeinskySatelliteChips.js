@@ -42,8 +42,27 @@ function valueOf(context, key) {
 
 const chip = (id, text, tone = 'info') => Object.freeze({ id, text, tone });
 
+/** Procedencia de la caché del proxy, en español (código crudo → chip). */
+const CACHE_CHIPS = Object.freeze({
+  HIT: ['ACIERTO', 'info'],
+  MISS: ['FALLO', 'info'],
+  'STALE-ERROR': ['OBSOLETA', 'warn'],
+  NONE: ['SIN INFORME', 'muted'],
+});
+
+/** Chip CACHÉ; un código desconocido se muestra tal cual, sin inventar. */
+function cacheChip(code) {
+  const [text, tone] = CACHE_CHIPS[code] ?? [code, 'info'];
+  return chip('cache', `CACHÉ · ${text}`, tone);
+}
+
+/** SGP4 no dio posición para el seguido (P4-20): no hay pose ni modelo. */
+const propagationFailed = (context) => context?.status === 'propagation-failed';
+
 /** Chip MODELO: específico, familia o punto; la órbita caducada manda. */
 function modelChip(context) {
+  if (propagationFailed(context))
+    return chip('model', 'SIN MODELO — propagación falló', 'danger');
   if (codeOf(context, 'elementAge') === 'caducada')
     return chip('model', 'SIN MODELO — órbita caducada', 'danger');
   const fidelity = codeOf(context, 'geometryFidelity');
@@ -80,9 +99,11 @@ function attitudeChip(context) {
 export function resolveSatelliteChips(context) {
   if (!isSatelliteContext(context)) return Object.freeze([]);
   const chips = [modelChip(context)];
-  if (codeOf(context, 'visualScale') === 'real')
+  // Sin pose válida (P4-20) no hay modelo dibujado: ni escala ni actitud.
+  const posed = !propagationFailed(context);
+  if (posed && codeOf(context, 'visualScale') === 'real')
     chips.push(chip('scale', 'ESCALA REAL'));
-  const attitude = attitudeChip(context);
+  const attitude = posed ? attitudeChip(context) : null;
   if (attitude) chips.push(attitude);
   const age = codeOf(context, 'elementAge');
   if (age)
@@ -90,27 +111,24 @@ export function resolveSatelliteChips(context) {
       chip('epoch', `ÉPOCA · ${age.toUpperCase()}`, AGE_TONES[age] ?? 'info'),
     );
   const cache = codeOf(context, 'cacheStatus');
-  if (cache)
-    chips.push(
-      chip(
-        'cache',
-        `CACHÉ · ${cache}`,
-        cache === 'STALE-ERROR' ? 'warn' : 'info',
-      ),
-    );
+  if (cache) chips.push(cacheChip(cache));
   if (codeOf(context, 'modelStatus') === 'fallido')
     chips.push(chip('model-failed', 'MODELO NO DISPONIBLE', 'danger'));
   return Object.freeze(chips);
 }
 
-/** Palabra corta del modelo para el riel. */
+/**
+ * Palabra corta del modelo para el riel compacto: abreviada (≤ 10 signos)
+ * para que en un teléfono de 390 px nunca se recorte con puntos suspensivos.
+ */
 function railModel(context) {
-  if (codeOf(context, 'modelStatus') === 'fallido') return 'no disponible';
-  if (codeOf(context, 'elementAge') === 'caducada') return 'punto';
+  if (propagationFailed(context)) return 'SIN MODELO';
+  if (codeOf(context, 'modelStatus') === 'fallido') return 'NO DISP.';
+  if (codeOf(context, 'elementAge') === 'caducada') return 'SIN MODELO';
   const fidelity = codeOf(context, 'geometryFidelity');
-  if (fidelity === 'specific') return 'específico';
-  if (fidelity === 'family') return 'familia';
-  return 'punto';
+  if (fidelity === 'specific') return 'ESPECÍF.';
+  if (fidelity === 'family') return 'FAMILIA';
+  return 'SIN MODELO';
 }
 
 /**
@@ -146,6 +164,12 @@ export function resolveInspectAction(context) {
       'Órbita',
       true,
       'Vuelve al encuadre orbital sin soltar el objetivo',
+    );
+  if (propagationFailed(context))
+    return make(
+      'Inspeccionar',
+      false,
+      'Propagación falló: sin posición ni modelo',
     );
   if (codeOf(context, 'elementAge') === 'caducada')
     return make(

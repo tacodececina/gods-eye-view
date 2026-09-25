@@ -121,6 +121,25 @@ test('tracked entry factory pins the production protected-lane policy', () => {
   assert.equal(entry.edgeFade, 'keyhole');
 });
 
+test('a layer can clear a large 3D visual with an explicit gap instead of the anchor dot', () => {
+  const display = { x: 4, y: 5, z: 6 };
+  const base = {
+    gevTrackedId: 'satellites:25544',
+    gevDisplayPosition: () => display,
+  };
+  const cleared = createTrackedOverlayEntry({
+    ...base,
+    gevLabelModel: { title: 'ISS', details: [], anchorRadiusPx: 0, gapPx: 96, leaderOffsetPx: 88 },
+  });
+  assert.equal(cleared.anchorRadiusPx, 0, 'no anchor-dot gap');
+  assert.equal(cleared.gapPx, 96, 'the card sits above the projected hull');
+  assert.equal(cleared.leaderOffsetPx, 88, 'the leader starts at the hull edge');
+  const dot = createTrackedOverlayEntry({ ...base, gevLabelModel: { title: 'ISS', details: [] } });
+  assert.equal(dot.anchorRadiusPx, 10, 'the default dot clearance is unchanged');
+  assert.equal(dot.gapPx, undefined);
+  assert.equal(dot.leaderOffsetPx, undefined);
+});
+
 test('selected camera readout carries tactical animation and fixed badge clearance', () => {
   const entry = createTrackedOverlayEntry({
     id: 'alpr:42', gevDisplayPosition: () => ({ x: 1, y: 2, z: 3 }),
