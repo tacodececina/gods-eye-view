@@ -40,5 +40,41 @@
     "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/CubeSat%20-%201%20RU%20Generic/CubeSat%20-%201%20RU%20Generic.glb",
     "sha256": "bae308ea2e33778c93675909f7dc2e0d5d6916cd685668a463566c61224b1e85",
     "bytes": 149424
+  },
+  {
+    "file": "public/data/moon-de441-2021-2040.bin",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "3e7c488061cd56dcb3412deea41b2716a023c945a89076b62c8116b9a86db96d",
+    "bytes": 120792
+  },
+  {
+    "file": "src/data/fixtures/moon-horizons-icrf.json",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "4de038233a4a33216cc82160da2545209ce683d63f7f03cfed2aeca79795b533",
+    "bytes": 23928
+  },
+  {
+    "file": "public/models/moon/placeholder.png",
+    "url": "generated: scripts/eyeinsky-moon-placeholder.mjs (own work, no external source)",
+    "sha256": "e6e67b38d3a529d19437427b2d84703ab68b860490aca839463d8b68ebfe9235",
+    "bytes": 1106
+  },
+  {
+    "file": "src/data/fixtures/moon-horizons-phase.json",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "be6fbd39fad64af5218d8752f2bd4756c7ef251da509bafd6b2a0bcd9918012a",
+    "bytes": 3431
+  },
+  {
+    "file": "public/models/moon/lroc-color-1k-b246064f.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg",
+    "sha256": "b246064f217f8d479df78c49c7c8595a8f5fbda008a72fd539978d2e121e0109",
+    "bytes": 139068
+  },
+  {
+    "file": "public/models/moon/lroc-color-2k-f7130a18.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg",
+    "sha256": "f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170",
+    "bytes": 457942
   }
 ]

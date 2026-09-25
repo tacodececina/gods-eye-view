@@ -153,9 +153,47 @@ function decayExtra(rules, rows, now) {
   return [decayingCubesatFixture(rows, rules.decayFailAtMs)];
 }
 
+const PROXY_FETCH_ATTEMPTS = 3;
+const PROXY_RETRY_DELAY_MS = 400;
+
+/**
+ * Lectura Node→proxy de la respuesta REAL (la que recibe los fixtures). Un
+ * fallo de CONEXIÓN se reintenta: bajo carga Windows devolvió `connect
+ * ETIMEDOUT 127.0.0.1:4204` a los ~300 ms y la página quedaba sin el fixture
+ * (p. ej. 123458, P4-20). Cada reintento queda en `log`; una respuesta HTTP,
+ * aunque sea 5xx, no se reintenta: es un resultado del proxy.
+ */
+export async function fetchProxyWithRetry(
+  url,
+  {
+    fetchImpl = globalThis.fetch,
+    log = [],
+    attempts = PROXY_FETCH_ATTEMPTS,
+    delayMs = PROXY_RETRY_DELAY_MS,
+  } = {},
+) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fetchImpl(url);
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      log.push({
+        kind: 'proxy-retry',
+        url: String(url),
+        attempt,
+        code: error?.cause?.code ?? null,
+        error: String(error?.cause ?? error),
+      });
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 /** Respuesta real del proxy + registros de fixture añadidos al final. */
 async function fulfillWithFixtures(client, event, rules, group) {
-  const upstream = await fetch(event.request.url);
+  const upstream = await fetchProxyWithRetry(event.request.url, {
+    log: rules.log,
+  });
   const rows = await upstream.json();
   const now = Date.now();
   const extra =

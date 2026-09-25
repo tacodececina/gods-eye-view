@@ -10,6 +10,7 @@ import { resetCameraNorth } from './cameraOrientationControls.js';
 import { configureEyeCameraInteraction } from './eyeinskyCameraInteraction.js';
 import { mountEyeScenePolicy } from './eyeinskyScenePolicy.js';
 import { mountEyeCatalog } from './eyeinskyCatalog.js';
+import { contextLayerUnavailableLabel } from '../contextModePolicy.js';
 import { mountEyeActiveLayers } from './eyeinskyActiveLayers.js';
 import { planTargetCameraTransition } from '../navigationPolicy.js';
 import { createDecorativeDecoder } from './eyeinskyDecode.js';
@@ -28,6 +29,18 @@ import {
   reduceMissionDock,
 } from './eyeinskyMissionDockModel.js';
 import { mountEyeMissionDock } from './eyeinskyMissionDock.js';
+import { mountEyeEarthMoon } from './eyeinskyEarthMoon.js';
+import { createSystemDeclutter } from './eyeinskySystemView.js';
+import {
+  isDetectionSuspended,
+  resumeDetection,
+  suspendDetection,
+} from '../data/detection.js';
+import {
+  getSuppressedOverlaySources,
+  getWorldOverlayDiagnostics,
+  setOverlaySourceSuppressed,
+} from '../overlays/worldOverlay.js';
 import { mountEyeMedia, resolveContextMedia } from './eyeinskyMedia.js';
 import {
   createActivityState,
@@ -701,10 +714,22 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     const nextEnabled = !wasEnabled;
     button.setAttribute('aria-busy', 'true');
     try {
-      await dataManager.setEnabled(id, nextEnabled, {
+      const accepted = await dataManager.setEnabled(id, nextEnabled, {
         origin: 'user',
       });
-      if (nextEnabled) {
+      // Un modo de contexto aislado (Misiones espaciales) rechaza la capa: se
+      // dice el motivo en vez de fallar en silencio.
+      const refusal =
+        nextEnabled && accepted === false && !dataManager.isEnabled(id)
+          ? contextLayerUnavailableLabel({
+              contextMode: currentContextMode(),
+              layerId: id,
+            })
+          : null;
+      if (refusal) {
+        const name = dataManager.layers.get(id)?.module?.name || id;
+        notice(`${name}: ${refusal}`);
+      } else if (nextEnabled) {
         const module = dataManager.layers.get(id)?.module;
         styleManager._navigation.requestLayerFit(
           id,
@@ -746,6 +771,14 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
       button.removeAttribute('aria-busy');
       syncDirectLayers();
     }
+  }
+  /** Modo de contexto vigente (o entrando): el catálogo dice qué no admite. */
+  function currentContextMode() {
+    return (
+      styleManager._contextControls?._contextModeEntering ||
+      styleManager._contextMode ||
+      null
+    );
   }
   function syncDirectLayers() {
     for (const button of document.querySelectorAll('[data-eye-layer]')) {
@@ -1175,6 +1208,71 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   // Aplica lo que se haya acumulado mientras las superficies se montaban.
   setEyeSurfaceSuspension('init', false);
   applyDossier();
+  // P5 T8: tira TIEMPO, capas en vivo suspendidas, Luna y retorno a Tierra.
+  // El shell solo presta sus autoridades; la lógica vive en eyeinskyEarthMoon.
+  // SISTEMA TIERRA–LUNA aparta callouts (GEO) y sismos que tapan la Tierra.
+  const systemDeclutter = createSystemDeclutter({
+    detection: {
+      suspend: suspendDetection,
+      resume: resumeDetection,
+      isSuspended: isDetectionSuspended,
+    },
+    overlays: { setSuppressed: setOverlaySourceSuppressed },
+  });
+  defer(() => systemDeclutter.destroy());
+  const earthMoon = mountEyeEarthMoon({
+    viewer,
+    dataManager,
+    reduced,
+    hosts: { time: missionDock.getTimeHost(), moon: missionDock.getMoonHost() },
+    ring: {
+      get: () => styleManager.celestialRingEnabled === true,
+      set: (on) => styleManager.setCelestialRingEnabled(on),
+    },
+    shell: earthMoonShell(),
+  });
+  defer(() => earthMoon.destroy());
+  function earthMoonShell() {
+    const select = (context, explicit) =>
+      publishDossier({
+        type: 'select',
+        context: withResolvedMedia(context),
+        explicit,
+      });
+    return {
+      getDossier: () => dossierState,
+      getDockState: () => dockState,
+      isFollowing: isFollowingCurrentTarget,
+      releaseFollow: () => {
+        if (isFollowingCurrentTarget()) toggleFollowCurrentTarget(true);
+      },
+      refocus: (context) =>
+        Boolean(
+          dataManager.layers
+            .get(context.layerId || '')
+            ?.module?.refocusTrackedById?.(context.stableId, {
+              origin: 'user',
+            }),
+        ),
+      select: (context) => select(context, true),
+      selectView: () => select(currentViewContext(), false),
+      refresh: (context) =>
+        publishDossier({
+          type: 'refresh',
+          context: withResolvedMedia(context),
+        }),
+      collapseDock: () => publishDock({ type: 'collapse' }),
+      restoreDock: (dock) => {
+        publishDock({ type: 'select-pane', pane: dock.pane });
+        publishDock({ type: dock.expanded ? 'expand' : 'collapse' });
+      },
+      navigate: (noun, run) =>
+        styleManager._navigation.runOrientation(noun, run),
+      notice,
+      declutter: (on) => systemDeclutter.set(on),
+      onSuspensionChange: () => activeLayers?.sync(),
+    };
+  }
 
   function clean(value) {
     document.body.classList.toggle('eye-clean', value);
@@ -1320,6 +1418,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   catalog = mountEyeCatalog({
     host: $('eye-catalog'),
     dataManager,
+    getContextMode: currentContextMode,
     onToggle: (entry, button) =>
       toggleLayer(entry.id, button, { returnToCatalog: false }),
     onConfigure: (entry, button) => {
@@ -1334,6 +1433,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     onAdd: (button) => openView('catalog', button),
     onDisable: (id, button) =>
       toggleLayer(id, button, { returnToActive: true }),
+    getSuspended: () => earthMoon.debug?.suspended() ?? [],
   });
   defer(() => activeLayers?.destroy());
   lifetime.listen($('eye-catalog-back'), 'click', closePanel);
@@ -1381,6 +1481,17 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     },
     get rows() {
       return rows;
+    },
+    earthMoon: earthMoon.debug,
+    /** Arnés P5: despeje de SISTEMA (callouts de detección y sismos). */
+    systemDeclutter: () => {
+      const overlay = getWorldOverlayDiagnostics();
+      return {
+        active: systemDeclutter.isActive(),
+        detectionSuspended: isDetectionSuspended(),
+        suppressedSources: [...getSuppressedOverlaySources()],
+        paintedEarthquakes: overlay.paintedBySource.earthquakes ?? 0,
+      };
     },
   };
   window.__eyeinsky = debug;

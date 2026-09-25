@@ -28,6 +28,8 @@ import {
   removeOverlayEntry,
   selectBoundedOverlayCohort,
   setOverlayEntries,
+  getSuppressedOverlaySources,
+  setOverlaySourceSuppressed,
   setOverlaySourceVisible,
   upsertOverlayEntry,
 } from './worldOverlay.js';
@@ -2222,4 +2224,27 @@ test('diagnostics facade preserves the complete binding shape', () => {
     'candidateIndexSize', 'entriesBySource', 'paintedBySource',
   ];
   assert.deepEqual(Object.keys(diagnostics).sort(), fields.sort());
+});
+
+test('P5 SISTEMA: una fuente se aparta por dueño sin tocar su visibilidad propia', () => {
+  const env = installMockEnvironment();
+  initWorldOverlay(env.viewer);
+  setOverlayEntries('earthquakes', [{ id: 'm53', position: position(), variant: 'label' }]);
+  assert.deepEqual(getSuppressedOverlaySources(), []);
+  setOverlaySourceSuppressed('earthquakes', 'earth-moon-system', true);
+  setOverlaySourceSuppressed('earthquakes', 'otro', true);
+  assert.deepEqual(getSuppressedOverlaySources(), ['earthquakes']);
+  setOverlaySourceVisible('earthquakes', true); // la capa se reactiva: sigue apartada
+  setOverlaySourceSuppressed('earthquakes', 'earth-moon-system', false);
+  assert.deepEqual(
+    getSuppressedOverlaySources(),
+    ['earthquakes'],
+    'otro dueño la sigue apartando',
+  );
+  setOverlaySourceSuppressed('earthquakes', 'otro', false);
+  assert.deepEqual(getSuppressedOverlaySources(), []);
+  setOverlaySourceSuppressed('earthquakes', 'earth-moon-system', true);
+  destroyWorldOverlay();
+  assert.deepEqual(getSuppressedOverlaySources(), []);
+  env.cleanup();
 });

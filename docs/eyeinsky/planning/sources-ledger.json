@@ -90,6 +90,54 @@
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
       "title": "CelesTrak — grupo stations (22 objetos; incluye ISS 25544, no HST, el 2026-09-24)",
       "accessed": "2026-09-24"
+    },
+    {
+      "id": 16,
+      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+      "title": "NASA/JPL — Horizons API (DE441; parámetros VECTORS/OBSERVER, TLIST; sin texto de licencia explícito)",
+      "accessed": "2026-09-24"
+    },
+    {
+      "id": 17,
+      "url": "https://ssd.jpl.nasa.gov/horizons/manual.html",
+      "title": "NASA/JPL — Horizons System Manual (escalas TDB/UT, ObsSub-LON/LAT en ITRF93)",
+      "accessed": "2026-09-24"
+    },
+    {
+      "id": 18,
+      "url": "https://doi.org/10.3847/1538-3881/abd414",
+      "title": "Park et al. 2021, AJ 161:105 — The JPL Planetary and Lunar Ephemerides DE440 and DE441",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 19,
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "title": "NASA/JPL Horizons, DE441 — Luna 301 geocéntrica (500@399), ICRF, REF_PLANE=FRAME, VEC_CORR=NONE, TDB, km; origen de public/data/moon-de441-2021-2040.bin y del fixture de tests",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 20,
+      "url": "https://github.com/cosinekitty/astronomy",
+      "title": "astronomy-engine 2.1.19 (MIT, © Don Cross) — GeoMoon, respaldo fuera de 2021–2040 autorizado por Alex",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 21,
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "title": "NASA/JPL Horizons, DE441 — Luna 301 vista desde el geocentro (500@399), OBSERVER, QUANTITIES='10,13,14' (Illu%, Ang-diam, ObsSub-LON/LAT en MOON_ME, longitud Este), 10 épocas UT; origen de src/data/fixtures/moon-horizons-phase.json",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 22,
+      "url": "https://svs.gsfc.nasa.gov/4720",
+      "title": "NASA SVS — CGI Moon Kit (ID 4720, Ernie Wright/USRA, Noah Petro/NASA GSFC): lroc_color_poles_1k.jpg (mapa de color 2019, polos rellenos con LDAM) y lroc_color_2k.jpg (mapa de color 2025); crédito «NASA's Scientific Visualization Studio»; origen de public/models/moon/lroc-color-*.jpg",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 23,
+      "url": "https://svs.gsfc.nasa.gov/help/",
+      "title": "NASA SVS — FAQ «Can I use your visualizations?»: «All of our content is in the public domain (unless otherwise noted)»; la página 4720 no declara ninguna excepción",
+      "accessed": "2026-09-25"
     }
   ]
 }

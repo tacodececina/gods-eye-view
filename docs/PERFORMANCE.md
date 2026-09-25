@@ -261,3 +261,79 @@ Veredicto:
 Límites: n = 3 no da intervalo de confianza formal; escenas en frío en navegador
 nuevo, no la secuencia de una sesión; sólo CPU del hilo principal, sin GPU; sin
 FPS.
+
+## P5 Tierra–Luna (2026-09-25, GPD Win 4)
+
+La medición anterior (`output/eyeinsky-p5/perf/`) se descartó por
+contaminación: modo `gaming`, CPU a 82–92 °C, agentes en paralelo y una vista
+distinta de la de P4.
+
+Evidencia: `output/eyeinsky-p5/perf-clean/` (`README.md`, `summary.json`,
+`round-<n>/`, `run.log`). Arnés `measure-clean.mjs`, derivado de P4
+`perf-repeat`. Mide lo mismo: CPU del frame de Cesium (`preUpdate` →
+`postRender`), `commandList` (API privada), long tasks y heap. Añade el heap
+tras un GC forzado por CDP antes y después de cada ventana.
+
+Condiciones de captura:
+
+- HEAD `1a929b1` con el árbol limpio.
+- Chrome 153 headless con ANGLE/D3D11 sobre la GPU real (`AMD Radeon(TM) 890M`).
+- 1366x768 a DPR 1 y `?satModels=std`.
+- 45 s por escena tras 8 s de asentamiento, con un navegador nuevo por escena.
+- n = 3 rondas intercaladas: R1 A → A′ → M1 → M2 → S → E; R2 al revés; R3
+  como R1.
+- **La misma vista que la línea base P4:** lon −30°, lat 20°, 20 000 km. En A′
+  la Luna quedó fuera de cuadro, a 41–48° del eje.
+- gpd-forge en modo `windows`, sin escribir hardware.
+- Compuerta antes de cada escena: `cpuTempC` ≤ 78 °C sostenido durante 60 s, sin
+  navegadores headless ajenos y con la CPU total ≤ 25 %. Pasó en las 18 escenas.
+  Durante las ventanas, la CPU estuvo a 69,3–72,9 °C y el package a 12–18 W.
+- Hubo una sesión Playwright ajena intermitente. No se midió la carga dentro de
+  las ventanas.
+- Sin FPS.
+
+Medianas [mín–máx] de la CPU del frame de Cesium, en ms:
+
+| Escena                                       | p50           | p95           | commandList | Heap GC final (MiB) |
+| -------------------------------------------- | ------------- | ------------- | ----------- | ------------------- |
+| A · satélites core, Luna OFF                 | 2,3 [2,1–2,4] | 3,8 [3,5–4,0] | 22          | 107,35              |
+| A′ · Luna ON, en vivo, fuera de cuadro       | 2,1 [2,1–3,0] | 3,4 [3,3–5,3] | 24          | 108,07              |
+| M1 · APUNTAR A LA LUNA, física, textura `1k` | 2,0 [1,7–2,6] | 3,3 [2,8–4,3] | 11–14       | 109,22              |
+| M2 · SISTEMA TIERRA–LUNA                     | 1,0 [0,9–1,4] | 1,8 [1,4–2,3] | 13          | 108,40              |
+| S · simulación ×3600, Luna ON                | 2,4 [2,2–4,0] | 4,6 [3,6–6,3] | 24          | 108,23              |
+| E · tras disable de la Luna                  | 2,1 [1,9–3,6] | 3,6 [3,1–5,9] | 22          | 108,24              |
+
+En las 18 ventanas hubo 0 long tasks y 0 errores. Solo aparecieron frames de
+rAF > 33 ms en R2: 3 en S y 2 en E.
+
+Veredicto (cumple solo si cumplen la mediana y las 3 rondas; Δ intra-ronda R1 /
+R2 / R3 con signo):
+
+- **A′ − A, Δp95 ≤ 1 ms: NO RESOLUBLE.** Δ de medianas −0,4; por ronda −0,5,
+  −0,1 y +1,3.
+  - En R3 sube toda la distribución: el p50 +0,6, y el resto de R3 también
+    queda alto. Es compatible con carga ajena, no probado.
+  - Hay +2 comandos constantes con la Luna fuera de cuadro.
+- **M1 ≤ A + 3 ms de p95: CUMPLE.** Δ −0,5 (−0,5 / −0,7 / +0,3), con la textura
+  `lroc-1k`, escala física y la Luna en cuadro. Mide la escena de la acción, no
+  el disco aislado.
+- **M2 ≤ A + 3 ms de p95: CUMPLE.** Δ −2,0 (−2,0 / −2,1 / −1,7).
+- **S, 0 long tasks y heap tras GC ≤ +2 MiB en 45 s: CUMPLE.** Δ heap −0,02 /
+  +1,21 / +1,12 MiB.
+  - Hay picos de frame de hasta 17,9 ms sin atribuir.
+  - No se capturó perfil CDP porque M1 y S no fallaron.
+- **E = A ± 1 comando: CUMPLE.** 22 = 22 en las 3 rondas.
+- **E, heap = A ± 1 MiB: NO RESOLUBLE.** +0,89 de mediana (+1,54 / +0,97 /
+  +0,54). Es un residuo fijo tras cargar y apagar la Luna, presente ya al abrir
+  la ventana y sin crecer dentro de ella. No se ha atribuido.
+
+P5-16 (comparabilidad con P4):
+
+- La escena A es equivalente a la de P4: 22 comandos en ambas.
+- Frente a P4 std-A (2,0 / 3,1 ms de p50 / p95), la A de P5 da +0,3 / +0,7 ms.
+  Es un Δ entre sesiones, con otro día, otro código y otra carga ajena, y la
+  Luna está apagada: no se atribuye a P5.
+- Los criterios se evalúan contra la A de la misma sesión.
+
+Límites: n = 3 sin intervalo de confianza formal; escenas en frío; solo CPU del
+hilo principal, sin GPU; no se midió en teléfono.

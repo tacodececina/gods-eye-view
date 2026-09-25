@@ -339,6 +339,28 @@ export function contextLayerEnableBlockReason({
   return `Space Missions isolates replay data. Exit the mode to enable ${label}.`;
 }
 
+/** Nombre visible (UI en español) de cada modo que aísla sus capas. */
+const ISOLATING_MODE_LABELS = Object.freeze({
+  'space-missions': 'Misiones espaciales',
+});
+
+/**
+ * Motivo VISIBLE (catálogo, acción) por el que el modo activo no admite
+ * encender `layerId`, o null. Es la misma regla que el guardián
+ * contextLayerEnableBlockReason: sin él, «Agregar» fallaba en silencio.
+ * @param {{contextMode: string|null, layerId: string}} input
+ * @returns {string|null}
+ */
+export function contextLayerUnavailableLabel({ contextMode, layerId }) {
+  const blocked = contextLayerEnableBlockReason({
+    contextMode,
+    change: { layerId, enabled: true },
+  });
+  if (!blocked) return null;
+  const mode = ISOLATING_MODE_LABELS[contextMode] ?? contextMode;
+  return `No disponible en ${mode}`;
+}
+
 /**
  * Resolve who owns a cancelled direct Space Missions entry. A newer ON keeps
  * the entry shell reserved for its replacement transaction; every other

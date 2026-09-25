@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
+    "astronomy-engine": "^2.1.19",
     "cesium": "^1.124.0",
     "egm96-universal": "^1.1.1",
     "mgrs": "^2.1.0",
@@ -242,6 +243,15 @@
     "./layers/transit/standalone": "./src/data/transit.js",
     "./layers/transit/source": "./src/layers/transit/source.js",
     "./sources/transit-service": "./src/sources/transitService.js",
-    "./sources/map-features": "./src/sources/overpassFeatures.js"
+    "./sources/map-features": "./src/sources/overpassFeatures.js",
+    "./time/scales": "./src/time/timeScales.js",
+    "./time/frames": "./src/time/frames.js",
+    "./layers/moon/ephemeris": "./src/layers/moon/ephemeris.js",
+    "./layers/moon/fallback": "./src/layers/moon/ephemerisFallback.js",
+    "./layers/moon/position": "./src/layers/moon/position.js",
+    "./time/scene-clock": "./src/time/sceneClock.js",
+    "./layers/moon": "./src/layers/moon/index.js",
+    "./layers/moon/celestial-state": "./src/layers/moon/celestialState.js",
+    "./layers/moon/phase": "./src/layers/moon/lunarPhase.js"
   }
 }

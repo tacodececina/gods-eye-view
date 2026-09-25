@@ -171,7 +171,11 @@ try {
   // ─── P31-03 · Cada control del dock recibe el toque donde se ve ───
   const hitTest = await page.evaluate(() => {
     const dock = document.getElementById('eye-mission-dock');
-    const controls = [...dock.querySelectorAll('button')].filter(
+    // P5: también los «Apagar» de la lista Activas (en 390 px salían del panel).
+    const activeOff = document.querySelectorAll(
+      '#eye-active-layers [data-eye-active-disable]',
+    );
+    const controls = [...dock.querySelectorAll('button'), ...activeOff].filter(
       (button) => !button.hidden && button.getClientRects().length,
     );
     return controls.map((button) => {

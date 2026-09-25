@@ -437,3 +437,12 @@ test('a disabled INSPECCIONAR publishes its reason as visible text for the rail'
   });
   assert.equal(flights.actionReason, null, 'only the inspect action');
 });
+
+test('P5: concordancia — «Luna sigue seleccionada»', async () => {
+  const { buildMoonContext } = await import('./eyeinskyMoonDockModel.js');
+  const moon = normalizeContext(buildMoonContext({ enabled: true, status: 'loading' }));
+  assert.equal(
+    resolveCameraStatus({ context: { ...moon, title: 'Luna' }, following: false }).detail,
+    'Luna sigue seleccionada; la cámara es tuya.',
+  );
+});

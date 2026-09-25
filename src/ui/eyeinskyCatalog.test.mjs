@@ -59,3 +59,32 @@ test('runtime sources without a declared key remain available', () => {
     'license-restricted',
   );
 });
+
+test('P5: con Misiones espaciales activo, «Agregar» Luna sale deshabilitado CON su motivo', async () => {
+  const { catalogToggleView } = await import('./eyeinskyCatalog.js');
+  const moon = {
+    id: 'moon',
+    name: 'Luna (efeméride DE441)',
+    enabled: false,
+    lifecycleState: 'disabled',
+    stats: {},
+  };
+  const [blocked] = deriveEyeCatalog([moon], { contextMode: 'space-missions' });
+  assert.equal(blocked.blockedReason, 'No disponible en Misiones espaciales');
+  assert.deepEqual(catalogToggleView(blocked), {
+    text: 'No disponible',
+    disabled: true,
+    ariaLabel: 'Agregar Luna (efeméride DE441): No disponible en Misiones espaciales',
+  });
+  const [free] = deriveEyeCatalog([moon]);
+  assert.equal(free.blockedReason, null);
+  assert.deepEqual(catalogToggleView(free), {
+    text: 'Agregar',
+    disabled: false,
+    ariaLabel: null,
+  });
+  const [on] = deriveEyeCatalog([{ ...moon, enabled: true }], {
+    contextMode: 'space-missions',
+  });
+  assert.equal(on.blockedReason, null, 'una capa ya encendida se puede apagar');
+});

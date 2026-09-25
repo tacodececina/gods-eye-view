@@ -358,6 +358,8 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     token: 'i',
     disposition: 'enabled-only',
   }),
+  // P5: the Moon is a computed ephemeris (DE441), never a live feed.
+  Object.freeze({ id: 'moon', token: 'l', disposition: 'enabled-only' }),
   Object.freeze({
     id: 'radio',
     token: 'r',

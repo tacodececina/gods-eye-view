@@ -84,8 +84,9 @@ try {
     await page.waitForFunction(
       () =>
         !document.getElementById('eye-workspace').hidden &&
+        // 21 capas de runtime (P5 añade «moon») + 3 «próximamente».
         document.querySelectorAll('#eye-catalog .eye-catalog-row').length ===
-          23,
+          24,
     );
     // El Mission Dock se SUSPENDE cuando el panel ocupa la pantalla en móvil, y
     // su cierre es animado (`scale(0.975)`). Medir a mitad de esa transición
@@ -251,8 +252,8 @@ try {
         layout.duplicates.length === 0 &&
         layout.overflow.x <= 0 &&
         layout.overflow.y <= 0 &&
-        layout.catalogRows === 23 &&
-        layout.runtimeLayers === 20 &&
+        layout.catalogRows === 24 &&
+        layout.runtimeLayers === 21 &&
         layout.canvasOperational &&
         layout.creditHit &&
         layout.scene.skyBox &&

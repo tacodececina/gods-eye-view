@@ -18,6 +18,7 @@ const KIND_KICKERS = Object.freeze({
   tracked: 'SEGUIMIENTO / CONTACTO',
   camera: 'CÁMARA / CCTV',
   entity: 'INSPECCIONAR / CAPA',
+  moon: 'OBJETIVO / LUNA',
 });
 
 /** Cómo se dice cada estado de frescura, sin eufemismos. */
@@ -28,6 +29,7 @@ const STATUS_LABELS = Object.freeze({
   unreported: 'La fuente no informa la hora',
   // P4: posición calculada con SGP4 desde elementos publicados, no observada.
   predicted: 'Posición calculada (SGP4)',
+  computed: 'Posición calculada (efeméride, no observada)',
   // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
   'propagation-failed': 'Propagación falló (SGP4): sin posición',
 });

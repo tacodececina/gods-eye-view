@@ -28,3 +28,21 @@ test('the active list derives every enabled ID, including local datacenters', ()
     ['local-datacenters', 'satellites'],
   );
 });
+
+test('P5-11: en simulación las capas en vivo suspendidas se listan con «Sin histórico: solo hora real»', () => {
+  const rows = deriveActiveLayers(
+    [
+      { id: 'flights', name: 'Flights', enabled: false },
+      { id: 'moon', name: 'Luna', enabled: true },
+      { id: 'cctv', name: 'CCTV', enabled: false },
+    ],
+    ['flights'],
+  );
+  assert.deepEqual(
+    rows.map((row) => [row.id, row.suspended, row.note]),
+    [
+      ['moon', false, null],
+      ['flights', true, 'Sin histórico: solo hora real'],
+    ],
+  );
+});

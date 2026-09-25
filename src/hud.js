@@ -26,6 +26,9 @@ import {
 import { getBasemapLabelContext } from './voice/gevActions.js';
 import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
 import { setTextIfChanged } from './ui/domText.js';
+import { formatSceneUtc, sunElevationDeg } from './hudSceneTime.js';
+import { getViewerSceneClock } from './time/sceneClock.js';
+import { celestialFor } from './layers/moon/celestialService.js';
 
 /** Color palettes keyed by shader mode; applied as CSS custom properties. */
 const HUD_COLORS = {
@@ -275,18 +278,12 @@ export class IntelHUD {
   }
 
   /**
-   * Format the current wall-clock time as a UTC Zulu string.
-   * @returns {string} Timestamp in `YYYY-MM-DD HH:MM:SSZ` format.
+   * P5: the SCENE clock's UTC time (viewer.clock), flagged when paused or
+   * simulated; wall time only when no scene clock is bound.
+   * @returns {string} e.g. `2026-09-25 18:45:00Z · SIM ×600`.
    */
   _formatUTC() {
-    const now = new Date();
-    const y = now.getUTCFullYear();
-    const mo = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(now.getUTCDate()).padStart(2, '0');
-    const h = String(now.getUTCHours()).padStart(2, '0');
-    const mi = String(now.getUTCMinutes()).padStart(2, '0');
-    const s = String(now.getUTCSeconds()).padStart(2, '0');
-    return `${y}-${mo}-${d} ${h}:${mi}:${s}Z`;
+    return formatSceneUtc(getViewerSceneClock(this.viewer)?.getState());
   }
 
   /**
@@ -388,7 +385,7 @@ export class IntelHUD {
     const sunEl = this._estimateSunElevation(latDeg, lonDeg);
     setTextIfChanged(
       altEl,
-      `ALT: ${Math.round(altMslM)}m   SUN: ${sunEl.toFixed(1)}° EL`,
+      `ALT: ${Math.round(altMslM)}m   SUN: ${Number.isFinite(sunEl) ? `${sunEl.toFixed(1)}°` : '—'} EL`,
     );
 
     // Collection timestamp
@@ -488,39 +485,18 @@ export class IntelHUD {
   }
 
   /**
-   * Estimate current solar elevation angle above the horizon.
-   *
-   * Uses a simplified astronomical model: solar declination is approximated
-   * from the day of year, and elevation is derived from the standard
-   * sin(elevation) formula involving latitude, declination, and hour angle.
-   *
+   * P5: solar elevation at the scene clock's time from the shared celestial
+   * state's Sun (Simon1994 + ICRF→ITRF XYS). NaN while the frame is absent.
    * @param {number} lat - Observer latitude in decimal degrees.
    * @param {number} lon - Observer longitude in decimal degrees.
-   * @returns {number} Estimated sun elevation in degrees (negative = below horizon).
+   * @returns {number} Sun elevation in degrees (negative = below horizon).
    */
   _estimateSunElevation(lat, lon) {
-    const now = new Date();
-    // Approximate local solar time by shifting UTC hours by longitude offset
-    const hours = now.getUTCHours() + now.getUTCMinutes() / 60 + lon / 15;
-    const solarNoon = 12;
-    const hourAngle = (hours - solarNoon) * 15;
-    // Solar declination approximation (~23.45 deg amplitude sinusoidal over the year)
-    const declination =
-      23.45 *
-      Math.sin(
-        Cesium.Math.toRadians(
-          (360 / 365) * (now.getUTCDate() + 30 * now.getUTCMonth() - 81),
-        ),
-      );
-    const latRad = Cesium.Math.toRadians(lat);
-    const decRad = Cesium.Math.toRadians(declination);
-    const haRad = Cesium.Math.toRadians(hourAngle);
-    // Standard formula: sin(el) = sin(lat)*sin(dec) + cos(lat)*cos(dec)*cos(ha)
-    const sinEl =
-      Math.sin(latRad) * Math.sin(decRad) +
-      Math.cos(latRad) * Math.cos(decRad) * Math.cos(haRad);
-    // Clamp to [-1,1] to guard against floating-point drift before asin
-    return Cesium.Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, sinEl))));
+    const time = this.viewer?.clock?.currentTime;
+    if (!time) return Number.NaN;
+    this._sunFixed ??= new Cesium.Cartesian3();
+    const sun = celestialFor(this.viewer).sunFixedAt(time, this._sunFixed);
+    return sunElevationDeg(sun, lat, lon);
   }
 
   /**

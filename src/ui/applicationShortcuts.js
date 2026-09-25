@@ -46,3 +46,65 @@ export function bindApplicationShortcuts({
     },
   };
 }
+
+/**
+ * Atajos de la escena Tierra–Luna (P5 §7). Espacio NO está: ya es «mantener
+ * para hablar» de la voz (captura, 500 ms) y un toque en el fondo llega aquí
+ * con defaultPrevented; PAUSA/REANUDAR va en P. L, N y P no los usa ningún
+ * atajo existente (1–7, H, O, V, F, D, C, `, Ctrl+K, Esc).
+ */
+export const SCENE_SHORTCUT_KEYS = Object.freeze({
+  l: 'aim-moon',
+  L: 'earth-moon-system',
+  p: 'toggle-pause',
+  n: 'now',
+  Escape: 'close-date-field',
+});
+
+const EDITING_SELECTOR =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+const isEditing = (target) =>
+  Boolean(target?.isContentEditable || target?.closest?.(EDITING_SELECTOR));
+
+/**
+ * Atajo de escena de `event`, o null. Sin modificadores (Ctrl+L, Ctrl+N son
+ * del navegador), sin repetición ni composición; escribiendo en un campo solo
+ * llega Esc. Shift solo cuenta en L (SISTEMA).
+ * @param {KeyboardEvent|object} event
+ * @returns {string|null}
+ */
+export function resolveSceneShortcut(event) {
+  if (!event || event.defaultPrevented || event.repeat || event.isComposing)
+    return null;
+  if (event.ctrlKey || event.metaKey || event.altKey) return null;
+  const key = event.key;
+  if (key === 'Escape') return SCENE_SHORTCUT_KEYS.Escape;
+  if (isEditing(event.target)) return null;
+  if (key === 'L' || key === 'l')
+    return event.shiftKey ? SCENE_SHORTCUT_KEYS.L : SCENE_SHORTCUT_KEYS.l;
+  if (event.shiftKey) return null;
+  return key === 'p' || key === 'n' ? SCENE_SHORTCUT_KEYS[key] : null;
+}
+
+/**
+ * Enlaza los atajos de escena en burbujeo. `run(id)` devuelve true si lo
+ * atendió: solo entonces se consume la tecla (y un Esc que cerró FECHA no
+ * cierra además el panel).
+ * @param {{documentRef: Document, run: (id: string) => boolean}} options
+ * @returns {{destroy: Function}} Limpieza síncrona e idempotente.
+ */
+export function bindSceneShortcuts({ documentRef, run }) {
+  const onKeyDown = (event) => {
+    const id = resolveSceneShortcut(event);
+    if (!id || run(id) !== true) return;
+    event.preventDefault();
+    if (id === SCENE_SHORTCUT_KEYS.Escape) event.stopImmediatePropagation?.();
+  };
+  documentRef.addEventListener('keydown', onKeyDown);
+  return {
+    destroy() {
+      documentRef.removeEventListener('keydown', onKeyDown);
+    },
+  };
+}

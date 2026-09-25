@@ -587,3 +587,23 @@ test('session bookkeeping ignores programmatic origins, non-visibility events, a
   }), false);
   assert.equal(snapshot.userAdded.size, 0);
 });
+
+test('P5: motivo visible en español de una capa que el modo activo no admite', async () => {
+  const { contextLayerUnavailableLabel } = await import('./contextModePolicy.js');
+  assert.equal(
+    contextLayerUnavailableLabel({ contextMode: 'space-missions', layerId: 'moon' }),
+    'No disponible en Misiones espaciales',
+  );
+  assert.equal(
+    contextLayerUnavailableLabel({ contextMode: 'space-missions', layerId: 'satellites' }),
+    null,
+    'las del propio modo sí',
+  );
+  assert.equal(
+    contextLayerUnavailableLabel({ contextMode: 'space-missions', layerId: 'radio' }),
+    null,
+    'acompañantes admitidas',
+  );
+  assert.equal(contextLayerUnavailableLabel({ contextMode: 'flights', layerId: 'moon' }), null);
+  assert.equal(contextLayerUnavailableLabel({ contextMode: null, layerId: 'moon' }), null);
+});

@@ -2041,6 +2041,9 @@ body.eyeinsky.ui-clean-view
 
 .eye-active-layers ul {
   display: grid;
+  /* P5-17: una columna que no crece con el nombre más largo (la fila con
+     «Luna (efeméride DE441)» sacaba el «Apagar» de todas fuera del panel). */
+  grid-template-columns: minmax(0, 1fr);
   margin: 10px 0 0;
   padding: 0;
   gap: 6px;
@@ -2048,6 +2051,7 @@ body.eyeinsky.ui-clean-view
 }
 
 .eye-active-layers li {
+  min-width: 0;
   min-height: 48px;
   justify-content: space-between;
   gap: 8px;
@@ -2058,6 +2062,7 @@ body.eyeinsky.ui-clean-view
 }
 
 .eye-active-identity {
+  flex: 1 1 auto;
   min-width: 0;
   gap: 8px;
 }

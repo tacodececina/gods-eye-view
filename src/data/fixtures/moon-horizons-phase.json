@@ -1,0 +1,104 @@
+{
+  "label": "FIXTURE de tests — fase y orientación lunar JPL Horizons DE441 consultadas offline; NO son datos en vivo",
+  "attribution": "NASA/JPL Horizons, DE441",
+  "retrievedAt": "2026-09-25T06:39:34.111Z",
+  "query": {
+    "COMMAND": "301",
+    "OBJ_DATA": "NO",
+    "MAKE_EPHEM": "YES",
+    "EPHEM_TYPE": "OBSERVER",
+    "CENTER": "500@399",
+    "QUANTITIES": "10,13,14",
+    "ANG_FORMAT": "DEG",
+    "CSV_FORMAT": "YES",
+    "TIME_TYPE": "UT",
+    "TIME_DIGITS": "FRACSEC",
+    "EXTRA_PREC": "YES",
+    "TLIST_TYPE": "JD",
+    "TLIST": "2459294.0000000000' '2459774.6458333335' '2460251.2604166665' '2460690.5000000000' '2461309.2812500000' '2461928.8819444445' '2462674.0000000000' '2463657.4027777780' '2464976.7534722220' '2466519.4583333335"
+  },
+  "rawSha256": "e8dd21abbe30ebf9440ac75cea3e2f03d52ee276ef6e1cf19d78e8241442c284",
+  "definition": "Observador en el geocentro (500@399). Illu% = fracción iluminada del disco en %; Ang-diam = diámetro angular ecuatorial en ″ (radio 1737,4 km); ObsSub-LON/LAT = punto sub-Tierra en el marco lunar MOON_ME, longitud Este. Aparentes (tiempo de luz de bajada).",
+  "rows": [
+    {
+      "utcIso": "2021-03-20T12:00:00Z",
+      "calendarUt": "2021-Mar-20 12:00:00.000",
+      "illuPct": 39.52291,
+      "angDiamArcsec": 1781.771,
+      "subEarthLonDeg": 355.588081,
+      "subEarthLatDeg": -0.441974
+    },
+    {
+      "utcIso": "2022-07-14T03:30:00Z",
+      "calendarUt": "2022-Jul-14 03:30:00.000",
+      "illuPct": 99.62547,
+      "angDiamArcsec": 2002.975,
+      "subEarthLonDeg": 1.54464,
+      "subEarthLatDeg": 6.050329
+    },
+    {
+      "utcIso": "2023-11-02T18:15:00Z",
+      "calendarUt": "2023-Nov-02 18:15:00.000",
+      "illuPct": 74.32326,
+      "angDiamArcsec": 1819.544,
+      "subEarthLonDeg": 5.475564,
+      "subEarthLatDeg": -6.64642
+    },
+    {
+      "utcIso": "2025-01-15T00:00:00Z",
+      "calendarUt": "2025-Jan-15 00:00:00.000",
+      "illuPct": 98.59542,
+      "angDiamArcsec": 1857.925,
+      "subEarthLonDeg": 5.170023,
+      "subEarthLatDeg": -5.164284
+    },
+    {
+      "utcIso": "2026-09-25T18:45:00Z",
+      "calendarUt": "2026-Sep-25 18:45:00.000",
+      "illuPct": 98.98603,
+      "angDiamArcsec": 1870.115,
+      "subEarthLonDeg": 354.881546,
+      "subEarthLatDeg": -2.507404
+    },
+    {
+      "utcIso": "2028-06-06T09:10:00Z",
+      "calendarUt": "2028-Jun-06 09:10:00.000",
+      "illuPct": 98.99561,
+      "angDiamArcsec": 1884.578,
+      "subEarthLonDeg": 4.91619,
+      "subEarthLatDeg": 5.023952
+    },
+    {
+      "utcIso": "2030-06-21T12:00:00Z",
+      "calendarUt": "2030-Jun-21 12:00:00.000",
+      "illuPct": 62.50809,
+      "angDiamArcsec": 1852.383,
+      "subEarthLonDeg": 7.320385,
+      "subEarthLatDeg": -6.829718
+    },
+    {
+      "utcIso": "2033-02-28T21:40:00Z",
+      "calendarUt": "2033-Feb-28 21:40:00.000",
+      "illuPct": 0.41979,
+      "angDiamArcsec": 2002.551,
+      "subEarthLonDeg": 358.157797,
+      "subEarthLatDeg": -4.972897
+    },
+    {
+      "utcIso": "2036-10-10T06:05:00Z",
+      "calendarUt": "2036-Oct-10 06:05:00.000",
+      "illuPct": 76.43736,
+      "angDiamArcsec": 1888.043,
+      "subEarthLonDeg": 355.276354,
+      "subEarthLatDeg": 5.6818
+    },
+    {
+      "utcIso": "2040-12-30T23:00:00Z",
+      "calendarUt": "2040-Dec-30 23:00:00.000",
+      "illuPct": 11.00274,
+      "angDiamArcsec": 1930.698,
+      "subEarthLonDeg": 353.474233,
+      "subEarthLatDeg": 0.880302
+    }
+  ]
+}

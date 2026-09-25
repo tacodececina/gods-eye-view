@@ -20,7 +20,11 @@
   },
   "viewer": {
     "exports": ["./application/viewer"],
-    "modules": ["src/app/viewer.js"],
+    "modules": [
+      "src/app/viewer.js",
+      "src/time/sceneClock.js",
+      "src/time/timeScales.js"
+    ],
     "external": ["cesium"]
   },
   "vite-build": {
@@ -580,7 +584,10 @@
       "src/ui/aircraftDisplay.js",
       "src/ui/layerBindings.js",
       "src/ui/displayBindings.js",
-      "src/ui/shellFacade.js"
+      "src/ui/shellFacade.js",
+      "src/sharelinkScene.js",
+      "src/time/timeScales.js",
+      "src/time/sceneClock.js"
     ],
     "external": ["cesium"]
   },
@@ -682,7 +689,10 @@
       "src/director/sharing/lifetime.js",
       "src/director/authoring.js",
       "src/scenes/sharing.js",
-      "src/ui/sceneSharing.js"
+      "src/ui/sceneSharing.js",
+      "src/time/sceneClockState.js",
+      "src/time/timeScales.js",
+      "src/time/sceneClock.js"
     ],
     "external": ["cesium"]
   },
@@ -1270,6 +1280,12 @@
       "src/cctvFocusPolicy.js",
       "src/cctvFocusRequest.js",
       "src/celestialRing.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/cockpitCloudEffects.js",
       "src/cockpitMath.js",
       "src/cockpitTracking.js",
@@ -1848,7 +1864,29 @@
       "src/director/sharing/lifetime.js",
       "src/director/authoring.js",
       "src/scenes/sharing.js",
-      "src/ui/sceneSharing.js"
+      "src/ui/sceneSharing.js",
+      "src/layers/moon/moonSource.js",
+      "src/layers/moon/celestialService.js",
+      "src/layers/moon/celestialState.js",
+      "src/layers/moon/lunarPhase.js",
+      "src/layers/moon/pose.js",
+      "src/layers/moon/primitive.js",
+      "src/layers/moon/lifecycle.js",
+      "src/layers/moon/scaleMode.js",
+      "src/layers/moon/scaleBand.js",
+      "src/layers/moon/index.js",
+      "src/time/sceneClock.js",
+      "src/time/sceneClockRender.js",
+      "src/celestialRingDirections.js",
+      "src/app/sceneTime.js",
+      "src/app/moonDebug.js",
+      "src/app/layers/moon.js",
+      "src/hudSceneTime.js",
+      "src/time/sceneClockState.js",
+      "src/sharelinkScene.js",
+      "src/layers/moon/subLunar.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js"
     ],
     "external": [
       "@mapbox/vector-tile",
@@ -1856,7 +1894,8 @@
       "egm96-universal",
       "mgrs",
       "pbf",
-      "satellite.js"
+      "satellite.js",
+      "astronomy-engine"
     ]
   },
   "application-catalog": {
@@ -1896,6 +1935,12 @@
       "src/sources/sourceSlot.js",
       "src/cctvFocusRequest.js",
       "src/celestialRing.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/cockpitMath.js",
       "src/data/aircraftClass.js",
       "src/data/aircraftIcons.js",
@@ -2261,7 +2306,27 @@
       "src/sources/overpassFeaturesRecords.js",
       "src/sources/overpassFeatures.js",
       "src/sources/featureSource.js",
-      "src/sources/overpassRoads.js"
+      "src/sources/overpassRoads.js",
+      "src/layers/moon/moonSource.js",
+      "src/layers/moon/celestialService.js",
+      "src/layers/moon/celestialState.js",
+      "src/layers/moon/lunarPhase.js",
+      "src/layers/moon/pose.js",
+      "src/layers/moon/primitive.js",
+      "src/layers/moon/lifecycle.js",
+      "src/layers/moon/scaleMode.js",
+      "src/layers/moon/scaleBand.js",
+      "src/layers/moon/index.js",
+      "src/time/sceneClock.js",
+      "src/time/sceneClockRender.js",
+      "src/celestialRingDirections.js",
+      "src/app/sceneTime.js",
+      "src/app/moonDebug.js",
+      "src/app/layers/moon.js",
+      "src/hudSceneTime.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js",
+      "src/layers/moon/subLunar.js"
     ],
     "external": [
       "cesium",
@@ -2269,7 +2334,8 @@
       "satellite.js",
       "@mapbox/vector-tile",
       "pbf",
-      "mgrs"
+      "mgrs",
+      "astronomy-engine"
     ]
   },
   "application-operations": {
@@ -2629,6 +2695,12 @@
     "modules": [
       "src/app/sourceSlot.js",
       "src/celestialRing.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/data/cameraSensitivity.js",
       "src/data/contactPlayback.js",
       "src/data/contactTrailRenderer.js",
@@ -2680,9 +2752,23 @@
       "src/sources/featureGeometry.js",
       "src/sources/overpassFeaturesRecords.js",
       "src/sources/overpassFeatures.js",
-      "src/sources/featureSource.js"
+      "src/sources/featureSource.js",
+      "src/layers/moon/moonSource.js",
+      "src/layers/moon/celestialService.js",
+      "src/layers/moon/celestialState.js",
+      "src/layers/moon/lunarPhase.js",
+      "src/layers/moon/pose.js",
+      "src/layers/moon/primitive.js",
+      "src/layers/moon/lifecycle.js",
+      "src/layers/moon/scaleMode.js",
+      "src/layers/moon/scaleBand.js",
+      "src/layers/moon/index.js",
+      "src/time/sceneClock.js",
+      "src/time/sceneClockRender.js",
+      "src/celestialRingDirections.js",
+      "src/layers/moon/subLunar.js"
     ],
-    "external": ["cesium", "egm96-universal", "pbf"]
+    "external": ["cesium", "egm96-universal", "pbf", "astronomy-engine"]
   },
   "transit-layer": {
     "exports": ["./layers/transit"],
@@ -2752,5 +2838,47 @@
       "src/sources/featureSource.js"
     ],
     "external": []
+  },
+  "time": {
+    "exports": ["./time/scales", "./time/frames", "./time/scene-clock"],
+    "modules": [
+      "src/time/timeScales.js",
+      "src/time/frames.js",
+      "src/time/sceneClock.js"
+    ],
+    "external": ["cesium"]
+  },
+  "moon-layer": {
+    "exports": [
+      "./layers/moon/ephemeris",
+      "./layers/moon/fallback",
+      "./layers/moon/position",
+      "./layers/moon",
+      "./layers/moon/celestial-state",
+      "./layers/moon/phase"
+    ],
+    "modules": [
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/timeScales.js",
+      "src/layers/moon/moonSource.js",
+      "src/layers/moon/celestialService.js",
+      "src/layers/moon/celestialState.js",
+      "src/layers/moon/lunarPhase.js",
+      "src/layers/moon/pose.js",
+      "src/layers/moon/primitive.js",
+      "src/layers/moon/lifecycle.js",
+      "src/layers/moon/scaleMode.js",
+      "src/layers/moon/scaleBand.js",
+      "src/layers/moon/index.js",
+      "src/time/frames.js",
+      "src/time/sceneClock.js",
+      "src/layers/moon/subLunar.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js"
+    ],
+    "external": ["cesium", "astronomy-engine"]
   }
 }
