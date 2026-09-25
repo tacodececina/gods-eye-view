@@ -145,56 +145,119 @@ configuration, not as a compatibility guarantee.
 
 ## P4 satélites 3D (2026-09-24, GPD Win 4)
 
-Arnés: `scripts/eyeinsky-p4-perf.mjs <url> <salida> <off|std> [durMs]`. Usa el
-mismo método que la línea base T0 (`output/eyeinsky-p4/baseline/`):
+La sesión anterior (`output/eyeinsky-p4/t7/perf/` y `t7/repair-perf-1/`) se
+descartó por contaminación: League of Legends abierto, modo `gaming` y CPU a
+85–93 °C. Los valores de abajo son de la sesión limpia.
+
+Arnés: `output/eyeinsky-p4/t7/perf-clean/measure-clean.mjs`. Es una copia de
+`scripts/eyeinsky-p4-perf.mjs` @ `64880d1` que añade la escena E2 (un segundo
+ciclo) y telemetría. Usa el mismo método que la línea base T0
+(`output/eyeinsky-p4/baseline/`):
 
 - Chrome 153 headless con ANGLE/D3D11 sobre la GPU real (`AMD Radeon(TM) 890M`,
   no SwiftShader);
 - 1366x768 a DPR 1;
 - 60 s por escena;
 - CPU del frame de Cesium (`preUpdate` → `postRender`), `commandList` (API
-  privada) y heap de JS.
+  privada) y heap de JS tras GC.
 
-La evidencia completa está en `output/eyeinsky-p4/t7/perf/`: `README.md`,
-`summary.json` y `diag/`. No se miden FPS.
+Condiciones: modo `windows`, AC y ningún proceso de Riot o LoL. Antes de cada
+modo, una compuerta térmica esperó a tener CPU ≤ 78 °C durante 60 s. Durante
+las escenas la CPU estuvo a 70,5–75,8 °C y el package a unos 14–16 W; en T0,
+75–77 °C. La evidencia completa está en `output/eyeinsky-p4/t7/perf-clean/`
+(`README.md`, `summary.json`, `<modo>/raw-results.json` y `calib-api/`). No se
+miden FPS.
 
-Todos los valores de CPU son el tiempo de CPU del frame de Cesium, en ms.
+Los valores de CPU son p50 / p95 en ms del tiempo de CPU del frame de Cesium. La
+última columna es `commandList` p50.
 
-| Escena                                    | CPU p50 / p95 `off` | CPU p50 / p95 `std` | commandList p50 `off` / `std` |
-| ----------------------------------------- | ------------------- | ------------------- | ----------------------------- |
-| A · core, sin selección                   | 2,6 / 5,5           | 6,8 / 11,6          | 22 / 22                       |
-| B · ISS en ÓRBITA                         | 6,2 / 13,7          | 10,6 / 21,5         | 49 / 57                       |
-| B2 · ISS en INSPECCIONAR, modelo ≥ 24 px  | no aplica (sin modelo) | 12,4 / **49,8** (146 long tasks) | — / 64            |
-| E · tras disable/enable                   | 5,1 / 8,7           | 7,1 / 11,0          | 24 / 24                       |
-| C · ISS en ÓRBITA, zoom 200 %             | 5,9 / 13,9          | 6,6 / 14,1          | 30 / 32                       |
-| D · dense (11.604 puntos)                 | 10,3 / 15,3         | 10,5 / 15,3         | 24 / 24                       |
+| Escena                                   | T0        | `off`      | `std`          | `low`     | commandList off / std / low |
+| ---------------------------------------- | --------- | ---------- | -------------- | --------- | --------------------------- |
+| A · core, sin selección                  | 1,8 / 2,7 | 2,7 / 4,3  | 4,4 / 6,8      | 2,0 / 3,3 | 22 / 22 / 22                |
+| B · ISS en ÓRBITA                        | 2,7 / 6,4 | 6,1 / 16,1 | 5,1 / 11,0     | 2,3 / 6,0 | 63 / 61 / 42                |
+| B2 · ISS en INSPECCIONAR, modelo ≥ 24 px | —         | no aplica  | 7,8 / **18,9** | 3,2 / 7,8 | — / 62 / 54                 |
+| E · tras disable/enable                  | —         | 3,7 / 5,8  | 2,7 / 5,2      | 2,3 / 3,7 | 24 / 24 / 24                |
+| E2 · 2.º ciclo idéntico                  | —         | 3,7 / 5,8  | 2,4 / 3,7      | 2,3 / 3,6 | 24 / 24 / 24                |
+| C · ISS en ÓRBITA, zoom 200 %            | 1,9 / 5,0 | 3,9 / 8,4  | 1,8 / 4,9      | 2,0 / 5,6 | 37 / 26 / 27                |
+| D · dense (11.604 puntos)                | 3,2 / 5,3 | 4,7 / 7,2  | 3,5 / 8,7      | 4,0 / 6,2 | 24 / 24 / 24                |
 
-Veredicto frente a los criterios provisionales (propuesta P4 §9 y §10):
+El heap tras GC, en MiB:
 
-- **A: `std` frente a `off`.** Los commands son iguales, 22 = 22, sin ningún
-  modelo admitido. La CPU no es concluyente por la carga concurrente.
-- **B2 frente a B: FALLA.** El p95 sube +28,3 ms, cuando el criterio permite
-  +2 ms, y las long tasks pasan de 0 a 146 en 60 s.
-  - Causa perfilada: el `DynamicEnvironmentMapManager` que `Cesium.Model`
-    activa por defecto. Da 14 commands y `readPixels` ocupa el 12,8 % del hilo
-    principal, porque se regenera al moverse la ISS más de 1 km.
-  - `models.js` no pasa `environmentMapOptions`.
-- **E frente a A-off: FALLA.**
-  - Los modelos se desmontan bien: `active 0`, `pending 0` y 0 primitivas.
-  - Pero quedan 24 commands frente a 22, también en `off`. Es la
-    `PointPrimitiveCollection` del `EntityCluster` de Cesium, que conserva un
-    punto vacío después de seguir un satélite.
-  - El heap tras GC da 115,4 MiB en E frente a 104,6 MiB en A dentro de `std`,
-    y +3,4 MiB en `off`. Es una sola lectura y la causa está sin identificar.
+| Modo  | A     | E     | E2    |
+| ----- | ----- | ----- | ----- |
+| `off` | 105,2 | 109,1 | 110,6 |
+| `std` | 105,5 | 114,0 | 114,2 |
+| `low` | 105,4 | 113,7 | 113,2 |
+
+Hubo 0 long tasks en todas las escenas, salvo B en `off` (1, de 134 ms).
+
+Veredicto por criterio en esta corrida única (A y B2 `std` se repitieron
+después; ver «Repetición intercalada» abajo):
+
+- **A, `std` frente a `off` (Δp95 ≤ 1 ms): NO CUMPLE.** El p95 sube +2,5 ms.
+  - Los commands (22) y el heap tras GC coinciden, y hay 0 modelos admitidos.
+  - El exceso no tiene una causa medida.
+- **B2 frente a B (Δp95 ≤ +2 ms y 0 long tasks):**
+  - `std`: **NO CUMPLE.** El p95 sube +7,9 ms, con 0 long tasks.
+  - `low`: **CUMPLE.** El p95 sube +1,8 ms, con 0 long tasks.
+- **E, commands = A-off + 2 (excepción del `EntityCluster` aceptada): CUMPLE**
+  en los tres modos.
+- **E2 − E, heap ≤ 0,5 MiB: CUMPLE.** `std` +0,25 y `low` −0,45.
+  - E − A-off da +8,8 MiB en `std` y +3,9 en `off`. Es una caché única que no
+    crece en el segundo ciclo.
+- **`low`, tope 1 y sin modelo secundario: CUMPLE.** Solo se admite el 25544.
+- **§5, 60 s de órbita (≤ 2 altas + evicciones por minuto):**
+  - Con rueda y arrastre reales no se puede ejecutar. El primer gesto suelta el
+    seguimiento (`navigationController.interruptHumanNavigation`), la ISS se
+    aleja y el modelo se eviciona una vez por LOD.
+  - Con el mismo guion por la API de cámara, que no es entrada manual y
+    conserva el seguimiento: 1 alta + 1 evicción = **2/min**. Cumple, en el
+    límite. Hubo 14 cruces de la línea de 6 px y 4 de la de 3 px.
+  - No se tocó `policy.js`.
 
 Limitaciones:
 
-- Una sola ejecución por escena y modo.
-- El equipo estaba caliente (CPU a 85–90 °C, 21,5–23,7 W) y en modo `gaming`,
-  cuando T0 se midió en `windows` a unos 76 °C.
-- League of Legends estuvo abierto durante toda la medición.
-- Headless con GPU real y compartida.
-- Por todo ello, los Δ en ms frente a T0 **no son atribuibles a P4**.
-- No se probó el perfil `low` ni la órbita manual de 60 s de §5.
-- Hay que repetir la medición con el equipo en reposo antes de cerrar la
-  calibración.
+- Una sola ejecución de 60 s por escena y modo, con los modos en serie y sin
+  intercalar.
+- En escenas sin ningún modelo, la dispersión entre modos es de varios ms de
+  p95; por ejemplo, B en `off` es la peor. Eso está por encima de la resolución
+  que exigen los criterios de 1–2 ms.
+- Headless con GPU real, sin tiempo de GPU.
+
+### Repetición intercalada de A, B y B2 (`perf-repeat`, n = 3)
+
+Evidencia: `output/eyeinsky-p4/t7/perf-repeat/` (`README.md`, `summary.json`,
+`round-<n>/`). Mismo HEAD `64880d1`, mismo renderer (Radeon 890M, ANGLE/D3D11),
+1366x768 a DPR 1, 45 s por escena tras 8 s de asentamiento, un navegador nuevo
+por escena y orden intercalado y alternado entre rondas (R1 off-A → std-A →
+std-B → std-B2 → off-B; R2 al revés; R3 como R1). Compuerta térmica ≤ 78 °C
+antes de cada escena; CPU a 70,4–72,6 °C durante las ventanas. Modo `windows`,
+sin escribir hardware. 0 errores de página, 0 long tasks.
+
+Medianas y rangos de la CPU del frame de Cesium, en ms:
+
+| Escena | p50: mediana [mín–máx] | p95: mediana [mín–máx] | commandList p50 |
+| ------ | ---------------------- | ---------------------- | --------------- |
+| off-A  | 2,2 [2,1–2,5]          | 3,5 [3,4–4,3]          | 22              |
+| std-A  | 2,0 [1,9–2,0]          | 3,1 [3,1–3,2]          | 22              |
+| std-B  | 2,4 [2,3–2,5]          | 6,1 [6,0–6,3]          | 51–56           |
+| std-B2 | 2,6 [2,5–2,7]          | 6,1 [6,1–6,1]          | 56–59           |
+| off-B  | 2,4 [2,3–2,5]          | 6,1 [6,0–6,3]          | 51–57           |
+
+Veredicto:
+
+- **A, `std` frente a `off`: CUMPLE.** Δp95 de medianas −0,4 ms (intra-ronda
+  −0,4 / −0,3 / −1,1), mismos 22 comandos. No se atribuye mérito a `std`: en A
+  no hay ningún modelo.
+- **B2 frente a B en `std`: CUMPLE.** Δp95 de medianas 0,0 ms (intra-ronda
+  0,0 / +0,1 / −0,2), p50 +0,2 ms en las tres rondas, 0 long tasks, 0 frames de
+  rAF > 33 ms, +2–3 comandos por el modelo de la ISS (264–268 px).
+- El +2,5 ms y el +7,9 ms de `perf-clean` no se reproducen. Posibles causas
+  (sin verificar): estado acumulado de la sesión larga o una perturbación
+  puntual de aquella corrida.
+- E, E2, `low` y §5 no se repitieron: siguen como en `perf-clean`. E = A-off +
+  2 comandos (`EntityCluster`) es una excepción aprobada por Alex.
+
+Límites: n = 3 no da intervalo de confianza formal; escenas en frío en navegador
+nuevo, no la secuencia de una sesión; sólo CPU del hilo principal, sin GPU; sin
+FPS.

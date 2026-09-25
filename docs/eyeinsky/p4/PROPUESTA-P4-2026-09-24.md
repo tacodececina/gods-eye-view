@@ -212,6 +212,36 @@ Se añaden:
 - **P4-24:** la escena E (después de destroy) vuelve a los comandos y la memoria de A-off. La escena A con modelos activos no cambia frente a `off`.
 - **P4-25:** activos con hash en el nombre, registrados en los cuatro ledgers y en `public/models/README.md`.
 
+### Estado al cierre (2026-09-24, aceptada por KRÓNOS con excepciones aprobadas por Alex)
+
+Evidencia local, no versionada, bajo `output/eyeinsky-p4/t7/`. «Arnés» = `scripts/eyeinsky-p4.mjs`, 42/42 en `supervisor-1/` y en `repair-p4-2/` (este último añade el check de fallo SGP4).
+
+- [x] **P4-01:** arnés, `omm-6-digitos-en-catalogo-sin-nan`; OMM y TLE en registros canónicos (`elements.js`).
+- [x] **P4-02:** arnés, seleccionar, seguir, compartir (`f.e.1_s.t.123456`) y restaurar exactos con NORAD 123456.
+- [x] **P4-03:** arnés, formato, época, `fetchedAt`, caché y edad son campos distintos en el expediente.
+- [x] **P4-04:** arnés, estado «Posición calculada (SGP4)» y `attitude: lvlh-nominal-aprox`.
+- [x] **P4-05:** arnés, `activos-hash-en-nombre-y-cuatro-ledgers`; ISS, Hubble y CubeSat 1U con SHA-256 (T0).
+- [x] **P4-06:** arnés, el nombre «ISS» no da modelo específico; GNSS sin modelo con motivo visible. Precedencia `specific > family > null`.
+- [x] **P4-07:** arnés, pick real con puntero sobre un punto con el catálogo cargado.
+- [x] **P4-08:** arnés, `active + pending` ≤ tope durante todo el recorrido y `low` = 1 en móvil. El tope 2 simultáneo sólo en unitarios (el recorrido no pasó de 1).
+- [x] **P4-09:** arnés, GLB 404, GLB corrupto y caída de la fuente conservan NORAD, punto, órbita, cámara y expediente.
+- [x] **P4-10:** arnés, A→B evicta A y carga B; disable deja 0 activos y 0 pendientes.
+- [x] **P4-11:** arnés, pick con coordenadas, owner y NORAD; renderer Radeon 890M, no SwiftShader.
+- [x] **P4-12:** fuera del arnés; p31 15/15, p3 30/30, p012 23/23, cámara adversa, cockpit 4/4 y smoke.
+- [x] **P4-13:** arnés, cuatro viewports + móvil 390, zoom 200 %, reduced-motion, rueda suelta y SEGUIR recupera, crédito NASA con y sin modelo.
+- [x] **P4-14:** fuera del arnés; `perf-repeat/` (n=3 intercaladas, GPD real): A Δp95 −0,4 ms, B2−B Δp95 0,0 ms, 0 long tasks. `perf-clean/` como corrida única de referencia.
+- [x] **P4-15:** fuera del arnés; gates: 4.507 tests / 0 fail, build, format:check y check:boundaries.
+- [x] **P4-16:** arnés, ISS en INSPECCIONAR a ~250 px a ~570 m; CubeSat ≥ 24 px sin jitter ni near plane; ÓRBITA vuelve a `TRACK_VIEW_FROM_LEO`.
+- [x] **P4-17:** arnés, clic real sobre el casco no deselecciona ni reinicia la cámara.
+- [x] **P4-18:** arnés, familia CubeSat sólo en el grupo `cubesat`; nunca por nombre.
+- [x] **P4-19:** arnés, 0 NaN con NORAD de 6 dígitos; Alpha-5 se rechaza (antes colapsaba en NaN).
+- [x] **P4-20:** arnés, órbita caduca sin modelo y con rótulo; fallo SGP4 → «Propagación falló (SGP4)» sin modelo ni última pose (`repair-p4-2/`).
+- [x] **P4-21:** arnés, actitud rotulada (ACT. APROX.) sin números.
+- [x] **P4-22:** arnés, contexto con estado `predicted` y etiquetas en español.
+- [x] **P4-23:** arnés, acoplados y `dense` nunca reciben modelo.
+- [x] **P4-24:** por excepción aprobada por Alex; E = A-off + 2 comandos (`PointPrimitiveCollection` del EntityCluster, igual en `off`), E2−E heap +0,25 MiB en `std`; A `std` = A `off` en `perf-repeat/`. El criterio literal (E = A-off) no se cumple.
+- [x] **P4-25:** arnés, activos con hash en el nombre, cuatro ledgers y `public/models/README.md`.
+
 ## 10. Riesgos y qué NO haremos
 
 **Riesgos:**

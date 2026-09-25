@@ -3,7 +3,8 @@
 Estado: P0–P3 verificadas localmente al 20sep2026; P3.1 (Mission Dock)
 implementada y verificada localmente al 21sep2026; Fase A de infraestructura
 (arneses, runtime, staging privado en staging.eyeinsky.org) cerrada al
-24sep2026. P4 sigue SIN iniciar y es lo siguiente. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
+24sep2026. P4 (satélites 3D) aceptada por KRÓNOS al 24sep2026 con excepciones
+aprobadas por Alex; lo siguiente es P5. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
 
 ## P0 — cerrada como base y spike técnico
 
@@ -70,14 +71,73 @@ honesto; reintroducirlo exige una fase propia, no un interruptor.
 - [ ] Claves de proveedores en `eyeinsky.env` del staging (sin ellas no hay 3D Tiles/ion/voz).
 - [ ] Ejecutar el release procedure contra producción sólo en P7 con orden separada.
 
-## P4 — satélites 3D, plan preparado; implementación NO iniciada
+## P4 — satélites 3D, aceptada (2026-09-24) con excepciones aprobadas por Alex
 
-Plan ejecutable: `../superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`.
+Rama `eyeinsky/p4-satellites-3d` (worktree `C:/Users/Alex/orca/eyeinsky-p4`).
+Plan: `../superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`; propuesta
+aprobada y matriz P4-01..25 con evidencia: `p4/PROPUESTA-P4-2026-09-24.md` §9;
+curación: `p4/T0-FINDINGS.md`. Commits: `2bf513f` propuesta, `bf8dec8` T0,
+`34e87bb` T1–T3, `f3f264f` follow-ups de revisión, `0a5025d` T4, `e0650de`
+T5–T6, `64880d1` T7. Evidencia local (no versionada): `output/eyeinsky-p4/`.
 
-- [ ] Curar al menos un modelo específico verificable y uno de familia, con licencia, escala, procedencia y hash.
-- [ ] Distinguir identidad/orbita propagada, geometría específica/familia/genérica y actitud aproximada.
-- [ ] Puntos/billboards globales y modelos sólo cercanos; LOD, caché/evicción y presupuesto con capas cargadas.
-- [ ] Cubrir OMM/TLE, época caduca, activo ausente/corrupto y selección intacta si falta el GLB.
+- [x] Modelos curados de NASA 3D Resources (revisión `11ebb4ee`), con fuente,
+      términos, escala, ejes, bytes y SHA-256 en los cuatro ledgers: ISS (A)
+      específico para NORAD 25544, Hubble (A) específico para NORAD 20580 y
+      CubeSat 1U de familia sólo para el grupo `cubesat`. Crédito dinámico
+      «Source: NASA 3D Resources» mientras hay un modelo activo.
+- [x] Excepciones de curación aprobadas: Draco aceptado; Hubble con excepción de
+      memoria en `std` y sólo punto en `low`; CubeSat 1U con 18 primitivas.
+- [x] Identidad y órbita SGP4 separadas de la geometría (específica / familia /
+      sin modelo; nunca por nombre) y de la actitud, siempre rotulada como
+      aproximada y sin números.
+- [x] Puntos globales intactos y pickables; modelos sólo cercanos. Perfiles
+      `std` (2 modelos), `low` (1, móvil/puntero táctil) y `off`. LOD por
+      píxeles proyectados (seguido ADD 6 / KEEP 3 px; secundario 16 / 10 px con
+      techo 25 / 30 km), reconcile 250 ms, evicción tras 2 s, timeout de carga
+      20 s, veto tras 3 fallos, `environmentMapOptions` desactivado.
+- [x] INSPECCIONAR / ÓRBITA en el Mission Dock (clamp(8·radiusM, 6 m, 5 km)),
+      con motivo visible cuando está deshabilitada; pick sobre el casco no
+      deselecciona; retícula de 4 px cuando el modelo ≥ 24 px.
+- [x] Chips MODELO / ESCALA REAL / ACT. APROX. / ÉPOCA / CACHÉ / MODELO NO
+      DISPONIBLE; riel móvil ALT · ÉPOCA · MODELO; cámara con sesgo para no
+      quedar bajo el dock en móvil; estados «Posición calculada (SGP4)» y
+      «Propagación falló (SGP4)».
+- [x] OMM JSON para los grupos núcleo (NORAD de 6 dígitos exacto) y TLE para
+      `dense`; proxy con lista blanca y `FORMAT=json`; Alpha-5 rechazado (antes
+      colapsaba en NaN); edad de órbita por régimen; órbita caducada → sin
+      modelo y con rótulo.
+- [x] Activo 404 o corrupto, caída de la fuente y cambio A→B conservan NORAD,
+      punto, órbita, cámara y expediente.
+- [x] Gates: suite de 4.507 tests / 0 fail; build, format:check y
+      check:boundaries en verde (P4-15).
+- [x] Arnés `scripts/eyeinsky-p4.mjs` 42/42 (21 ids de la matriz aprobados en
+      arnés; P4-12 y P4-15 por gates y arneses, P4-14 por `perf-repeat`, P4-24
+      por excepción). Regresiones: p31 15/15, p3 30/30, p012 23/23, cámara
+      adversa, cockpit 4/4 y smoke. Supervisor independiente y reparación.
+- [x] Rendimiento en GPD Win 4 (Radeon 890M, ANGLE/D3D11, modo `windows`,
+      70–75 °C): `low` cumple todo en `perf-clean`; `std` cumple A y B2 en
+      `perf-repeat` (n=3 intercaladas); E = A-off + 2 comandos (EntityCluster,
+      excepción aprobada por Alex); E2 − E heap +0,25 MiB. Sin FPS. Detalle en
+      `../PERFORMANCE.md`.
+
+Límites honestos: la sesión de medición contaminada (LoL abierto, modo
+`gaming`, 85–90 °C) se descartó; n=3 sin intervalo de confianza y sólo CPU del
+hilo principal; sin teléfono físico; el tope de 2 modelos simultáneos sólo está
+probado en unitarios (el recorrido nunca pasó de 1); con gestos reales en
+INSPECCIONAR el seguimiento se suelta (diseño P3.1, `interruptHumanNavigation`),
+así que no hay órbita manual alrededor del modelo; la calibración §5 sólo se
+pudo ejecutar por API (2 eventos/min, justo en el límite); el heap en `off` sube
++1,56 MiB entre ciclos sin atribuir; el `commandList` leído justo tras disable no
+está verificado. Sin release a staging todavía.
+
+## P4.1 — pendientes (candidatos, NO iniciado)
+
+- [ ] Órbita manual alrededor del modelo en INSPECCIONAR (decisión de producto
+      de Alex sobre `interruptHumanNavigation`).
+- [ ] Huella y pases.
+- [ ] Modelos GEO (TDRS, GOES) con NORAD verificado en SATCAT.
+- [ ] Actitud `yaw-steering` (GNSS).
+- [ ] Dos modelos simultáneos ejercitados en el arnés de navegador.
 
 ## P5 — Tierra–Luna, NO iniciado
 

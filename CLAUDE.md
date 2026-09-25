@@ -105,10 +105,12 @@ arregla la causa; no se salta ni se silencia.
 - **P0–P3:** hechas y aceptadas técnicamente.
 - **P3.1 (Mission Dock):** hecha y verificada; integrada en `main`.
 - **Fase A (infra):** cerrada; staging privado vivo en `staging.eyeinsky.org`.
-- **P4 (satélites 3D):** planificada, NO iniciada. Plan:
-  `docs/superpowers/plans/2026-09-20-eyeinsky-p4-satellites-3d.md`. No empezar
-  sin orden separada de Alex.
-- **P5 (Tierra–Luna), P6 (Luna explorable), P7:** pendientes.
+- **P4 (satélites 3D):** hecha y aceptada (2026-09-24) con excepciones
+  aprobadas por Alex, en `eyeinsky/p4-satellites-3d`; pendiente de integrar en
+  `main` y de release a staging. Matriz: `docs/eyeinsky/p4/PROPUESTA-P4-2026-09-24.md`
+  §9. Candidatos P4.1 en `docs/eyeinsky/FASES.md`.
+- **P5 (Tierra–Luna):** siguiente; efemérides precisas primero.
+- **P6 (Luna explorable), P7:** pendientes.
 - Bhote Koshi: aplazado; reintroducirlo exige fase propia.
 
 Fuente de verdad del estado: `EYEINSKY-SESSION.md` y `docs/eyeinsky/FASES.md`.
