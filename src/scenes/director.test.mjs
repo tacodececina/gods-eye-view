@@ -1591,3 +1591,31 @@ test('camera refusal starts no authored frame or playback clock', async () => {
     assert.deepEqual(viewer.flights, []);
   } finally { restore(); }
 });
+
+test('P5: Stop devuelve el reloj de escena al modo y ritmo previos a la corrida', async () => {
+  const Cesium = await import('cesium');
+  const { bindViewerSceneClock, unbindViewerSceneClock } = await import('../time/sceneClock.js');
+  const { director, viewer, dataManager, restore } = makeDirector();
+  viewer.clock = new Cesium.Clock();
+  const sceneClock = bindViewerSceneClock(viewer);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  try {
+    sceneClock.simulate(600);
+    dataManager.layers = new Map([['flights', { module: {
+      getSceneShotMediaHold: () => ({ pending: true, maxWaitMs: 20000 }),
+    } }]]);
+    director._sleep = () => gate;
+    const run = director.startScene('scene-1', { single: true, preview: false });
+    await settle(40);
+    sceneClock.setTime('2031-01-01T00:00:00Z');
+    sceneClock.pause('otra cosa');
+    director.stopScene('test stop'); release(); await run;
+    const state = sceneClock.getState();
+    assert.equal(state.mode, 'simulated');
+    assert.equal(state.multiplier, 600);
+    assert.notEqual(state.currentIso.slice(0, 4), '2031', 'vuelve a la época previa');
+  } finally {
+    release(); await director.destroy(); unbindViewerSceneClock(viewer); restore();
+  }
+});

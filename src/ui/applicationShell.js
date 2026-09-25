@@ -26,6 +26,8 @@ import * as Cesium from 'cesium';
 import { aircraftTrackingTarget } from '../cockpitTracking.js';
 
 import { ShellFeedback } from './shellFeedback.js';
+import { bindSceneShare } from '../sharelinkScene.js';
+import { getViewerSceneClock } from '../time/sceneClock.js';
 
 import { runCctvLayerEnableTransition } from '../cctvFocusPolicy.js';
 
@@ -394,6 +396,11 @@ export class StyleManager extends ShellFacade {
     this.shareLinkManager.setPanelStateProvider(() =>
       this._buildSharePanelState(),
     );
+    // P5 T9: reloj de escena y escala lunar en el enlace (t, tr, lm).
+    this._unbindSceneShare = bindSceneShare(this.shareLinkManager, {
+      sceneClock: getViewerSceneClock(viewer),
+      moonModule: () => this._dataManager?.layers?.get?.('moon')?.module,
+    });
     this.shareLinkManager.setStyleParamStateProvider((styleName) => {
       const shader = STYLES[styleName];
       const stage = this.stages[styleName];
@@ -1456,6 +1463,7 @@ export class StyleManager extends ShellFacade {
     const { destroyTrackedReadout, destroyWorldOverlay, destroyDetection } =
       this.services;
     if (this._disposed) return;
+    this._unbindSceneShare?.();
     this._shareRestoration.destroy();
     this._feedback._globalStatusNotice = null;
     if (this._globalLoadingStatus) this._globalLoadingStatus.hidden = true;

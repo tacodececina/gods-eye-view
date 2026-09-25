@@ -187,3 +187,20 @@ test('un solo gobernador por reloj; destroy quita su listener y es idempotente',
   again.destroy();
   assert.throws(() => scene.simulate(60), /destruido/);
 });
+
+test('fuera de «simulated» el multiplicador del reloj vuelve a ×1 (pausa, AHORA, setTime)', (t) => {
+  const { scene, clock } = setup(t);
+  scene.simulate(600);
+  assert.equal(clock.multiplier, 600);
+  scene.pause();
+  assert.equal(clock.multiplier, 1, 'pausa');
+  assert.equal(scene.getState().multiplier, 1);
+  scene.simulate(3600);
+  scene.setNow();
+  assert.equal(clock.multiplier, 1, 'AHORA');
+  assert.equal(scene.getState().multiplier, 1);
+  scene.simulate(60);
+  scene.pause();
+  scene.setTime('2027-03-14T06:00:00Z');
+  assert.equal(clock.multiplier, 1, 'setTime en pausa');
+});

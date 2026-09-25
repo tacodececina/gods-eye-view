@@ -23,25 +23,38 @@ import { createSceneClock } from './sceneClock.js';
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 const read = (file) => readFileSync(path.join(SRC, file), 'utf8').split('\n');
 
-/** Consumidores conocidos: archivo → líneas (1-based) que leen currentTime. */
+/**
+ * Consumidores conocidos: archivo → un patrón del identificador por cada
+ * lectura de `clock.currentTime`. Sin números de línea: una edición ajena que
+ * desplace el archivo no rompe el test; una lectura NUEVA sí.
+ */
 export const CLOCK_CONSUMERS = Object.freeze({
-  'data/trackedCamera.js': [197, 211],
-  'layers/flights/motion.js': [347],
-  'layers/military/motion.js': [253],
-  'ui/cockpitCamera.js': [65],
-  'ui/cameraOrientationControls.js': [10],
+  'data/trackedCamera.js': [
+    /^\s*viewer\.clock\.currentTime,$/,
+    /viewFrom\.getValue\(viewer\.clock\.currentTime/,
+  ],
+  'layers/flights/motion.js': [
+    /const time = flightState\._viewer\.clock\.currentTime/,
+  ],
+  'layers/military/motion.js': [
+    /const time = flightState\._viewer\.clock\.currentTime/,
+  ],
+  'ui/cockpitCamera.js': [/^\s*this\.viewer\.clock\.currentTime,$/],
+  'ui/cameraOrientationControls.js': [
+    /entity\?\.position\?\.getValue\(viewer\.clock\?\.currentTime\)/,
+  ],
 });
 /**
- * Lecturas permitidas fuera de la lista: el propio reloj, un comentario y los
- * lectores de TIEMPO DE ESCENA que añade P5 (marco precargado en cada tick,
- * anillo con el time del fotograma y SUN EL del HUD).
+ * Lecturas permitidas fuera de la lista: el propio reloj (sin límite), un
+ * comentario y los lectores de TIEMPO DE ESCENA que añade P5 (marco precargado
+ * en cada tick, anillo con el time del fotograma y SUN EL del HUD).
  */
 const OTHER_READERS = Object.freeze({
-  'cameraVerbs.js': [1081],
+  'cameraVerbs.js': [/^\s*\/\/ Wall-clock dt: clock\.currentTime FREEZES/],
   'time/sceneClock.js': null,
-  'app/sceneTime.js': [42],
-  'celestialRing.js': [706],
-  'hud.js': [495],
+  'app/sceneTime.js': [/frames\.check\(clock\.currentTime\)/],
+  'celestialRing.js': [/_draw\(time = this\.viewer\.clock\.currentTime\)/],
+  'hud.js': [/const time = this\.viewer\?\.clock\?\.currentTime;/],
 });
 const READ_PATTERN = /clock\??\.currentTime/;
 
@@ -55,43 +68,68 @@ function sourceFiles(directory) {
   });
 }
 
-test('las líneas de la propuesta siguen siendo las que leen clock.currentTime', () => {
-  for (const [file, lines] of Object.entries(CLOCK_CONSUMERS)) {
-    const text = read(file);
-    for (const line of lines)
-      assert.match(text[line - 1], READ_PATTERN, `${file}:${line}`);
-  }
+/** Cada patrón casa con exactamente una lectura, y no sobra ninguna. */
+function unmatchedReads(file, lines, patterns) {
+  const reads = lines.filter((text) => READ_PATTERN.test(text));
+  const problems = patterns.flatMap((pattern) => {
+    const hits = reads.filter((text) => pattern.test(text)).length;
+    return hits === 1 ? [] : [`${file}: ${pattern} casa ${hits}×`];
+  });
+  const extra = reads.filter((text) => !patterns.some((p) => p.test(text)));
+  return [...problems, ...extra.map((text) => `${file}: ${text.trim()}`)];
+}
+
+test('los consumidores de la propuesta siguen leyendo clock.currentTime (por identificador)', () => {
+  for (const [file, patterns] of Object.entries(CLOCK_CONSUMERS))
+    assert.deepEqual(unmatchedReads(file, read(file), patterns), [], file);
+});
+
+test('una edición ajena que desplaza líneas no rompe la lista de consumidores', () => {
+  const shifted = (file) => ['// línea ajena', ...read(file)];
+  for (const [file, patterns] of Object.entries(CLOCK_CONSUMERS))
+    assert.deepEqual(unmatchedReads(file, shifted(file), patterns), [], file);
+  const added = [...read('hud.js'), 'const t = viewer.clock.currentTime;'];
+  assert.equal(
+    unmatchedReads('hud.js', added, OTHER_READERS['hud.js']).length,
+    1,
+    'una lectura nueva sí se detecta',
+  );
 });
 
 test('ningún otro módulo de src/ lee clock.currentTime (SGP4 y feeds siguen en Date.now)', () => {
-  const unexpected = [];
-  for (const file of sourceFiles(SRC)) {
-    const allowed = { ...CLOCK_CONSUMERS, ...OTHER_READERS }[file];
-    if (allowed === null) continue;
-    read(file).forEach((text, index) => {
-      if (READ_PATTERN.test(text) && !allowed?.includes(index + 1))
-        unexpected.push(`${file}:${index + 1}`);
-    });
-  }
+  const allowed = { ...CLOCK_CONSUMERS, ...OTHER_READERS };
+  const unexpected = sourceFiles(SRC).flatMap((file) =>
+    allowed[file] === null
+      ? []
+      : unmatchedReads(file, read(file), allowed[file] ?? []),
+  );
   assert.deepEqual(unexpected, []);
 });
 
 test('SGP4 y los relojes «hora real» usan la pared, no el reloj de escena', () => {
   const sites = {
-    'layers/satellites/rendering.js': [150, 183],
-    'layers/satellites/tracking.js': [242],
-    'layers/satellites/modelsHost.js': [231],
-    'layers/satellites/orbits.js': [188, 262],
-    'ui/cockpitInstruments.js': [118],
+    'layers/satellites/rendering.js': [
+      /const now = new Date\(\);/,
+      /const now = focusNowMs\(Date\.now\(\)\);/,
+    ],
+    'layers/satellites/tracking.js': [/^\s*: new Date\(\);$/],
+    'layers/satellites/modelsHost.js': [/nowMs: Date\.now\(\),/],
+    'layers/satellites/orbits.js': [
+      /fromMs: Date\.now\(\),/,
+      /const referenceDate = new Date\(\);/,
+    ],
+    'ui/cockpitInstruments.js': [
+      /this\.clock\.textContent = new Date\(\)\.toISOString\(\)/,
+    ],
   };
-  for (const [file, lines] of Object.entries(sites)) {
-    const text = read(file);
-    for (const line of lines)
-      assert.match(
-        text[line - 1],
-        /Date\.now\(\)|new Date\(\)/,
-        `${file}:${line}`,
+  for (const [file, patterns] of Object.entries(sites)) {
+    const lines = read(file);
+    for (const pattern of patterns)
+      assert.ok(
+        lines.some((line) => pattern.test(line)),
+        `${file}: ${pattern}`,
       );
+    assert.deepEqual(unmatchedReads(file, lines, []), [], file);
   }
 });
 
@@ -126,7 +164,7 @@ function wallTrackedEntity(wallPosition) {
 
 const EARTH_POINT = Cesium.Cartesian3.fromDegrees(-99.13, 19.43, 10_000);
 
-test('cámara seguida (trackedCamera:197,211): la posición no cambia al avanzar ×3600', (t) => {
+test('cámara seguida (trackedCamera): la posición no cambia al avanzar ×3600', (t) => {
   const { clock, scene, advance } = drivenClock(t);
   const entity = wallTrackedEntity(EARTH_POINT);
   scene.pause();
@@ -153,7 +191,7 @@ test('cámara seguida (trackedCamera:197,211): la posición no cambia al avanzar
   );
 });
 
-test('órbita de cámara (cameraOrientationControls:10) invariante con el reloj vivo', (t) => {
+test('órbita de cámara (cameraOrientationControls) invariante con el reloj vivo', (t) => {
   const { clock, scene, advance } = drivenClock(t);
   const viewer = {
     clock,
@@ -171,7 +209,7 @@ test('órbita de cámara (cameraOrientationControls:10) invariante con el reloj 
   assert.ok(frozen.range > 1);
 });
 
-test('tamaño del icono seguido (flights:347, military:253) y cabina (cockpitCamera:65)', (t) => {
+test('tamaño del icono seguido (flights, military) y cabina (cockpitCamera)', (t) => {
   const { clock, scene, advance } = drivenClock(t);
   const billboard = new Cesium.BillboardGraphics({
     width: 28,

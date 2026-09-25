@@ -62,6 +62,17 @@ function startLoad(state, key, load, hooks) {
   );
 }
 
+/**
+ * P5-09: un out-of-range dice si el respaldo aún puede cubrir la época
+ * (`fallback-pending`) o si ya no hay nada que responder (`no-fallback`):
+ * solo lo segundo justifica pausar la simulación.
+ */
+function outOfRange(state, sample) {
+  const reason =
+    state.status.fallback === 'failed' ? 'no-fallback' : 'fallback-pending';
+  return { ...sample, reason };
+}
+
 function absence(state) {
   const { table, fallback } = state.status;
   return table === 'failed' && fallback === 'failed' ? NO_SOURCE : LOADING;
@@ -89,6 +100,7 @@ export function createLazyMoonSource({
       sample.status === 'out-of-range' || state.status.table === 'failed';
     if (tableCannot) startLoad(state, 'fallback', loadFallback, hooks);
     if (sample.status === 'unavailable') return absence(state);
+    if (sample.status === 'out-of-range') return outOfRange(state, sample);
     return sample;
   };
   return Object.freeze({

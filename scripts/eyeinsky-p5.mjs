@@ -21,7 +21,22 @@
  *   medible queda en `notMeasured`, nunca como aprobado.
  * - `moon-20-cycles-no-orphans`: 20 ciclos enable/disable sin primitivas,
  *   listeners, holds ni texturas/búferes WebGL de más.
- * - `time-strip-present`: la tira TIEMPO (`[data-eye-time-strip]`, T8).
+ * - `sublunar-vs-horizons`: el punto sublunar publicado (con tiempo de luz)
+ *   ≤ 0,5′ frente a los 10 puntos ITRF93 de Horizons.
+ * - `texture-lroc-1k` / `texture-lroc-2k-over-300px` (T9): textura LROC de
+ *   NASA SVS con su crédito; 2k solo con la Luna > 300 px en escritorio.
+ * - T8 (scripts/lib/eyeinsky-p5-dock-checks.mjs): `time-strip-present`,
+ *   `sim-suspends-live-layers`, `ahora-restores-layers`, `aim-moon`,
+ *   `moon-panel-fields`, `earth-moon-system-frames-both`,
+ *   `didactic-toggle`, `return-to-earth-restores-state`, `date-field-seek`,
+ *   `disabled-reasons-frame`, `p509-out-of-range-pauses` (respaldo
+ *   bloqueado, pestaña aparte), `mobile-390x844-targets`,
+ *   `mobile-system-frames-or-warns`, `reduced-motion-cuts` y
+ *   `zoom-200-time-strip`.
+ * - Reparación T8 (scripts/lib/eyeinsky-p5-repair-checks.mjs):
+ *   `resume-after-live-pause`, `sim-aim-now-return-keeps-live`,
+ *   `keyboard-focus-stays-in-dock` y, en 390×844,
+ *   `mobile-390x844-active-layer-off`.
  *
  * Uso: node scripts/eyeinsky-p5.mjs <url> <directorio-de-salida>
  * La salida es OBLIGATORIA y no puede contener ya un result.json.
@@ -48,11 +63,31 @@ import {
   ringMoonProbe,
   scaleBandProbe,
   sceneLedger,
+  subLunarProbe,
   sunLimbOnScreen,
 } from './lib/eyeinsky-p5-probes.mjs';
 import {
+  checkDateField,
+  checkMobile,
+  checkOutOfRangePause,
+} from './lib/eyeinsky-p5-dock-tabs.mjs';
+import {
+  checkFrameReason,
+  checkMoonActions,
+  checkReducedMotion,
+  checkSuspension,
+  checkTimeStripLive,
+  checkZoom200,
+} from './lib/eyeinsky-p5-dock-checks.mjs';
+import {
+  checkKeyboardFocus,
+  checkResumeAfterLivePause,
+  checkSimAimNowReturn,
+} from './lib/eyeinsky-p5-repair-checks.mjs';
+import {
   chordDiameterPx,
   litFractionAlongAxis,
+  lonLatArcmin,
   subPointArcmin,
 } from './lib/eyeinsky-p5-measure.mjs';
 
@@ -163,6 +198,31 @@ async function checkFrameGate(page, result, check) {
       rows.length === 10 &&
       worst <= FRAME_GATE_MAX_ARCMIN,
     `${ok.length}/${rows.length} épocas DE441; peor ${worst.toFixed(4)}′ (máx. ${FRAME_GATE_MAX_ARCMIN}′)`,
+    ['P5-03'],
+  );
+}
+
+/**
+ * El punto sublunar del panel lleva tiempo de luz (el geométrico daba 0,64′
+ * en 2026-09-25): frente a Horizons aparente debe quedar ≤ 0,5′.
+ */
+async function checkSubLunar(page, result, check) {
+  const fixture = await readFixture('moon-horizons-icrf.json');
+  const rows = fixture.subMoonItrf.rows;
+  const byIso = new Map(rows.map((r) => [r.utcIso, r]));
+  const probed = await page.evaluate(subLunarProbe, rows);
+  const measured = probed.map((r) =>
+    r.status === 'ok'
+      ? { ...r, arcmin: lonLatArcmin(r.lonLat, byIso.get(r.utcIso)) }
+      : r,
+  );
+  result.snapshots.subLunar = measured;
+  const ok = measured.filter((r) => r.status === 'ok');
+  const worst = Math.max(...ok.map((r) => r.arcmin));
+  check(
+    'sublunar-vs-horizons',
+    ok.length === rows.length && worst <= FRAME_GATE_MAX_ARCMIN,
+    `${ok.length}/${rows.length} épocas; peor ${worst.toFixed(4)}′ (con tiempo de luz) frente a Horizons aparente (máx. ${FRAME_GATE_MAX_ARCMIN}′)`,
     ['P5-03'],
   );
 }
@@ -323,6 +383,11 @@ async function terminatorAt(page, row) {
 }
 
 async function checkTerminator(page, result, check) {
+  // El terminador se mide con albedo uniforme (placeholder): la textura LROC
+  // (mares oscuros) desplaza el umbral de luminancia y no mide la luz.
+  await page.evaluate(() =>
+    window.__godsEyeView.moon.debugTexture('placeholder'),
+  );
   const fixture = await readFixture('moon-horizons-phase.json');
   const rows = ['2030-06-21T12:00:00Z', '2021-03-20T12:00:00Z'].map((iso) =>
     fixture.rows.find((r) => r.utcIso === iso),
@@ -330,6 +395,7 @@ async function checkTerminator(page, result, check) {
   const samples = [];
   for (const row of rows) samples.push(await terminatorAt(page, row));
   result.snapshots.terminator = samples;
+  await page.evaluate(() => window.__godsEyeView.moon.debugTexture('auto'));
   const measured = samples.filter((s) => s.status === 'ok');
   if (measured.length < samples.length)
     result.notMeasured.push({
@@ -349,6 +415,31 @@ async function checkTerminator(page, result, check) {
       )
       .join('; '),
     ['P5-14'],
+  );
+}
+
+/** T9: textura LROC publicada (ledger) y presupuesto 1k → 2k (> 300 px). */
+async function checkTexture(page, result, check, expected, id) {
+  let state = null;
+  for (let i = 0; i < 40; i += 1) {
+    state = await page.evaluate(() => ({
+      texture: window.__godsEyeView.moon.getState().texture,
+      // Crédito de pantalla completa (lightbox «Data attribution»), no en línea.
+      credits: (window.__godsEyeView.viewer.creditDisplay._staticCredits ?? [])
+        .map((credit) => credit.html)
+        .join(' | '),
+    }));
+    if (state.texture === expected) break;
+    await page.evaluate(() => window.__godsEyeView.viewer.render());
+    await sleep(250);
+  }
+  result.snapshots[id] = state;
+  check(
+    id,
+    state.texture === expected &&
+      /NASA's Scientific Visualization Studio/.test(state.credits),
+    `textura ${state.texture} (esperada ${expected}); crédito SVS ${/Scientific Visualization Studio/.test(state.credits) ? 'visible' : 'ausente'}`,
+    ['P5-18'],
   );
 }
 
@@ -386,37 +477,51 @@ async function checkCycles(page, result, check) {
   );
 }
 
-async function checkTimeStrip(page, result, check) {
-  const strip = await page.evaluate(() => {
-    const el = document.querySelector('[data-eye-time-strip]');
-    return el
-      ? { present: true, text: el.textContent?.trim() ?? '' }
-      : { present: false };
-  });
-  result.snapshots.timeStrip = strip;
-  check(
-    'time-strip-present',
-    strip.present,
-    strip.present
-      ? `tira TIEMPO: «${strip.text}»`
-      : 'no hay [data-eye-time-strip] (T8)',
-    ['P5-04', 'P5-05'],
-  );
-}
-
 async function runMoonChecks(page, result, check, out) {
   await page.evaluate(() => window.__godsEyeView.moon.enable());
   result.snapshots.moonLive = await waitMoonOk(page);
+  await checkTexture(page, result, check, 'lroc-1k', 'texture-lroc-1k');
   await checkFrameGate(page, result, check);
+  await checkSubLunar(page, result, check);
   await checkRingMatches(page, result, check);
   await checkPausedSeekRepaints(page, result, check);
   await checkRealScale(page, result, check);
+  await checkTexture(
+    page,
+    result,
+    check,
+    'lroc-2k',
+    'texture-lroc-2k-over-300px',
+  );
   await screenshot(result, out, page, 'p5-moon-physical.png');
   await checkDidactic(page, result, check);
   await checkTerminator(page, result, check);
   await screenshot(result, out, page, 'p5-moon-terminator.png');
   await checkCycles(page, result, check);
-  await page.evaluate(() => window.__godsEyeView.sceneClock.setNow());
+  // Las medidas de disco estrechan el FOV (2°/20°): se devuelve el de Cesium.
+  await page.evaluate(() => {
+    const g = window.__godsEyeView;
+    g.viewer.camera.frustum.fov = Math.PI / 3;
+    g.sceneClock.setNow();
+  });
+}
+
+/** T8: Mission Dock Tierra–Luna (tira TIEMPO, suspensión, acciones, móvil). */
+async function runDockChecks(page, context) {
+  await checkTimeStripLive(context);
+  await checkDateField(context);
+  await checkSuspension(context);
+  await checkResumeAfterLivePause(context);
+  await page.evaluate(() => window.__godsEyeView.moon.enable());
+  await waitMoonOk(page);
+  await checkSimAimNowReturn(context);
+  await checkKeyboardFocus(context);
+  await checkMoonActions(context);
+  await checkReducedMotion(context);
+  await checkZoom200(context);
+  await checkFrameReason(context);
+  await checkMobile(context);
+  await checkOutOfRangePause(context);
 }
 
 const { baseUrl, out, resultPath } = await prepareRun('eyeinsky-p5.mjs');
@@ -436,7 +541,8 @@ try {
   result.webglRenderer = await webglRenderer(page);
   await checkClockAndMoon(page, result, check);
   await runMoonChecks(page, result, check, out);
-  await checkTimeStrip(page, result, check);
+  const shot = (name, target = page) => screenshot(result, out, target, name);
+  await runDockChecks(page, { page, browser, baseUrl, result, check, shot });
   await screenshot(result, out, page, 'p5-scene.png');
 } catch (error) {
   result.fatal = String(error?.stack ?? error);

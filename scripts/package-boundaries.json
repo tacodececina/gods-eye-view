@@ -584,7 +584,10 @@
       "src/ui/aircraftDisplay.js",
       "src/ui/layerBindings.js",
       "src/ui/displayBindings.js",
-      "src/ui/shellFacade.js"
+      "src/ui/shellFacade.js",
+      "src/sharelinkScene.js",
+      "src/time/timeScales.js",
+      "src/time/sceneClock.js"
     ],
     "external": ["cesium"]
   },
@@ -686,7 +689,10 @@
       "src/director/sharing/lifetime.js",
       "src/director/authoring.js",
       "src/scenes/sharing.js",
-      "src/ui/sceneSharing.js"
+      "src/ui/sceneSharing.js",
+      "src/time/sceneClockState.js",
+      "src/time/timeScales.js",
+      "src/time/sceneClock.js"
     ],
     "external": ["cesium"]
   },
@@ -1875,7 +1881,12 @@
       "src/app/sceneTime.js",
       "src/app/moonDebug.js",
       "src/app/layers/moon.js",
-      "src/hudSceneTime.js"
+      "src/hudSceneTime.js",
+      "src/time/sceneClockState.js",
+      "src/sharelinkScene.js",
+      "src/layers/moon/subLunar.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js"
     ],
     "external": [
       "@mapbox/vector-tile",
@@ -2312,7 +2323,10 @@
       "src/app/sceneTime.js",
       "src/app/moonDebug.js",
       "src/app/layers/moon.js",
-      "src/hudSceneTime.js"
+      "src/hudSceneTime.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js",
+      "src/layers/moon/subLunar.js"
     ],
     "external": [
       "cesium",
@@ -2751,7 +2765,8 @@
       "src/layers/moon/index.js",
       "src/time/sceneClock.js",
       "src/time/sceneClockRender.js",
-      "src/celestialRingDirections.js"
+      "src/celestialRingDirections.js",
+      "src/layers/moon/subLunar.js"
     ],
     "external": ["cesium", "egm96-universal", "pbf", "astronomy-engine"]
   },
@@ -2859,7 +2874,10 @@
       "src/layers/moon/scaleBand.js",
       "src/layers/moon/index.js",
       "src/time/frames.js",
-      "src/time/sceneClock.js"
+      "src/time/sceneClock.js",
+      "src/layers/moon/subLunar.js",
+      "src/layers/moon/textureBudget.js",
+      "src/layers/moon/texture.js"
     ],
     "external": ["cesium", "astronomy-engine"]
   }

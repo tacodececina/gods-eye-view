@@ -66,6 +66,7 @@ export class ShareRestoration {
               applyCamera,
               navigationToken: generation,
             });
+            this._announceSharedScene(share.scene);
             const layers = await (this._layerStateRestorePromise ||
               Promise.resolve([]));
             const tracking =
@@ -267,6 +268,13 @@ export class ShareRestoration {
       return;
     }
     showAfterStartupCover();
+  }
+  /** P5 T9: el reloj del enlace se rechazó o abrió en pausa: se dice. */
+  _announceSharedScene(outcome) {
+    if (outcome === 'invalid')
+      this.showStatus('Fecha del enlace inválida: el reloj sigue en vivo');
+    else if (outcome === 'out-of-range')
+      this.showStatus('Fecha fuera de efemérides: reloj en PAUSA');
   }
   _settleInitialShareRestore(result) {
     if (!this._resolveInitialShareRestore) return;

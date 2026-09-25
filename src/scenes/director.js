@@ -59,6 +59,11 @@ import {
   stringifySceneDocument,
   SceneDocumentError,
 } from '../director/document.js';
+import { getViewerSceneClock } from '../time/sceneClock.js';
+import {
+  captureSceneClockState,
+  restoreSceneClockState,
+} from '../time/sceneClockState.js';
 
 /** @constant {string} localStorage key for the serialized project */
 const STORAGE_KEY = 'godsEyeView.sceneProject.v2';
@@ -1730,6 +1735,10 @@ export class SceneDirector {
     this._running = true;
     this._previewRun = preview;
     if (preview) this._setPlaybackActive(true);
+    // P5: el reloj único vuelve a este estado en stop/abort (propuesta §3).
+    this._sceneClockBefore = captureSceneClockState(
+      getViewerSceneClock(this.viewer),
+    );
     this._setButtons(true);
     this._setProgress(0);
 
@@ -1843,6 +1852,11 @@ export class SceneDirector {
     if (!this._running || !this._runToken) return;
     this._runToken.cancelled = true;
     this._runAbort?.abort();
+    restoreSceneClockState(
+      getViewerSceneClock(this.viewer),
+      this._sceneClockBefore,
+    );
+    this._sceneClockBefore = null;
     this._updateStatus(reason);
     this._logEvent('scene_stopped', { reason });
   }

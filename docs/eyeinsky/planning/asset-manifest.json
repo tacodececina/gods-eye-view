@@ -64,5 +64,17 @@
     "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
     "sha256": "be6fbd39fad64af5218d8752f2bd4756c7ef251da509bafd6b2a0bcd9918012a",
     "bytes": 3431
+  },
+  {
+    "file": "public/models/moon/lroc-color-1k-b246064f.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg",
+    "sha256": "b246064f217f8d479df78c49c7c8595a8f5fbda008a72fd539978d2e121e0109",
+    "bytes": 139068
+  },
+  {
+    "file": "public/models/moon/lroc-color-2k-f7130a18.jpg",
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg",
+    "sha256": "f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170",
+    "bytes": 457942
   }
 ]

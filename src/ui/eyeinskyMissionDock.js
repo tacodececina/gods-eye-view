@@ -22,7 +22,7 @@
 import { activityAgeLabel } from './eyeinskyActivity.js';
 
 /** Cómo se dice cada estado de frescura, sin eufemismos. */
-const STATUS_LABELS = Object.freeze({
+export const MISSION_DOCK_STATUS_LABELS = Object.freeze({
   ready: 'Observación reciente',
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
@@ -31,7 +31,10 @@ const STATUS_LABELS = Object.freeze({
   predicted: 'Posición calculada (SGP4)',
   // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
   'propagation-failed': 'Propagación falló (SGP4): sin posición',
+  // P5: la Luna sale de una efeméride calculada (DE441), no de una observación.
+  computed: 'Posición calculada (efeméride, no observada)',
 });
+const STATUS_LABELS = MISSION_DOCK_STATUS_LABELS;
 
 /**
  * @param {Document} doc Documento.
@@ -73,6 +76,14 @@ export function mountEyeMissionDock({
   let lastSignature = null;
   let expandTrigger = null;
   let currentView = null;
+
+  // P5 T8: cabecera fija del dock. La tira TIEMPO y las acciones de la Luna
+  // las pinta eyeinskyEarthMoon; el dock solo les da sitio estable (no se
+  // repinta con cada objetivo).
+  const header = node(doc, 'div', '', 'eye-dock-header');
+  const timeHost = node(doc, 'div', '', 'eye-dock-time');
+  const moonHost = node(doc, 'div', '', 'eye-dock-moon');
+  header.append(timeHost, moonHost);
 
   const rail = node(doc, 'div', '', 'eye-dock-rail');
 
@@ -144,7 +155,7 @@ export function mountEyeMissionDock({
     body.append(panel);
   }
 
-  host.replaceChildren(rail, tabs, body);
+  host.replaceChildren(header, rail, tabs, body);
 
   // El dock publica la FRANJA que ocupa desde el borde inferior de la ventana,
   // no sólo su altura: también está separado del borde, y quien se aparta por
@@ -411,6 +422,10 @@ export function mountEyeMissionDock({
       compassText.textContent = `${rounded}°`;
       compass.dataset.heading = String(rounded);
     },
+    /** @returns {HTMLElement} Sitio de la tira TIEMPO (P5 T8). */
+    getTimeHost: () => timeHost,
+    /** @returns {HTMLElement} Sitio de las acciones de la Luna (P5 T8). */
+    getMoonHost: () => moonHost,
     /** @returns {HTMLElement} Cuerpo del panel OBJETIVO. */
     getObjetivoHost: () => panels.get('objetivo'),
     /** @returns {HTMLElement} Cuerpo del panel MEDIOS. */

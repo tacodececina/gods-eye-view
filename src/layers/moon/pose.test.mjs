@@ -132,3 +132,33 @@ test('modelMatrix: traslación = Luna fija (m), rotación cuerpo→fijo·FIX y e
     RangeError,
   );
 });
+
+test('P5-07: la escala didáctica NO mueve la Luna: misma traslación y misma dirección de ejes', () => {
+  const time = Cesium.JulianDate.fromIso8601('2031-02-01T00:00:00Z');
+  const icrfToFixed = Cesium.Matrix3.fromRotationZ(-1.1);
+  const moonFixedM = new Cesium.Cartesian3(-2.1e8, 3.05e8, 1.4e8);
+  const pose = (scale) =>
+    computeMoonModelMatrix(
+      { julianDate: time, icrfToFixed, moonFixedM, scale },
+      new Cesium.Matrix4(),
+    );
+  const physical = pose(1);
+  const didactic = pose(10);
+  const translation = (m) =>
+    Cesium.Matrix4.getTranslation(m, new Cesium.Cartesian3());
+  assert.ok(
+    Cesium.Cartesian3.equals(translation(didactic), moonFixedM),
+    'la traslación es la Luna fija, sin ×10',
+  );
+  assert.ok(Cesium.Cartesian3.equals(translation(physical), moonFixedM));
+  const unit = (m) =>
+    Cesium.Matrix3.multiplyByScalar(
+      Cesium.Matrix4.getMatrix3(m, new Cesium.Matrix3()),
+      1 / Cesium.Matrix4.getScale(m, new Cesium.Cartesian3()).x,
+      new Cesium.Matrix3(),
+    );
+  assert.ok(
+    Cesium.Matrix3.equalsEpsilon(unit(didactic), unit(physical), 1e-12),
+    'misma orientación: solo cambia el radio',
+  );
+});

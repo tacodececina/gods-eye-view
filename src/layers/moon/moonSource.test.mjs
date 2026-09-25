@@ -160,3 +160,23 @@ test('una carga que llega tras destroy no cambia nada ni avisa', async () => {
     'unavailable',
   );
 });
+
+test('P5-09: out-of-range dice si el respaldo aún puede cubrir o si ya no hay nada', async () => {
+  const loaders = deferredLoaders();
+  const source = createLazyMoonSource({ ...loaders, onError: () => {} });
+  const r = { x: 0, y: 0, z: 0 };
+  source.moonPosition(500, r);
+  loaders.pending.table.resolve(fakeTable());
+  await flush();
+  const pending = source.moonPosition(500, r);
+  assert.equal(pending.status, 'out-of-range');
+  assert.equal(pending.reason, 'fallback-pending');
+  assert.equal(pending.validTo, VALID_TO);
+  loaders.pending.fallback.reject(new Error('chunk'));
+  await flush();
+  const final = source.moonPosition(500, r);
+  assert.equal(final.status, 'out-of-range');
+  assert.equal(final.reason, 'no-fallback');
+  assert.equal(final.validFrom, VALID_FROM);
+  assert.equal(source.moonPosition(50, r).status, 'ok', 'dentro, la tabla');
+});

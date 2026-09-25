@@ -1,8 +1,8 @@
-# P5 — Ledger de activos y datos (T2–T3)
+# P5 — Ledger de activos y datos (T2–T9)
 
 Registro de KRÓNOS del 2026-09-25 (UTC) para P5 (Tierra–Luna). Cubre la tabla
-lunar, su fixture de tests y la dependencia de respaldo. La textura LROC queda
-fuera: sigue pendiente de verificar su licencia (propuesta §5).
+lunar, sus fixtures de tests, la dependencia de respaldo, el placeholder y la
+textura LROC de NASA SVS (§6, licencia verificada en T9).
 
 ## 1. Tabla lunar `public/data/moon-de441-2021-2040.bin`
 
@@ -174,5 +174,56 @@ Rotulado como FIXTURE: no son datos en vivo. Tiene 3 431 B y su sha256 es
 - **Archivo:** 1 106 B, sha256
   `e6e67b38d3a529d19437427b2d84703ab68b860490aca839463d8b68ebfe9235`.
 - **Licencia:** la del repositorio (MIT); no hay terceros.
-- La textura NASA SVS / LROC sigue pendiente de verificar su licencia
-  (propuesta §5); no se descarga ni se usa.
+- Sigue siendo el respaldo: la Luna nace con él y se queda con él si la
+  textura LROC no carga (§6).
+
+## 6. Textura LROC `public/models/moon/lroc-color-{1k,2k}-*.jpg` (T9)
+
+- **Fuente:** NASA Scientific Visualization Studio, «CGI Moon Kit», ID 4720
+  (<https://svs.gsfc.nasa.gov/4720>), visualización de Ernie Wright (USRA),
+  científico Noah Petro (NASA/GSFC). Datos: LROC WAC Color Mosaic (Hapke
+  normalized, Arizona State University) y LOLA/LDAM (polos).
+- **Licencia verificada (2026-09-25):** la FAQ del SVS
+  (<https://svs.gsfc.nasa.gov/help/>) dice «All of our content is in the public
+  domain (unless otherwise noted), meaning that it is free to download, use, and
+  redistribute for whatever purposes you see fit». La página 4720 no anota
+  ninguna excepción (sin música ni material con licencia) y pide «Please give
+  credit for this item to: NASA's Scientific Visualization Studio». El uso sigue
+  las pautas de medios de NASA (sin logotipos ni respaldo implícito). Texto
+  guardado en `output/eyeinsky-p5/t9/svs-4720-usage.txt` (páginas
+  `svs-4720.html`, sha256 `5d00ae99…ca255`, y `svs-help.html`, sha256
+  `b1ae0f1e…0513e`; evidencia no versionada).
+- **Archivos** (copias byte a byte, renombradas con su sha256 corto):
+
+| Archivo                      | Original                                               | Tamaño    | Bytes   | sha256                                                             |
+| ---------------------------- | ------------------------------------------------------ | --------- | ------- | ------------------------------------------------------------------ |
+| `lroc-color-1k-b246064f.jpg` | `lroc_color_poles_1k.jpg` (mapa 2019, JPEG progresivo) | 1024×512  | 139 068 | `b246064f217f8d479df78c49c7c8595a8f5fbda008a72fd539978d2e121e0109` |
+| `lroc-color-2k-f7130a18.jpg` | `lroc_color_2k.jpg` (mapa 2025, JPEG con EXIF de IDL)  | 2048×1024 | 457 942 | `f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170` |
+
+- **Comprobaciones** (`output/eyeinsky-p5/t9/texture-check.mjs` →
+  `texture-check.json`, decodificando en Chrome):
+  - **Huecos polares:** ninguno. En las filas de ±80–89° la fracción de píxeles
+    negros (luminancia < 8) es 0 en ambas: el SVS rellena lo que LROC no ve
+    (fuera de ±70°) con el albedo LDAM de LOLA.
+  - **Desfase s = 0:** los dos mapas están centrados en 0° de longitud (lo dice
+    la página y se mide). Mare Crisium (17°N 59°E) sale oscuro en su sitio
+    (luminancia 83 en 1k y 134 en 2k) frente a 17°N 121°O (175 y 207); Oceanus
+    Procellarum (18°N 57°O) da 71 y 121 frente a 18°N 123°E (167 y 202). Encaja
+    con `MOON_TEXTURE_FIX` de `pose.js` (s = 0 de EllipsoidGeometry en 180°).
+  - **Aviso:** 1k y 2k salen de versiones distintas del mapa (2019 y 2025) y la
+    2k es más clara, así que al subir de 1k a 2k cambia algo el tono. La página
+    solo publica en JPEG la 1k de 2019 y la 2k de 2025; el resto son TIFF o EXR.
+- **Uso en la app** (`src/layers/moon/textureBudget.js` y `texture.js`): la
+  primitiva nace con el placeholder; la 1k se precarga y lo sustituye al llegar.
+  La 2k solo se pide en escritorio (sin puntero grueso ni ≤ 760 px), sin
+  `save-data` y con la Luna > 300 px en pantalla, una vez y sin volver a bajar.
+  Nunca más de 2k (P6). Si no carga, se queda el placeholder, nunca una Luna
+  blanca.
+- **Crédito en la app:** mientras se ve la textura, el panel «Data attribution»
+  muestra «Moon texture: NASA's Scientific Visualization Studio, CGI Moon Kit
+  (LRO LROC WAC color mosaic, LOLA), public domain.» (`MOON_TEXTURE_CREDIT`).
+- **Guarda:** `src/layers/moon/textureBudget.test.mjs` exige los bytes y el
+  sha256 de los dos archivos publicados.
+- **Medida del terminador:** con la textura, los mares desplazan el umbral de
+  luminancia; el arnés mide el terminador con el albedo uniforme del placeholder
+  (`debugTexture('placeholder')`) y vuelve a LROC después.

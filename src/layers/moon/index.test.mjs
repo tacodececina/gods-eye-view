@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as Cesium from 'cesium';
-import { MOON_CREDIT, createMoonLayer } from './index.js';
+import {
+  MOON_CREDIT,
+  MOON_OUT_OF_RANGE_PAUSE,
+  createMoonLayer,
+} from './index.js';
 import { DIDACTIC_BAND_TEXT } from './scaleMode.js';
 
 const TIME = Cesium.JulianDate.fromIso8601('2026-09-25T18:45:00Z');
@@ -154,7 +158,7 @@ test('enable coloca la Luna con el time de preUpdate y publica getState()', () =
   assert.deepEqual(state.positionFixedM, { x: 3.5e8, y: 1.2e8, z: -4e7 });
   assert.equal(state.scaleMode, 'physical');
   assert.equal(state.measurable, true);
-  assert.equal(state.texture, 'placeholder');
+  assert.equal(state.texture, 'placeholder', 'hasta que llega la LROC');
   assert.match(state.orientation, /aproximada/);
   assert.equal(layer.getStats().count, 1);
 });
@@ -253,5 +257,219 @@ test('crédito «NASA/JPL Horizons, DE441» solo mientras la Luna está encendid
     ['-', true, MOON_CREDIT.key],
   ]);
   assert.match(MOON_CREDIT.html, /NASA\/JPL Horizons, DE441/);
-  assert.match(MOON_CREDIT.html, /placeholder/i);
+  assert.doesNotMatch(
+    MOON_CREDIT.html,
+    /texture/i,
+    'la textura tiene su crédito',
+  );
+});
+
+/** Servicio como el real: `at()` reescribe SIEMPRE el mismo objeto. */
+function sharedResultCelestial() {
+  const shared = fakeCelestial().state;
+  const at = (time) => {
+    const iso = Cesium.JulianDate.toIso8601(time, 3);
+    const later = iso.startsWith('2030');
+    Object.assign(shared, {
+      epochIso: iso,
+      distanceKm: later ? 400_000 : 372_000,
+      phaseName: later ? 'luna nueva' : 'luna llena',
+    });
+    shared.subLunarLonLat.lonDeg = later ? 99 : 10;
+    return shared;
+  };
+  return { at, subscribe: () => () => {} };
+}
+
+test('getState() es una copia del fotograma: otra lectura del servicio no la reescribe', () => {
+  const viewer = fakeViewer();
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    documentRef: null,
+    createPrimitive: fakePrimitive,
+    celestialOf: () => sharedResultCelestial(),
+    sceneClockOf: () => ({
+      getState: () => ({ mode: 'paused' }),
+      subscribe: () => () => {},
+    }),
+  });
+  layer.init(viewer);
+  layer.enable();
+  viewer.scene.preUpdate.raiseEvent(viewer.scene, TIME);
+  const before = layer.getState();
+  layer.debugAt('2030-06-21T12:00:00Z');
+  const after = layer.getState();
+  assert.equal(after.epochIso, '2026-09-25T18:45:00.000Z');
+  assert.equal(after.distanceKm, 372_000);
+  assert.equal(after.phaseName, 'luna llena');
+  assert.deepEqual(after.subLunarLonLat, before.subLunarLonLat);
+  assert.equal(after.subLunarLonLat.lonDeg, 10);
+});
+
+/** Capa con un reloj que registra pausas y un estado celeste dado. */
+function setupRange({ status, reason, mode }) {
+  const viewer = fakeViewer();
+  const pauses = [];
+  const celestial = fakeCelestial(status);
+  Object.assign(celestial.state, {
+    reason,
+    validity: { validFrom: -7e8, validTo: 1.26e9 },
+  });
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    documentRef: null,
+    createPrimitive: fakePrimitive,
+    celestialOf: () => celestial,
+    sceneClockOf: () => ({
+      getState: () => ({ mode }),
+      subscribe: () => () => {},
+      pause: (why) => pauses.push(why),
+    }),
+  });
+  layer.init(viewer);
+  layer.enable();
+  viewer.scene.preUpdate.raiseEvent(viewer.scene, TIME);
+  return { layer, pauses, viewer };
+}
+
+test('P5-09: simulando fuera de efemérides y sin respaldo → PAUSA «fuera de efemérides» y ausencia visible', () => {
+  const { layer, pauses, viewer } = setupRange({
+    status: 'out-of-range',
+    reason: 'no-fallback',
+    mode: 'simulated',
+  });
+  assert.deepEqual(pauses, [MOON_OUT_OF_RANGE_PAUSE]);
+  assert.equal(MOON_OUT_OF_RANGE_PAUSE, 'fuera de efemérides');
+  assert.equal(viewer.list[0].show, false, 'sin Luna física');
+  const state = layer.getState();
+  assert.equal(state.status, 'out-of-range');
+  assert.deepEqual(state.validity, { validFrom: -7e8, validTo: 1.26e9 });
+});
+
+test('P5-09: mientras el respaldo carga, o sin simular, no se pausa', () => {
+  for (const [reason, mode] of [
+    ['fallback-pending', 'simulated'],
+    ['no-fallback', 'paused'],
+    ['no-fallback', 'live'],
+  ])
+    assert.deepEqual(
+      setupRange({ status: 'out-of-range', reason, mode }).pauses,
+      [],
+      `${reason}/${mode}`,
+    );
+});
+
+test('getState() publica TDB − UTC de su época (rótulo UTC/TDB del panel)', () => {
+  const { viewer, layer } = setup();
+  layer.enable();
+  viewer.scene.preUpdate.raiseEvent(viewer.scene, TIME);
+  assert.ok(Math.abs(layer.getState().tdbMinusUtcS - 69.184) < 0.002);
+  layer.disable();
+  assert.equal(layer.getState().tdbMinusUtcS, null);
+});
+
+test('T9: la capa pide la textura LROC 1k al encender y la publica en getState()', async () => {
+  const viewer = fakeViewer();
+  const credits = [];
+  const loads = [];
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    documentRef: null,
+    createPrimitive: () => ({
+      ...fakePrimitive(),
+      appearance: {
+        material: {
+          uniforms: { image: 'placeholder' },
+          isDestroyed: () => false,
+          destroy() {},
+        },
+      },
+    }),
+    celestialOf: () => fakeCelestial(),
+    sceneClockOf: () => ({
+      getState: () => ({ mode: 'paused' }),
+      subscribe: () => () => {},
+    }),
+    loadImage: (url) => {
+      loads.push(url);
+      return Promise.resolve({ url });
+    },
+    textureEnv: () => ({ mobile: false, saveData: false }),
+    credits: {
+      register: (_v, credit) => credits.push(['+', credit.key]),
+      unregister: (_v, credit) => credits.push(['-', credit.key]),
+    },
+  });
+  layer.init(viewer);
+  layer.enable();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loads.length, 1);
+  assert.match(loads[0], /lroc-color-1k-b246064f.jpg$/);
+  assert.equal(layer.getState().texture, 'lroc-1k');
+  assert.deepEqual(credits, [
+    ['+', MOON_CREDIT.key],
+    ['+', 'nasa-svs-4720-lroc'],
+  ]);
+  layer.disable();
+  assert.equal(layer.getState().texture, 'placeholder');
+  assert.deepEqual(credits.slice(2), [
+    ['-', 'nasa-svs-4720-lroc'],
+    ['-', MOON_CREDIT.key],
+  ]);
+});
+
+test('debugTexture: el arnés puede medir la luz con albedo uniforme y volver a LROC', async () => {
+  const viewer = fakeViewer();
+  const loads = [];
+  let material;
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    documentRef: null,
+    resolveAsset: (uri) => `/b/${uri}`,
+    createPrimitive: ({ image }) => {
+      material = {
+        uniforms: { image },
+        isDestroyed: () => false,
+        destroy() {},
+      };
+      return { ...fakePrimitive(), appearance: { material } };
+    },
+    celestialOf: () => fakeCelestial(),
+    sceneClockOf: () => ({
+      getState: () => ({ mode: 'paused' }),
+      subscribe: () => () => {},
+    }),
+    loadImage: (url) => {
+      loads.push(url);
+      return Promise.resolve({ url });
+    },
+    textureEnv: () => ({ mobile: false, saveData: false }),
+  });
+  layer.init(viewer);
+  layer.enable();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(layer.getState().texture, 'lroc-1k');
+  layer.debugTexture('placeholder');
+  assert.equal(material.uniforms.image, '/b/models/moon/placeholder.png');
+  assert.equal(layer.getState().texture, 'placeholder');
+  layer.debugTexture('auto');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(layer.getState().texture, 'lroc-1k');
+  assert.equal(loads.length, 2);
+});
+
+test('P5-15/P4-02: la escala del enlace se aplica antes de init sin romper la restauración', () => {
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    documentRef: fakeDocument(),
+    createPrimitive: fakePrimitive,
+    celestialOf: () => fakeCelestial('ok'),
+    sceneClockOf: () => ({
+      getState: () => ({ mode: 'live' }),
+      subscribe: () => () => {},
+    }),
+  });
+  assert.doesNotThrow(() => layer.setScaleMode('physical'));
+  assert.doesNotThrow(() => layer.setScaleMode('didactic'));
+  assert.equal(layer.getState().scaleMode, 'didactic', 'se recuerda');
 });

@@ -1,0 +1,403 @@
+/*
+ * EYEINSKY P5 T8 · Tierra–Luna en el Mission Dock.
+ * Tira TIEMPO (verde EN VIVO, ámbar SIMULACIÓN), acciones de la Luna con su
+ * motivo visible, notas «sin histórico» y retícula de tamaño FIJO.
+ * Objetivos táctiles ≥ 44 px en pantallas estrechas; texto ≥ 13 px.
+ */
+
+.eyeinsky .eye-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.eye-dock-header {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  padding: 8px 10px 0 16px;
+  gap: 6px;
+  border-bottom: 1px solid rgb(166 215 194 / 12%);
+}
+
+.eye-time-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font: 13px var(--font-mono);
+}
+
+/* Una sola fila: lectura, PAUSA, AVANCE, AHORA y FECHA; el campo de fecha se
+ * abre con FECHA (no roba alto al globo). */
+.eye-time-strip:not([data-date-open='true']) .eye-time-seek {
+  display: none;
+}
+
+.eye-time-readout {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  align-items: baseline;
+  margin: 0;
+  gap: 8px;
+  letter-spacing: 0.06em;
+}
+
+.eye-time-icon,
+.eye-time-label {
+  color: #8fe0b0;
+  font-weight: 500;
+}
+
+.eye-time-detail {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.eye-time-strip[data-tone='sim'] .eye-time-icon,
+.eye-time-strip[data-tone='sim'] .eye-time-label,
+.eye-time-strip[data-tone='sim'] .eye-time-detail {
+  color: var(--eye-amber);
+}
+
+.eye-time-strip[data-tone='paused'] .eye-time-icon,
+.eye-time-strip[data-tone='paused'] .eye-time-label {
+  color: var(--text-secondary);
+}
+
+.eye-time-controls,
+.eye-moon-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.eyeinsky .eye-time-button,
+.eyeinsky .eye-moon-action {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  font: 13px var(--font-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.eye-time-button[aria-pressed='true'],
+.eye-moon-action[aria-pressed='true'] {
+  border-color: rgb(230 180 109 / 60%);
+  color: var(--eye-amber);
+}
+
+.eye-time-seek {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  gap: 6px;
+}
+
+.eye-time-field {
+  display: flex;
+  align-items: center;
+  color: var(--text-dim);
+  font: 13px var(--font-mono);
+  gap: 6px;
+}
+
+.eye-time-field input {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--eye-radius-small);
+  background: rgb(6 16 14 / 70%);
+  color: var(--text-primary);
+  font: 13px var(--font-mono);
+  color-scheme: dark;
+}
+
+.eye-time-field input[aria-invalid='true'] {
+  border-color: var(--eye-danger);
+}
+
+.eye-time-error,
+.eye-moon-reason {
+  margin: 0;
+  color: var(--eye-danger);
+  font: 13px var(--font-mono);
+}
+
+.eye-moon-reason {
+  color: var(--eye-amber);
+}
+
+.eye-moon-notice:empty {
+  display: none;
+}
+
+.eye-moon-notice {
+  margin: 0;
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+}
+
+.eye-time-notes {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  gap: 4px 14px;
+  list-style: none;
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+}
+
+.eye-moon-actions {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+  gap: 4px;
+}
+
+.eye-active-note {
+  display: block;
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+}
+
+[data-eye-active-suspended] {
+  opacity: 0.82;
+}
+
+/* Retícula: tamaño FIJO en px; no representa el diámetro de la Luna. */
+.eye-moon-reticle {
+  position: fixed;
+  /* Sobre la telemetría (35), bajo el dock (49) y las barras. */
+  z-index: 36;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.eye-moon-reticle-ring {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgb(230 180 109 / 85%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(6 16 14 / 60%);
+}
+
+.eye-moon-reticle-arrow {
+  position: absolute;
+  display: none;
+  color: var(--eye-amber);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.eye-moon-reticle[data-mode='edge'] .eye-moon-reticle-ring,
+.eye-moon-reticle[data-mode='edge'] .eye-moon-reticle-legend {
+  display: none;
+}
+
+.eye-moon-reticle[data-align='start'] .eye-moon-reticle-legend {
+  left: -17px;
+  transform: none;
+}
+
+.eye-moon-reticle[data-align='end'] .eye-moon-reticle-legend {
+  right: -17px;
+  left: auto;
+  transform: none;
+}
+
+.eye-moon-reticle[data-mode='edge'] .eye-moon-reticle-arrow {
+  display: block;
+}
+
+.eye-moon-reticle-legend {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgb(6 16 14 / 78%);
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Si la cabecera compacta y el riel no caben (zoom 200 %, dock desplegado),
+ * el dock se desplaza en vez de dejar el riel fuera de la pantalla. */
+.eye-mission-dock:has(.eye-dock-header[data-compact='true']) {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Cabecera compacta (viewport visual estrecho, bajo o con zoom; la marca
+ * eyeinskyEarthMoon): objetivos ≥ 44 px, fecha tras FECHA, rótulos cortos y
+ * las acciones de la Luna solo con el dock desplegado (MÁS). */
+.eye-dock-header:not([data-compact='true']) .eye-label-short,
+.eye-dock-header[data-compact='true'] .eye-label-long {
+  display: none;
+}
+
+.eye-dock-header[data-compact='true'] {
+  padding: 8px 8px 0 12px;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-button,
+.eye-dock-header[data-compact='true'] .eye-moon-action,
+.eye-dock-header[data-compact='true'] .eye-time-field input {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-controls .eye-time-button,
+.eye-dock-header[data-compact='true'] .eye-moon-buttons .eye-moon-action {
+  flex: 1 0 auto;
+  padding: 6px 8px;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-controls {
+  flex: 1 1 auto;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-seek {
+  flex: 1 1 100%;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-field,
+.eye-dock-header[data-compact='true'] .eye-time-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-readout {
+  flex: 0 1 auto;
+}
+
+/* Viewport visual BAJO (zoom 200 %, teléfono apaisado) con el dock plegado:
+ * el chip TIEMPO comparte fila con las pestañas (el modo EN VIVO / SIM /
+ * PAUSA sigue a la vista). Encima del riel, la tira empujaba Objetivo, Medios
+ * y OPS fuera del dock (P4-13, P5-15). */
+.eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  ) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  )
+  > * {
+  grid-column: 1 / -1;
+}
+
+.eye-mission-dock:not([data-expanded='true'])
+  > .eye-dock-header[data-short='true'] {
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+  grid-column: 2;
+  grid-row: 2;
+  padding: 0 12px 0 4px;
+  border-top: 1px solid rgb(166 215 194 / 14%);
+  border-bottom: 0;
+}
+
+.eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  )
+  > .eye-dock-tabs {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Chip TIEMPO (§6 móvil): en cabecera compacta sustituye a la lectura y
+ * abre la hoja de controles (PAUSA, AVANCE, AHORA, FECHA), ≥ 44 px. */
+.eye-time-chip {
+  display: none;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-chip {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid rgb(143 224 176 / 45%);
+  border-radius: 999px;
+  background: rgb(6 16 14 / 60%);
+  color: #8fe0b0;
+  font: 500 13px var(--font-mono);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-chip[data-tone='sim'],
+.eye-dock-header[data-compact='true'] .eye-time-chip[data-tone='paused'] {
+  border-color: rgb(255 191 71 / 55%);
+  color: var(--eye-amber);
+}
+
+.eye-dock-header[data-compact='true'] .eye-time-readout,
+.eye-dock-header[data-compact='true']
+  .eye-time-strip:not([data-sheet-open='true'])
+  .eye-time-controls {
+  display: none;
+}
+
+/* En cabecera compacta, las acciones de la Luna van con el dock desplegado (MÁS). */
+.eye-mission-dock:not([data-expanded='true'])
+  .eye-dock-header[data-compact='true']
+  .eye-moon-actions {
+  display: none;
+}
+
+@media (max-width: 650px) {
+  /* Sin zoom al enfocar el campo en iOS (< 16 px amplía la página). */
+  .eye-time-field input {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eye-moon-reticle,
+  .eye-moon-reticle * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Banda del modo didáctico (layers/moon/scaleBand.js): siempre legible. */
+.eye-moon-scale-band {
+  position: fixed;
+  z-index: 36;
+  top: calc(var(--eye-safe-top, 14px) + 64px);
+  left: 50%;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border: 1px solid rgb(230 180 109 / 70%);
+  border-radius: 8px;
+  background: rgb(6 16 14 / 86%);
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  text-align: center;
+}

@@ -36,6 +36,7 @@ const KIND_KICKERS = Object.freeze({
   tracked: 'SEGUIMIENTO / CONTACTO',
   camera: 'CÁMARA / CCTV',
   entity: 'INSPECCIONAR / CAPA',
+  moon: 'OBJETIVO / LUNA',
 });
 
 const PANE_LABELS = Object.freeze({
@@ -335,4 +336,202 @@ export function buildMissionDockView({
     actions,
     actionReason: resolveActionReason(actions),
   });
+}
+
+// ─── P5 T8 · Tira TIEMPO ────────────────────────────────────────────────────
+//
+// El reloj de escena es UNO (src/time/sceneClock.js). La tira dice en cuál de
+// sus tres estados está, sin eufemismos: vivo, simulación (ámbar, con ritmo) o
+// pausa (con motivo). Los feeds en vivo no se re-propagan: fuera de «vivo» se
+// suspenden y se dice; los satélites siguen en hora real y también se dice.
+
+/** Ritmos del botón AVANCE, en el orden en que se recorren. */
+export const TIME_ADVANCE_STEPS = Object.freeze([1, 60, 600, 3600]);
+/** Primer ritmo al simular desde vivo o pausa. */
+const FIRST_ADVANCE = 60;
+/** Una pausa más alejada de la pared que esto ya no es «ahora». */
+export const LIVE_TOLERANCE_MS = 60_000;
+const FIELD_MIN_YEAR = 1900;
+const FIELD_MAX_YEAR = 2100;
+const FIELD_INVALID = 'Fecha inválida: usa AAAA-MM-DD hh:mm (UTC)';
+const FIELD_RANGE = `Fecha fuera de ${FIELD_MIN_YEAR}–${FIELD_MAX_YEAR} UTC`;
+
+/** ¿La escena ya no muestra «ahora»? Simulando siempre; en pausa, si deriva. */
+export function isSceneOffLive(clock) {
+  if (clock?.mode === 'simulated') return true;
+  return (
+    clock?.mode === 'paused' &&
+    Math.abs(Number(clock.driftMs) || 0) > LIVE_TOLERANCE_MS
+  );
+}
+
+/**
+ * A dónde vuelve REANUDAR. `running` es el último modo en marcha antes de la
+ * pausa: una simulación sigue a su ritmo; una pausa hecha en vivo vuelve a
+ * vivo solo si no derivó más de la tolerancia (si no, simula ×1 desde ahí).
+ * @param {object} clock Estado pausado de sceneClock.getState().
+ * @param {{mode: string, multiplier?: number}} [running]
+ */
+export function resolveResume(clock, running) {
+  if (running?.mode === 'simulated')
+    return Object.freeze({ type: 'simulate', multiplier: running.multiplier });
+  if (Math.abs(Number(clock?.driftMs) || 0) <= LIVE_TOLERANCE_MS)
+    return Object.freeze({ type: 'now' });
+  return Object.freeze({ type: 'simulate', multiplier: 1 });
+}
+
+/** Ritmo que aplicará el siguiente AVANCE. */
+export function nextAdvanceMultiplier(clock) {
+  if (clock?.mode !== 'simulated') return FIRST_ADVANCE;
+  const index = TIME_ADVANCE_STEPS.indexOf(clock.multiplier);
+  if (index === -1) return FIRST_ADVANCE;
+  return TIME_ADVANCE_STEPS[(index + 1) % TIME_ADVANCE_STEPS.length];
+}
+
+/** 'YYYY-MM-DD', 'hh:mm' y 'hh:mm:ss' de un ISO UTC. */
+function isoParts(iso) {
+  const text = typeof iso === 'string' ? iso : '';
+  return {
+    date: text.slice(0, 10),
+    minutes: text.slice(11, 16),
+    seconds: text.slice(11, 19),
+  };
+}
+
+/** Rótulo, detalle y anuncio de cada modo. */
+function stripWording(clock) {
+  const { date, minutes, seconds } = isoParts(clock?.currentIso);
+  if (clock?.mode === 'simulated')
+    return {
+      tone: 'sim',
+      icon: '◆',
+      label: 'SIMULACIÓN',
+      detail: `${date} ${minutes} UTC ×${clock.multiplier}`,
+      announcement: `Simulación ×${clock.multiplier}`,
+    };
+  if (clock?.mode === 'paused')
+    return {
+      tone: 'paused',
+      icon: '❚❚',
+      label: 'PAUSA',
+      detail: `· ${clock.reason || `${date} ${seconds} UTC`}`,
+      announcement: clock.reason ? `Pausa: ${clock.reason}` : 'Pausa',
+    };
+  return {
+    tone: 'live',
+    icon: '●',
+    label: 'EN VIVO',
+    detail: `${seconds} UTC`,
+    announcement: 'En vivo',
+  };
+}
+
+const MONTHS = Object.freeze(
+  'ENE FEB MAR ABR MAY JUN JUL AGO SEP OCT NOV DIC'.split(' '),
+);
+
+/**
+ * Chip de la cabecera compacta (§6 móvil): «◆ SIM 07-OCT 03:12 ×3600»,
+ * «● VIVO 14:32 UTC» o «❚❚ PAUSA 14-MAR 06:00». Abre la hoja de controles.
+ */
+function stripChip(clock, words) {
+  const { date, minutes } = isoParts(clock?.currentIso);
+  const month = MONTHS[Number(date.slice(5, 7)) - 1] ?? '';
+  const day = `${date.slice(8, 10)}-${month} ${minutes}`;
+  const text =
+    clock?.mode === 'simulated'
+      ? `${words.icon} SIM ${day} ×${clock.multiplier}`
+      : clock?.mode === 'paused'
+        ? `${words.icon} PAUSA ${day}`
+        : `${words.icon} VIVO ${minutes} UTC`;
+  return Object.freeze({
+    text,
+    tone: words.tone,
+    label: `Tiempo: ${words.announcement}. Abre los controles de tiempo`,
+  });
+}
+
+/** Notas visibles fuera de «vivo»: lo que NO se simula. */
+function stripNotes(clock, { suspendedCount = 0, satellitesEnabled = false }) {
+  if (!isSceneOffLive(clock)) return [];
+  const notes = [];
+  if (suspendedCount > 0)
+    notes.push(
+      `Sin histórico: solo hora real · ${suspendedCount} ${suspendedCount === 1 ? 'capa en vivo suspendida' : 'capas en vivo suspendidas'}`,
+    );
+  if (satellitesEnabled)
+    notes.push('Satélites: puntos SGP4 en hora real, no simulados');
+  return notes;
+}
+
+/**
+ * Vista inmutable de la tira TIEMPO.
+ * @param {object} clock Estado de sceneClock.getState().
+ * @param {{suspendedCount?:number, satellitesEnabled?:boolean}} [context]
+ * @returns {Readonly<object>} Texto, tono, anuncio, botones y notas.
+ */
+export function resolveTimeStrip(clock, context = {}) {
+  const words = stripWording(clock);
+  const paused = clock?.mode === 'paused';
+  const live = clock?.mode === 'live';
+  const next = nextAdvanceMultiplier(clock);
+  return Object.freeze({
+    mode: clock?.mode ?? 'live',
+    ...words,
+    text: `${words.icon} ${words.label} ${words.detail}`,
+    chip: stripChip(clock, words),
+    pause: Object.freeze({
+      label: paused ? 'REANUDAR' : 'PAUSA',
+      short: paused ? 'REANUDAR' : 'PAUSA',
+      pressed: paused,
+      hint: paused
+        ? 'Reanuda el reloj de escena'
+        : 'Congela el reloj de escena',
+    }),
+    advance: Object.freeze({
+      label: `AVANCE ×${next}`,
+      short: `×${next}`,
+      multiplier: next,
+      hint: `Simula a ×${next} (Luna, Sol y luz; los feeds no)`,
+    }),
+    now: Object.freeze({
+      label: 'AHORA',
+      short: 'AHORA',
+      enabled: !live,
+      hint: live ? 'Ya estás en la hora real' : 'Vuelve a la hora real',
+    }),
+    notes: Object.freeze(stripNotes(clock, context)),
+  });
+}
+
+/** Valor del campo datetime-local (UTC) para un ISO. */
+export function utcDateFieldValue(iso) {
+  return typeof iso === 'string' && iso.length >= 19 ? iso.slice(0, 19) : '';
+}
+
+/**
+ * Valida el campo de fecha, SIEMPRE en UTC (datetime-local no lleva zona).
+ * @param {string} value 'AAAA-MM-DDThh:mm' o con ':ss'.
+ * @returns {{ok:true, iso:string}|{ok:false, error:string}}
+ */
+export function parseUtcDateField(value) {
+  const match =
+    typeof value === 'string' &&
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+  if (!match) return { ok: false, error: FIELD_INVALID };
+  const [year, month, day, hour, minute, second = 0] = match
+    .slice(1)
+    .map((part) => Number(part ?? 0));
+  const ms = Date.UTC(year, month - 1, day, hour, minute, second);
+  const back = new Date(ms);
+  const exact =
+    back.getUTCFullYear() === year &&
+    back.getUTCMonth() === month - 1 &&
+    back.getUTCDate() === day &&
+    back.getUTCHours() === hour &&
+    back.getUTCMinutes() === minute;
+  if (!exact) return { ok: false, error: FIELD_INVALID };
+  if (year < FIELD_MIN_YEAR || year > FIELD_MAX_YEAR)
+    return { ok: false, error: FIELD_RANGE };
+  return { ok: true, iso: `${back.toISOString().slice(0, 19)}Z` };
 }

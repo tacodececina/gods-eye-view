@@ -126,6 +126,18 @@
       "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
       "title": "NASA/JPL Horizons, DE441 — Luna 301 vista desde el geocentro (500@399), OBSERVER, QUANTITIES='10,13,14' (Illu%, Ang-diam, ObsSub-LON/LAT en MOON_ME, longitud Este), 10 épocas UT; origen de src/data/fixtures/moon-horizons-phase.json",
       "accessed": "2026-09-25"
+    },
+    {
+      "id": 22,
+      "url": "https://svs.gsfc.nasa.gov/4720",
+      "title": "NASA SVS — CGI Moon Kit (ID 4720, Ernie Wright/USRA, Noah Petro/NASA GSFC): lroc_color_poles_1k.jpg (mapa de color 2019, polos rellenos con LDAM) y lroc_color_2k.jpg (mapa de color 2025); crédito «NASA's Scientific Visualization Studio»; origen de public/models/moon/lroc-color-*.jpg",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 23,
+      "url": "https://svs.gsfc.nasa.gov/help/",
+      "title": "NASA SVS — FAQ «Can I use your visualizations?»: «All of our content is in the public domain (unless otherwise noted)»; la página 4720 no declara ninguna excepción",
+      "accessed": "2026-09-25"
     }
   ]
 }

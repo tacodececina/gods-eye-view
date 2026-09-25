@@ -117,3 +117,29 @@ test('sunFixedAt da el Sol sin pedir la Luna (el HUD no descarga la tabla)', () 
   });
   assert.equal(noFrame.sunFixedAt(TIME, new Cesium.Cartesian3()), null);
 });
+
+test('tras releaseCelestial, el HUD/anillo no recrean un servicio huérfano', () => {
+  const viewer = {};
+  let created = 0;
+  const source = fakeSource();
+  const options = {
+    createSource: (hooks) => {
+      created += 1;
+      return source.create(hooks);
+    },
+    transforms: identity,
+  };
+  celestialFor(viewer, options).at(TIME);
+  releaseCelestial(viewer);
+  const late = celestialFor(viewer, options);
+  assert.equal(created, 1, 'no se crea otra fuente lunar');
+  const state = late.at(TIME);
+  assert.equal(state.status, 'unavailable');
+  assert.equal(state.reason, 'released');
+  assert.equal(late.sunFixedAt(TIME, new Cesium.Cartesian3()), null);
+  const off = late.subscribe(() => assert.fail('no avisa'));
+  off();
+  late.destroy();
+  assert.equal(celestialFor(viewer, options), late, 'siempre el mismo inerte');
+  assert.equal(created, 1);
+});

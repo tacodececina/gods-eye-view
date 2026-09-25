@@ -261,3 +261,76 @@ Veredicto:
 Límites: n = 3 no da intervalo de confianza formal; escenas en frío en navegador
 nuevo, no la secuencia de una sesión; sólo CPU del hilo principal, sin GPU; sin
 FPS.
+
+## P5 Tierra–Luna (2026-09-25, GPD Win 4)
+
+Evidencia: `output/eyeinsky-p5/perf/` (`README.md`, `summary.json`,
+`round-<n>/`, `run.log`). Arnés `measure-p5.mjs`, derivado de P4
+`perf-repeat`. Mismas funciones de página: CPU del frame de Cesium
+(`preUpdate` → `postRender`), `commandList` (API privada), long tasks y heap.
+Añade heap tras GC forzado por CDP antes y después de cada ventana.
+
+Condiciones de captura:
+
+- HEAD `5ee9868` más el árbol de trabajo de T8/T9.
+- Chrome 153 headless con ANGLE/D3D11 sobre la GPU real (`AMD Radeon(TM) 890M`).
+- 1366x768 a DPR 1 y `?satModels=std`.
+- 45 s por escena tras 8 s de asentamiento, con un navegador nuevo por escena.
+- n = 3 rondas intercaladas: R1 A → A′ → M1 → M2 → S → E; R2 al revés; R3
+  como R1.
+
+Vista fija durante todo el plan: lat 20°, 20 000 km, lon 152°. Deja la Luna a
+la espalda de la cámara (150–155° del eje). La vista de P4 (lon −30°) se
+descartó porque la Luna entraba en cuadro según la hora.
+
+Las escenas usan clics reales en APUNTAR A LA LUNA, SISTEMA TIERRA–LUNA y
+AVANCE (hasta ×3600). En E la Luna se enciende y luego se apaga.
+
+**Límite de condiciones.** gpd-forge estuvo en modo `gaming` (no `windows`) y
+no se escribió hardware. La compuerta térmica de ≤ 78 °C no pasó en ninguna de
+las 18 escenas: cada una esperó 5 min y se midió igual, con la CPU a
+82,5–92 °C y el package a 21–33 W, y con carga ajena. Las cifras absolutas no
+son comparables con P4; solo valen los Δ intra-plan. No se miden FPS.
+
+Medianas [mín–máx] de la CPU del frame de Cesium, en ms:
+
+| Escena                                 | p50           | p95           | commandList | Δ heap GC en 45 s (MiB) |
+| -------------------------------------- | ------------- | ------------- | ----------- | ----------------------- |
+| A · satélites core, Luna OFF           | 1,7 [1,6–1,7] | 2,5 [2,5–2,6] | 22          | +1,28 [+0,36 – +1,29]   |
+| A′ · Luna ON, en vivo, fuera de cuadro | 1,7 [1,7–1,8] | 2,7 [2,5–2,8] | 24          | +0,43 [−0,02 – +0,72]   |
+| M1 · APUNTAR A LA LUNA, escala física  | 1,1 [1,1–1,1] | 1,7 [1,7–1,7] | 11          | +0,49 [+0,21 – +0,93]   |
+| M2 · SISTEMA TIERRA–LUNA               | 1,6 [1,5–1,6] | 2,7 [2,6–2,8] | 13          | +1,47 [+0,22 – +1,94]   |
+| S · simulación ×3600, Luna ON          | 1,7 [1,6–1,7] | 2,5 [2,5–3,1] | 24          | +0,42 [+0,40 – +0,92]   |
+| E · tras disable de la Luna            | 1,7 [1,7–1,7] | 2,5 [2,5–2,7] | 22          | +0,38 [+0,21 – +0,95]   |
+
+0 long tasks, 0 frames de rAF > 33 ms y 0 errores en las 18 ventanas.
+
+Veredicto (cumple solo si cumplen la mediana y las 3 rondas):
+
+- **A′ − A, Δp95 ≤ 1 ms: CUMPLE.** Δ de medianas +0,2 ms (intra-ronda +0,2 /
+  0,0 / +0,2). Hay +2 comandos con la Luna fuera de cuadro; su origen no se ha
+  verificado (probablemente la retícula de borde y el marcador).
+- **M1 ≤ A + 3 ms de p95: CUMPLE.** Δ −0,8 ms (−0,9 / −0,8 / −0,8). Sale más
+  barato porque APUNTAR saca casi toda la Tierra del cuadro; no aísla el coste
+  del disco lunar.
+- **M2 ≤ A + 3 ms de p95: CUMPLE.** Δ +0,2 ms (+0,1 / +0,1 / +0,3), con la
+  Tierra y la Luna en cuadro.
+- **S, 0 long tasks y heap tras GC ≤ +2 MiB en 45 s: CUMPLE.** 0 long tasks y
+  Δ heap de +0,92 / +0,42 / +0,40 MiB.
+  - Hay picos aislados de 19,6–21,7 ms de CPU de frame (máx), frente a
+    ≤ 11,2 ms en el resto. No afectan al p95 y su causa no está atribuida:
+    no se capturó perfil.
+  - A ×3600 la Luna derivó fuera de cuadro.
+  - Los satélites siguen visibles, rotulados «puntos SGP4 en hora real, no
+    simulados».
+- **E = A ± 1 comando: CUMPLE.** 22 = 22 en las 3 rondas. El heap tras GC
+  queda en +0,5 MiB sobre A, dentro de la dispersión de A.
+
+Límites:
+
+- n = 3 sin intervalo de confianza formal.
+- La vista no es la de P4, así que la comparabilidad con la línea base P4
+  (P5-16) queda **no resoluble** en este plan. Para resolverla, hay que
+  repetirlo en modo `windows` a ≤ 78 °C.
+- M1 y M2 miden la escena de la acción, no la Luna aislada.
+- Solo CPU del hilo principal, sin GPU. No se midió en teléfono. Sin FPS.

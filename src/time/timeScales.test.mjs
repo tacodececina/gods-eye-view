@@ -138,3 +138,13 @@ test('utcIsoToTdbSeconds rechaza entradas que no son fechas ISO', () => {
   for (const bad of ['', 'ayer', null, 42, '2026-13-40T00:00:00Z'])
     assert.throws(() => utcIsoToTdbSeconds(bad), TypeError);
 });
+
+test('TDB − UTC para el rótulo de época: 32,184 s + (TAI−UTC) + (TDB−TT)', async () => {
+  const { tdbMinusUtcSeconds } = await import('./timeScales.js');
+  const at = (iso) => tdbMinusUtcSeconds(Cesium.JulianDate.fromIso8601(iso));
+  assert.ok(Math.abs(at('2026-09-25T18:45:00Z') - 69.184) < 0.002);
+  assert.ok(
+    Math.abs(at('2016-06-01T00:00:00Z') - 68.184) < 0.002,
+    'antes del intercalar de 2017',
+  );
+});

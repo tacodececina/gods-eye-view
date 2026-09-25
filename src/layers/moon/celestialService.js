@@ -79,7 +79,24 @@ export function createCelestialService({
 
 const BY_VIEWER = new WeakMap();
 
-/** Servicio celeste de `viewer` (se crea en el primer uso). */
+/** Estado de un servicio cerrado: ausencia tipada, nunca un cálculo. */
+function releasedState() {
+  return Object.assign(createCelestialResult(), { reason: 'released' });
+}
+
+/**
+ * Servicio inerte tras releaseCelestial: un HUD o un anillo que dibujan un
+ * último fotograma después del cierre leen una ausencia en vez de recrear un
+ * servicio (y una fuente lunar con su descarga) huérfano.
+ */
+const RELEASED = Object.freeze({
+  at: () => releasedState(),
+  sunFixedAt: () => null,
+  subscribe: () => () => {},
+  destroy() {},
+});
+
+/** Servicio celeste de `viewer` (se crea en el primer uso; inerte tras release). */
 export function celestialFor(viewer, options) {
   let service = BY_VIEWER.get(viewer);
   if (!service) {
@@ -89,10 +106,9 @@ export function celestialFor(viewer, options) {
   return service;
 }
 
-/** Destruye el servicio de `viewer` (idempotente). */
+/** Destruye el servicio de `viewer` y lo deja inerte (idempotente). */
 export function releaseCelestial(viewer) {
   const service = BY_VIEWER.get(viewer);
-  if (!service) return;
-  BY_VIEWER.delete(viewer);
-  service.destroy();
+  BY_VIEWER.set(viewer, RELEASED);
+  if (service && service !== RELEASED) service.destroy();
 }

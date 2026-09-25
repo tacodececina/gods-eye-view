@@ -7,6 +7,7 @@ import {
   isWaxing,
   phaseName,
 } from './lunarPhase.js';
+import { apparentSubLunarFixed } from './subLunar.js';
 
 /**
  * Estado celeste común de P5 (T5): Sol y Luna para UN JulianDate (el
@@ -73,10 +74,17 @@ function validityOf(sample) {
 const scratchCarto = new Cesium.Cartographic();
 const scratchSurface = new Cesium.Cartesian3();
 
-/** Punto sublunar geodésico WGS84 (el rayo geocéntrico corta el elipsoide). */
-function writeSubLunar(moonFixedM, out) {
+/**
+ * Punto sublunar geodésico WGS84 (el rayo geocéntrico corta el elipsoide) de
+ * la dirección APARENTE con tiempo de luz (subLunar.js): el geométrico (sin
+ * tiempo de luz) quedaba a 0,64′ del de Horizons; el aparente, ≤ 0,5′
+ * (celestialState.test.mjs y arnés p5 `sublunar-vs-horizons`). La Luna 3D y
+ * la distancia siguen siendo geométricas.
+ */
+const scratchApparentKm = new Cesium.Cartesian3();
+function writeSubLunar(apparentFixed, out) {
   const surface = Cesium.Ellipsoid.WGS84.scaleToGeocentricSurface(
-    moonFixedM,
+    apparentFixed,
     scratchSurface,
   );
   const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(
@@ -87,7 +95,7 @@ function writeSubLunar(moonFixedM, out) {
   out.latDeg = Cesium.Math.toDegrees(carto.latitude);
 }
 
-function writeMoon(result, sample, matrix, sunIcrfM) {
+function writeMoon(result, sample, { julianDate, matrix, sunIcrfM }) {
   const km = result.moonIcrfKm;
   Cesium.Cartesian3.clone(sample.position, km);
   Cesium.Matrix3.multiplyByVector(matrix, km, result.moonFixedM);
@@ -105,7 +113,11 @@ function writeMoon(result, sample, matrix, sunIcrfM) {
   result.phaseFraction = illuminatedFraction(sunKm, km);
   result.phaseName = phaseName(result.phaseFraction, isWaxing(sunKm, km));
   result.apparentDiameterDeg = apparentDiameterDeg(result.distanceKm);
-  writeSubLunar(result.moonFixedM, result.subLunarLonLat);
+  const apparent = apparentSubLunarFixed(
+    { julianDate, moonIcrfKm: km, icrfToFixed: matrix },
+    scratchApparentKm,
+  );
+  writeSubLunar(apparent, result.subLunarLonLat);
 }
 
 const scratchSun = new Cesium.Cartesian3();
@@ -169,7 +181,7 @@ export function createCelestialStateReader({
       result.reason = sample?.reason ?? null;
       return result;
     }
-    writeMoon(result, sample, matrix, sunIcrfM);
+    writeMoon(result, sample, { julianDate, matrix, sunIcrfM });
     result.status = 'ok';
     result.reason = null;
     return result;

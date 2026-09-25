@@ -9,6 +9,7 @@ import {
   decodeLayerStateParams,
   encodeLayerStateParams,
 } from './data/layerState.js';
+import { decodeSceneParams, encodeSceneParams } from './sharelinkScene.js';
 
 /**
  * Share Links — URL Hash State Management
@@ -128,6 +129,9 @@ export class ShareLinkManager {
     this._layerStateProvider = null;
     this._panelStateProvider = null;
     this._styleParamStateProvider = null;
+    // P5 T9: reloj de escena y escala lunar (t, tr, lm; sharelinkScene.js).
+    this._sceneStateProvider = null;
+    this._sceneApplier = null;
     this._initialRestorePending = false;
     this._restoreAuthority = {
       visual: 0,
@@ -249,6 +253,7 @@ export class ShareLinkManager {
         decodedLayerState === null,
       panelState: decodePanelStateParams(params),
       sharedAtMs: decodeShareCreatedAtMs(params),
+      scene: decodeSceneParams(params),
     };
     state.restoreAuthority = {
       visual: this._restoreAuthority.visual,
@@ -368,10 +373,12 @@ export class ShareLinkManager {
       });
       restoreStatus = 'applied';
     }
+    const scene = this._applySharedScene(state.scene);
     const camera = await cameraPromise;
     return {
       succeeded: !this._destroyed,
       camera: camera.status,
+      scene,
       visual: visualCurrent ? restoreStatus : 'superseded',
       map: mapCurrent ? restoreStatus : 'superseded',
       panels: panelState
@@ -410,6 +417,34 @@ export class ShareLinkManager {
   /** Install the finalized panel-state source used by URL generation. */
   setPanelStateProvider(provider) {
     this._panelStateProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  /**
+   * Apply the shared scene clock / Moon scale (P5). A failure here is
+   * reported as 'failed' and never aborts camera, layer or tracking restore.
+   */
+  _applySharedScene(scene) {
+    try {
+      return this._sceneApplier?.(scene)?.time ?? 'skipped';
+    } catch (error) {
+      globalThis.console?.warn?.('[share] scene restore failed', error);
+      return 'failed';
+    }
+  }
+
+  /** Install the scene clock / Moon scale source used by URL generation (P5). */
+  setSceneStateProvider(provider) {
+    this._sceneStateProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  /** Called when the scene clock changes mode, rate or epoch (P5). */
+  onSceneStateChange() {
+    this._scheduleUpdate();
+  }
+
+  /** Install the owner that applies a shared scene clock / Moon scale (P5). */
+  setSceneApplier(applier) {
+    this._sceneApplier = typeof applier === 'function' ? applier : null;
   }
 
   /** Install the active visual preset parameter source used by URL generation. */
@@ -593,6 +628,7 @@ export class ShareLinkManager {
       this._currentStyle,
       this._styleParamStateProvider?.(this._currentStyle),
     );
+    encodeSceneParams(params, this._sceneStateProvider?.() ?? null);
 
     // Copy-time metadata is intentionally absent here. `copyLink()` adds a
     // fresh timestamp to its ephemeral URL without aging the live address.
@@ -621,6 +657,8 @@ export class ShareLinkManager {
     this._layerStateProvider = null;
     this._panelStateProvider = null;
     this._styleParamStateProvider = null;
+    this._sceneStateProvider = null;
+    this._sceneApplier = null;
     this._onRestore = null;
   }
 }

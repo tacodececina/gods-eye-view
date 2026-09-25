@@ -72,7 +72,7 @@ test('estado celeste en las épocas del fixture: Luna DE441, marco XYS, fase ±1
   }
 });
 
-test('el punto sublunar geométrico queda a ≤ 1,5′ del aparente de Horizons ITRF93', async () => {
+test('P5-03: el punto sublunar (con tiempo de luz) queda a ≤ 0,1′ del aparente de Horizons ITRF93 (el geométrico daba 0,64′)', async () => {
   const getCelestialState = createCelestialStateReader({
     moonPosition: await tableSource(),
   });
@@ -87,7 +87,7 @@ test('el punto sublunar geométrico queda a ≤ 1,5′ del aparente de Horizons 
     const arcmin =
       Math.hypot(dLon * Math.cos((row.apparentLatDeg * Math.PI) / 180), dLat) *
       60;
-    assert.ok(arcmin <= 1.5, `${row.utcIso}: ${arcmin.toFixed(3)}′`);
+    assert.ok(arcmin <= 0.1, `${row.utcIso}: ${arcmin.toFixed(3)}′`);
   }
 });
 

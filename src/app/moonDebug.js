@@ -13,6 +13,7 @@ export function createMoonDebug(dataManager) {
       dataManager.setEnabled('moon', false, { origin: 'programmatic' }),
     setScaleMode: (id) => module()?.setScaleMode(id),
     debugAt: (iso) => module()?.debugAt(iso) ?? null,
+    debugTexture: (mode) => module()?.debugTexture?.(mode),
   });
 }
 

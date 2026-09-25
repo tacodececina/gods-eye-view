@@ -179,3 +179,11 @@ export function subPointArcmin(fixed, row) {
   const cosLat = Math.cos(Cesium.Math.toRadians(row.apparentLatDeg));
   return Math.hypot(dLon * cosLat, dLat) * 60;
 }
+
+/** Separación (′) entre un punto lon/lat (°) y el aparente de Horizons. */
+export function lonLatArcmin({ lonDeg, latDeg }, row) {
+  const dLon = ((lonDeg - row.apparentLonDeg + 540) % 360) - 180;
+  const dLat = latDeg - row.apparentLatDeg;
+  const cosLat = Math.cos(Cesium.Math.toRadians(row.apparentLatDeg));
+  return Math.hypot(dLon * cosLat, dLat) * 60;
+}

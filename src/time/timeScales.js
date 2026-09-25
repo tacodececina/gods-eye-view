@@ -72,3 +72,16 @@ export function parseUtcIso(iso) {
 export function utcIsoToTdbSeconds(iso) {
   return tdbSecondsFromJ2000(parseUtcIso(iso));
 }
+
+/**
+ * TDB − UTC (s) en `julianDate`: 32,184 s + (TAI−UTC) + (TDB−TT). Para el
+ * rótulo «TDB = UTC + 69,18 s» del panel OBJETIVO Luna.
+ */
+export function tdbMinusUtcSeconds(julianDate) {
+  const tt = ttSecondsFromJ2000(julianDate);
+  return (
+    TT_MINUS_TAI_S +
+    Cesium.JulianDate.computeTaiMinusUtc(julianDate) +
+    tdbMinusTtSeconds(tt)
+  );
+}

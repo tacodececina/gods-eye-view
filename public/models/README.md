@@ -42,3 +42,20 @@ short SHA-256 in the file name; measurements, scale and axes are recorded in
 
 Unlike the aircraft above, all three satellite GLBs require
 `KHR_draco_mesh_compression`, which Cesium decodes in its Draco workers.
+
+## Moon textures (NASA Scientific Visualization Studio)
+
+The `moon/lroc-color-*` files are byte-identical copies from NASA SVS
+"CGI Moon Kit" ([ID 4720](https://svs.gsfc.nasa.gov/4720)), renamed with their
+short SHA-256. The repository's MIT source-code license does **not** cover
+them. The SVS states that its content is in the public domain unless otherwise
+noted; the 4720 page notes no exception and asks for the credit "NASA's
+Scientific Visualization Studio". Use follows the
+[NASA Images and Media Usage Guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/):
+no NASA insignia and no implied endorsement. `moon/placeholder.png` is the
+project's own generated placeholder (MIT).
+
+| File                              | Original work and creator                                                                                                                | Source                                                                                         | License                                   | Project modifications                                |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
+| `moon/lroc-color-1k-b246064f.jpg` | `lroc_color_poles_1k.jpg` (2019 color map, 1024×512) by NASA SVS (Ernie Wright, Noah Petro), from the LRO LROC WAC mosaic (ASU) and LOLA | [NASA SVS 4720](https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_1k.jpg) | Public domain (NASA SVS), credit required | None. Byte-identical copy (SHA-256 `b246064f…0109`). |
+| `moon/lroc-color-2k-f7130a18.jpg` | `lroc_color_2k.jpg` (2025 color map, 2048×1024) by NASA SVS (Ernie Wright, Noah Petro), from the LRO LROC WAC mosaic (ASU) and LOLA      | [NASA SVS 4720](https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg)       | Public domain (NASA SVS), credit required | None. Byte-identical copy (SHA-256 `f7130a18…2170`). |

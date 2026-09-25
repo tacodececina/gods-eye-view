@@ -241,3 +241,23 @@ export function repaintProbe() {
     moonEpochIso: g.moon.getState().epochIso ?? null,
   };
 }
+
+/**
+ * Punto sublunar que PUBLICA la app (con tiempo de luz, layers/moon/subLunar.js)
+ * para las épocas del fixture; la separación frente a Horizons se mide en Node.
+ */
+export async function subLunarProbe(rows) {
+  const C = window.__CESIUM__;
+  const g = window.__godsEyeView;
+  const out = [];
+  for (const row of rows) {
+    const frame = await g.frames.ensure(C.JulianDate.fromIso8601(row.utcIso));
+    const state = g.moon.debugAt(row.utcIso);
+    out.push(
+      frame.status === 'ok' && state?.status === 'ok'
+        ? { utcIso: row.utcIso, status: 'ok', lonLat: state.subLunarLonLat }
+        : { utcIso: row.utcIso, status: state?.status ?? 'sin-luna' },
+    );
+  }
+  return out;
+}

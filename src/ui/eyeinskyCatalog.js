@@ -44,7 +44,7 @@ export const EYE_LAYER_GUIDE = Object.freeze({
     '◐',
     'Luna 3D en su posición calculada con la efeméride JPL DE441 (tabla Chebyshev).',
     'Escala física por defecto; 2021–2040 con la tabla, fuera con un modelo analítico rotulado ≤20 km.',
-    'NASA/JPL Horizons DE441, calculada en el navegador; no es un dato en vivo ni una imagen.',
+    'NASA/JPL Horizons DE441, calculada en el navegador; textura LROC de NASA SVS (dominio público). No es un dato en vivo.',
   ),
   'rocket-launches': guide(
     '↟',

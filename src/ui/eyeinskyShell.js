@@ -28,6 +28,7 @@ import {
   reduceMissionDock,
 } from './eyeinskyMissionDockModel.js';
 import { mountEyeMissionDock } from './eyeinskyMissionDock.js';
+import { mountEyeEarthMoon } from './eyeinskyEarthMoon.js';
 import { mountEyeMedia, resolveContextMedia } from './eyeinskyMedia.js';
 import {
   createActivityState,
@@ -1175,6 +1176,60 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   // Aplica lo que se haya acumulado mientras las superficies se montaban.
   setEyeSurfaceSuspension('init', false);
   applyDossier();
+  // P5 T8: tira TIEMPO, capas en vivo suspendidas, Luna y retorno a Tierra.
+  // El shell solo presta sus autoridades; la lógica vive en eyeinskyEarthMoon.
+  const earthMoon = mountEyeEarthMoon({
+    viewer,
+    dataManager,
+    reduced,
+    hosts: { time: missionDock.getTimeHost(), moon: missionDock.getMoonHost() },
+    ring: {
+      get: () => styleManager.celestialRingEnabled === true,
+      set: (on) => styleManager.setCelestialRingEnabled(on),
+    },
+    shell: earthMoonShell(),
+  });
+  defer(() => earthMoon.destroy());
+  function earthMoonShell() {
+    const select = (context, explicit) =>
+      publishDossier({
+        type: 'select',
+        context: withResolvedMedia(context),
+        explicit,
+      });
+    return {
+      getDossier: () => dossierState,
+      getDockState: () => dockState,
+      isFollowing: isFollowingCurrentTarget,
+      releaseFollow: () => {
+        if (isFollowingCurrentTarget()) toggleFollowCurrentTarget(true);
+      },
+      refocus: (context) =>
+        Boolean(
+          dataManager.layers
+            .get(context.layerId || '')
+            ?.module?.refocusTrackedById?.(context.stableId, {
+              origin: 'user',
+            }),
+        ),
+      select: (context) => select(context, true),
+      selectView: () => select(currentViewContext(), false),
+      refresh: (context) =>
+        publishDossier({
+          type: 'refresh',
+          context: withResolvedMedia(context),
+        }),
+      collapseDock: () => publishDock({ type: 'collapse' }),
+      restoreDock: (dock) => {
+        publishDock({ type: 'select-pane', pane: dock.pane });
+        publishDock({ type: dock.expanded ? 'expand' : 'collapse' });
+      },
+      navigate: (noun, run) =>
+        styleManager._navigation.runOrientation(noun, run),
+      notice,
+      onSuspensionChange: () => activeLayers?.sync(),
+    };
+  }
 
   function clean(value) {
     document.body.classList.toggle('eye-clean', value);
@@ -1334,6 +1389,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     onAdd: (button) => openView('catalog', button),
     onDisable: (id, button) =>
       toggleLayer(id, button, { returnToActive: true }),
+    getSuspended: () => earthMoon.debug?.suspended() ?? [],
   });
   defer(() => activeLayers?.destroy());
   lifetime.listen($('eye-catalog-back'), 'click', closePanel);
@@ -1382,6 +1438,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     get rows() {
       return rows;
     },
+    earthMoon: earthMoon.debug,
   };
   window.__eyeinsky = debug;
   defer(() => {
