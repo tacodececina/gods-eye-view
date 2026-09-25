@@ -1,6 +1,15 @@
-import { twoline2satrec } from 'satellite.js';
 import * as Cesium from 'cesium';
-import { CATALOG_GROUPS, ISS_NORAD, POINT_STYLES } from './policy.js';
+import {
+  CATALOG_GROUPS,
+  CORE_ELEMENT_FORMAT,
+  ISS_NORAD,
+  POINT_STYLES,
+} from './policy.js';
+import {
+  catalogRecordFromElement,
+  dedupeElementsByNorad,
+  parseSatelliteElements,
+} from './elements.js';
 
 export function createIngestion({
   state: layerState,
@@ -8,6 +17,59 @@ export function createIngestion({
   parts,
   source,
 }) {
+  /**
+   * Read one core group as canonical elements. A failed or empty group
+   * degrades to `ok: false`; only an abort propagates.
+   */
+  async function _readCoreGroup(groupDef, signal) {
+    try {
+      const res = await source.readGroup(groupDef.path, {
+        signal,
+        format: CORE_ELEMENT_FORMAT,
+      });
+      if (!res.ok) return { ...groupDef, entries: [], ok: false };
+      // Same fallback as the dense catalog: a source that does not report
+      // the received format is parsed as the format that was requested.
+      const entries = parseSatelliteElements({
+        format: res.format ?? CORE_ELEMENT_FORMAT,
+        body: res.body ?? res.text,
+        group: groupDef.tag,
+        fetchedAt: res.fetchedAt,
+        cacheStatus: res.cacheStatus,
+        now: Date.now(),
+      });
+      signal.throwIfAborted();
+      return { ...groupDef, entries, ok: entries.length > 0 };
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError') throw error;
+      return { ...groupDef, entries: [], ok: false };
+    }
+  }
+
+  /** Store one canonical element and add its point at the initial position. */
+  function _addCatalogEntry(entry, now) {
+    const { noradId, satrec, group } = entry;
+    layerState._catalog.set(noradId, catalogRecordFromElement(entry));
+    const pos = parts.orbits.propagatePosition(satrec, now);
+    if (!pos) return;
+    // Styling from the shared table (WS-D3).
+    const style = parts.controls._pointStyleFor(noradId, group);
+    const point = layerState._pointCollection.add({
+      position: Cesium.Cartesian3.fromDegrees(
+        pos.longitude,
+        pos.latitude,
+        pos.altitude,
+      ),
+      pixelSize: style.pixelSize,
+      color: style.color,
+      outlineColor: style.outlineColor,
+      outlineWidth: style.outlineWidth,
+      scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 2e7, 0.6),
+      id: noradId,
+    });
+    layerState._points.set(noradId, point);
+  }
+
   const methods = {
     async update(viewer, { signal = null } = {}) {
       const trackingRefreshEpoch = ++layerState._trackingRefreshEpoch;
@@ -24,23 +86,11 @@ export function createIngestion({
       try {
         updateSignal.throwIfAborted();
         // Load all core groups in parallel; a failed/empty group degrades
-        // gracefully (parseTLE of an upstream error body yields []).
+        // gracefully (an upstream error body parses to no elements).
         const results = await Promise.all(
-          CATALOG_GROUPS.map(async (groupDef) => {
-            try {
-              const res = await source.readGroup(groupDef.path, {
-                signal: updateSignal,
-              });
-              if (!res.ok) return { ...groupDef, entries: [], ok: false };
-              const entries = parts.orbits.parseTLE(res.text);
-              updateSignal.throwIfAborted();
-              return { ...groupDef, entries, ok: entries.length > 0 };
-            } catch (error) {
-              if (updateSignal.aborted || error?.name === 'AbortError')
-                throw error;
-              return { ...groupDef, entries: [], ok: false };
-            }
-          }),
+          CATALOG_GROUPS.map((groupDef) =>
+            _readCoreGroup(groupDef, updateSignal),
+          ),
         );
         updateSignal.throwIfAborted();
 
@@ -95,54 +145,13 @@ export function createIngestion({
 
         const now = new Date();
 
-        // Process all TLE entries in CATALOG_GROUPS order
-        const allEntries = [];
-        for (const r of results) {
-          for (const e of r.entries) allEntries.push({ ...e, group: r.tag });
-        }
-
-        // Deduplicate by NORAD ID — first (most specific) group tag wins
-        const seen = new Set();
-
-        for (const entry of allEntries) {
-          const satrec = twoline2satrec(entry.line1, entry.line2);
-          if (!satrec || satrec.error !== 0) continue;
-
-          const noradId = Number(satrec.satnum);
-          if (seen.has(noradId)) continue;
-          seen.add(noradId);
-
-          // Store in catalog
-          layerState._catalog.set(noradId, {
-            name: entry.name,
-            satrec,
-            group: entry.group,
-          });
-
-          // Propagate initial position
-          const pos = parts.orbits.propagatePosition(satrec, now);
-          if (!pos) continue;
-
-          const cartesian = Cesium.Cartesian3.fromDegrees(
-            pos.longitude,
-            pos.latitude,
-            pos.altitude,
-          );
-
-          // Add point primitive (styling from the shared table, WS-D3)
-          const style = parts.controls._pointStyleFor(noradId, entry.group);
-          const point = layerState._pointCollection.add({
-            position: cartesian,
-            pixelSize: style.pixelSize,
-            color: style.color,
-            outlineColor: style.outlineColor,
-            outlineWidth: style.outlineWidth,
-            scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 2e7, 0.6),
-            id: noradId,
-          });
-
-          layerState._points.set(noradId, point);
-        }
+        // Canonical elements in CATALOG_GROUPS order, deduplicated by NORAD id:
+        // the first (most specific) group wins, and an id that cannot be
+        // normalized (Alpha-5, decimal) never reaches the catalog as NaN.
+        const elements = dedupeElementsByNorad(
+          results.flatMap((result) => result.entries),
+        );
+        for (const entry of elements) _addCatalogEntry(entry, now);
 
         // Show ISS orbital path by default
         if (layerState._catalog.has(ISS_NORAD)) {

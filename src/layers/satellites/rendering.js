@@ -1,6 +1,10 @@
 import * as Cesium from 'cesium';
 import { gstime } from 'satellite.js';
 import { ISS_NORAD, POSITION_UPDATE_MS, RING_ROTATION_MS } from './policy.js';
+import {
+  resolvePointModelHandoff,
+  trackedCardClearance,
+} from './pointHandoff.js';
 
 export function createRendering({
   state: layerState,
@@ -193,6 +197,10 @@ export function createRendering({
 
     if (layerState._params.showPoints) parts.catalog._propagateDenseChunk();
 
+    // The entity dot and follow camera were placed on the clock tick with the
+    // cached sample; keep it for the tracked model before the refresh below.
+    parts.models.captureTrackedSample();
+
     // Keep the tracked dot on the per-frame epoch shared with label + camera —
     // runs after _propagateAll so the per-frame sample wins over the 200ms one.
     if (layerState._trackedNorad !== null) {
@@ -202,6 +210,9 @@ export function createRendering({
         point.position = layerState._trackedFrameCartesian; // primitive setter clones
       }
     }
+
+    // Near-field models (P4), after the tracked sample so they share its epoch.
+    _nearFieldTick();
 
     _updatePointFocus(now);
 
@@ -214,6 +225,53 @@ export function createRendering({
       _updateOrbitPathRotations(new Date(now));
       layerState._lastRingRotation = now;
     }
+  }
+
+  /**
+   * Near-field models (P4): throttled LOD reconcile plus the per-frame pose of
+   * the admitted models, then the point→model handoff and the framing tween.
+   */
+
+  function _nearFieldTick() {
+    parts.models.frame();
+    _applyTrackedPointHandoff();
+    parts.tracking._advanceFramingTween();
+    parts.tracking._applyDockBias();
+  }
+
+  /**
+   * Point→model handoff (P4 T5): once the tracked model is ready and larger
+   * than 24 px, the tracked entity's 14 px dot becomes a 4 px reticle at
+   * alpha 0.5. It follows model-ready/model-evicted/model-failed and the
+   * projected size, and writes only on change. The point graphic itself is
+   * never removed: the follow camera takes its bounding sphere from it.
+   */
+
+  function _applyTrackedPointHandoff() {
+    const graphic = layerState._trackedEntity?.point;
+    if (!graphic) return;
+    const input = parts.models.handoffInput();
+    const handoff = resolvePointModelHandoff(input);
+    _applyTrackedCardClearance(trackedCardClearance(handoff, input.anchorPx));
+    const key = `${handoff.pointSize}|${handoff.pointAlpha}`;
+    if (layerState._trackedHandoffKey === key) return;
+    layerState._trackedHandoffKey = key;
+    graphic.pixelSize = handoff.pointSize;
+    graphic.color = Cesium.Color.YELLOW.withAlpha(handoff.pointAlpha);
+    graphic.outlineWidth = handoff.reticle ? 0 : 2;
+  }
+
+  /**
+   * Keep the tracked card clear of the drawn model (P4 T7): republish the
+   * label model only when the quantised clearance changes.
+   * @param {object|null} clearance trackedCardClearance() result.
+   */
+  function _applyTrackedCardClearance(clearance) {
+    const key = clearance ? clearance.gapPx : null;
+    if (layerState._trackedCardClearanceKey === key) return;
+    layerState._trackedCardClearanceKey = key;
+    layerState._trackedCardClearance = clearance;
+    parts.tracking._updateTrackedSatelliteLabelModel();
   }
 
   /** Focus alpha for satellite points, inside the existing shared preRender tick. */
@@ -314,6 +372,7 @@ export function createRendering({
     _hideOrbitPath,
     _propagateAll,
     _preRenderTick,
+    _applyTrackedPointHandoff,
     _updatePointFocus,
     applySatellitePointFocusDeemphasis,
   };

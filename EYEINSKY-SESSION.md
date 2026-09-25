@@ -1,5 +1,37 @@
 # EYEINSKY — punto de reanudación
 
+## Actualización 2026-09-24 — P4 (satélites 3D) aceptada por KRÓNOS con excepciones aprobadas por Alex
+
+Rama `eyeinsky/p4-satellites-3d` (worktree `C:/Users/Alex/orca/eyeinsky-p4`), HEAD `64880d1`, sin integrar aún en `main`. Commits: `2bf513f` propuesta aprobada, `bf8dec8` T0 (curación e inspector GLB), `34e87bb` T1–T3 (elementos canónicos, registro y módulos puros LOD/presupuesto/actitud), `f3f264f` follow-ups de revisión, `0a5025d` T4 (modelos cercanos con presupuesto, prioridad, evicción y teardown), `e0650de` T5–T6 (INSPECCIONAR, pick sobre el casco, paso punto→modelo, expediente honesto), `64880d1` T7 (arnés canónico, pulido, honestidad ante fallo SGP4). Matriz P4-01..25 marcada en `docs/eyeinsky/p4/PROPUESTA-P4-2026-09-24.md` §9.
+
+Qué cambió:
+
+- **Modelos NASA 3D Resources** (revisión `11ebb4ee`, crédito dinámico «Source: NASA 3D Resources»): ISS (A) específico para NORAD 25544; Hubble (A) específico para NORAD 20580, con excepción de memoria en `std` y sólo punto en `low`; CubeSat 1U de familia, sólo para el grupo `cubesat`, con 18 primitivas aceptadas. Draco aceptado. Nombres con hash y cuatro ledgers.
+- **Presupuesto y LOD:** perfiles `std` (2 modelos) / `low` (1; móvil o puntero táctil) / `off`. LOD por diámetro proyectado en píxeles: seguido ADD 6 / KEEP 3 px; secundario 16 / 10 px con techo 25 / 30 km. Reconcile 250 ms, evicción tras 2 s, timeout de carga 20 s, veto tras 3 fallos, `environmentMapOptions` desactivado (era el origen de las long tasks de B2).
+- **UX:** INSPECCIONAR / ÓRBITA en el Mission Dock (clamp(8·radiusM, 6 m, 5 km)) con el motivo visible cuando está deshabilitada; el pick sobre el casco no deselecciona; retícula de 4 px cuando el modelo ≥ 24 px; chips MODELO / ESCALA REAL / ACT. APROX. / ÉPOCA / CACHÉ / MODELO NO DISPONIBLE; riel móvil ALT · ÉPOCA · MODELO; cámara con sesgo para no quedar bajo el dock en móvil; estados «Posición calculada (SGP4)» y «Propagación falló (SGP4)».
+- **Datos:** OMM JSON para los grupos núcleo (NORAD de 6 dígitos exacto), TLE para `dense`; proxy con lista blanca y `FORMAT=json`; Alpha-5 rechazado (antes colapsaba en NaN); edad de órbita por régimen; órbita caducada → sin modelo y con rótulo.
+
+Evidencia (local, `output/eyeinsky-p4/`, no versionada):
+
+- Suite: 4.507 tests, 0 fail. Build, format:check y check:boundaries en verde.
+- Arnés `scripts/eyeinsky-p4.mjs`: 42/42 (`t7/supervisor-1/` y, tras la reparación, `t7/repair-p4-2/`). 21 ids aprobados en arnés; P4-12 y P4-15 por gates y arneses de regresión, P4-14 por `t7/perf-repeat/`, P4-24 por excepción.
+- Regresiones: p31 15/15, p3 30/30, p012 23/23, cámara adversa, cockpit 4/4 y smoke. Supervisor independiente y ronda de reparación.
+- Rendimiento (GPD Win 4, Radeon 890M ANGLE/D3D11, modo `windows`, 70–75 °C; detalle en `docs/PERFORMANCE.md`): `t7/perf-clean/` en corrida única → `low` cumple todo; `std` falló A (+2,5 ms) y B2 (+7,9 ms). `t7/perf-repeat/` con n=3 intercaladas → A Δp95 −0,4 ms (mismos 22 comandos), B2−B Δp95 0,0 ms, 0 long tasks: cumple. E = A-off + 2 comandos (`PointPrimitiveCollection` del EntityCluster, excepción aprobada por Alex); E2−E heap +0,25 MiB (caché de shaders única). Calibración §5 por API: 2 eventos/min, justo en el límite. No se afirman FPS.
+
+Límites honestos:
+
+- La sesión de medición contaminada anterior (League of Legends abierto, modo `gaming`, 85–90 °C) se descartó entera.
+- n=3 no da intervalo de confianza; sólo se mide CPU del hilo principal del frame de Cesium, sin GPU; headless con GPU real.
+- Sin teléfono físico.
+- El tope de 2 modelos simultáneos sólo está probado en unitarios: el recorrido de navegador nunca pasó de 1.
+- Con gestos reales en INSPECCIONAR el seguimiento se suelta (diseño P3.1: `interruptHumanNavigation`), así que no existe órbita manual alrededor del modelo. Es una **decisión de producto pendiente de Alex para P4.1**; por eso §5 sólo se calibró por API.
+- En `off` el heap sube +1,56 MiB entre ciclos sin atribuir.
+- El `commandList` leído justo tras disable (51 / 41 en dos ciclos) no está verificado; la medida estable posterior no muestra comandos residuales.
+
+P4.1 candidatos: órbita manual en INSPECCIONAR, huella y pases, GEO (TDRS / GOES), yaw-steering, dos modelos simultáneos en el arnés.
+
+Siguiente: integrar P4 en `main` y hacer release a staging; después **P5 Tierra–Luna**, con efemérides precisas primero.
+
 ## Actualización 2026-09-24 — Fase A cerrada: herramientas, arneses, runtime y staging privado
 
 Rama `eyeinsky/fase-a-herramientas` (worktree `C:/Users/Alex/orca/workspaces/gods-eye-view/coney`), sobre `fe31165`. Roadmap aprobado por Alex el 2026-09-23: **P4→P5→P6→P7 completas antes de publicar**; la infraestructura se ejercita en staging privado desde ya.

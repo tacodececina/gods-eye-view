@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,20 +21,30 @@ export function assertNode24AllocationRuntime(version = process.versions.node) {
   return version;
 }
 
-/** Discover repository unit tests in stable path order. */
+const isTestFile = (entry) => entry.isFile() && entry.name.endsWith('.test.mjs');
+
+/**
+ * Discover repository unit tests in stable path order: every `src/**` test plus
+ * first-level `scripts/*.test.mjs` (tooling suites; `scripts/fixtures/` and other
+ * subdirectories are never scanned).
+ */
 export function discoverUnitTestFiles(root = process.cwd()) {
-  const sourceRoot = path.join(root, 'src');
   const files = [];
+  const record = (absolute) => files.push(path.relative(root, absolute).split(path.sep).join('/'));
   const visit = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const absolute = path.join(directory, entry.name);
       if (entry.isDirectory()) visit(absolute);
-      else if (entry.isFile() && entry.name.endsWith('.test.mjs')) {
-        files.push(path.relative(root, absolute).split(path.sep).join('/'));
-      }
+      else if (isTestFile(entry)) record(absolute);
     }
   };
-  visit(sourceRoot);
+  visit(path.join(root, 'src'));
+  const scriptsRoot = path.join(root, 'scripts');
+  if (existsSync(scriptsRoot)) {
+    for (const entry of readdirSync(scriptsRoot, { withFileTypes: true })) {
+      if (isTestFile(entry)) record(path.join(scriptsRoot, entry.name));
+    }
+  }
   return files.sort();
 }
 

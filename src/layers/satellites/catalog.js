@@ -1,11 +1,16 @@
 import * as Cesium from 'cesium';
-import { twoline2satrec } from 'satellite.js';
 import {
   DENSE_REFRESH_FRAMES,
+  DENSE_ELEMENT_FORMAT,
   DENSE_GROUP_PATH,
   POINT_STYLES,
   DENSE_CREATE_CHUNK,
 } from './policy.js';
+import {
+  catalogRecordFromElement,
+  elementFromRecord,
+  splitElementRecords,
+} from './elements.js';
 
 export function createCatalog({ state: layerState, services, parts, source }) {
   function _abortActiveUpdates() {
@@ -74,6 +79,7 @@ export function createCatalog({ state: layerState, services, parts, source }) {
       loadSignal.throwIfAborted();
       const res = await source.readGroup(DENSE_GROUP_PATH, {
         signal: loadSignal,
+        format: DENSE_ELEMENT_FORMAT,
       });
       if (!res.ok) {
         console.warn(
@@ -85,7 +91,14 @@ export function createCatalog({ state: layerState, services, parts, source }) {
           reason: `feed unavailable (${res.status})`,
         };
       }
-      const text = res.text;
+      const format = res.format ?? DENSE_ELEMENT_FORMAT;
+      const body = res.body ?? res.text;
+      const meta = {
+        group: 'dense',
+        fetchedAt: res.fetchedAt,
+        cacheStatus: res.cacheStatus,
+        now: Date.now(),
+      };
       loadSignal.throwIfAborted();
       if (
         token !== layerState._denseLoadToken ||
@@ -94,7 +107,8 @@ export function createCatalog({ state: layerState, services, parts, source }) {
         return { status: 'superseded', reason: 'dense-load-superseded' };
       }
 
-      const entries = parts.orbits.parseTLE(text);
+      // Raw records are split once; satrecs are built chunk by chunk below.
+      const entries = splitElementRecords(format, body);
       const style = POINT_STYLES.dense;
       const now = new Date();
       let added = 0;
@@ -110,19 +124,15 @@ export function createCatalog({ state: layerState, services, parts, source }) {
         }
         const end = Math.min(start + DENSE_CREATE_CHUNK, entries.length);
         for (let i = start; i < end; i++) {
-          const entry = entries[i];
-          const satrec = twoline2satrec(entry.line1, entry.line2);
-          if (!satrec || satrec.error !== 0) continue;
-          const noradId = Number(satrec.satnum);
+          // null: invalid set or an id that is not an exact integer (Alpha-5).
+          const element = elementFromRecord(format, entries[i], meta);
+          if (!element) continue;
+          const { noradId, satrec } = element;
           if (layerState._catalog.has(noradId)) continue; // core catalog keeps priority
           const pos = parts.orbits.propagatePosition(satrec, now);
           if (!pos) continue;
 
-          layerState._catalog.set(noradId, {
-            name: entry.name,
-            satrec,
-            group: 'dense',
-          });
+          layerState._catalog.set(noradId, catalogRecordFromElement(element));
           const point = layerState._pointCollection.add({
             position: Cesium.Cartesian3.fromDegrees(
               pos.longitude,

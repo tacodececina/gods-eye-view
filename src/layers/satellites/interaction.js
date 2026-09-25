@@ -1,5 +1,6 @@
 import * as Cesium from 'cesium';
 import { isPointerFree } from '../../data/inputOwnership.js';
+import { PICK_STACK_LIMIT, resolveStackHost } from './pickHost.js';
 
 export function createInteraction({
   state: layerState,
@@ -16,6 +17,83 @@ export function createInteraction({
     }
   }
 
+  /** NORAD id of a satellite point pick, or null. */
+  function _pickedNorad(picked) {
+    const id = picked?.primitive?.id;
+    if (id === null || id === undefined) return null;
+    const noradId = Number(id);
+    return Number.isNaN(noradId) || !layerState._catalog.has(noradId)
+      ? null
+      : noradId;
+  }
+
+  /** A click on co-located points (docked vehicles) selects the host. */
+  function _resolveClickedNorad(viewer, position, pickedId) {
+    const drilled = viewer.scene.drillPick?.(position, PICK_STACK_LIMIT) ?? [];
+    const stackIds = [];
+    for (const pick of drilled) {
+      const id = _pickedNorad(pick);
+      if (id !== null) stackIds.push(id);
+    }
+    return resolveStackHost({
+      pickedId,
+      stackIds,
+      points: layerState._points,
+      hasModel: (id) => parts.models?.hasAsset?.(id) === true,
+    });
+  }
+
+  /**
+   * Cross-layer untrack: only ANOTHER entity taking the follow camera clears
+   * us. Our own reassignments (undefined → our entity, as a framing change or
+   * SEGUIR does) never do.
+   */
+  function _onTrackedEntityChanged() {
+    if (!layerState._enabled) return;
+    const owner = layerState._viewer?.trackedEntity;
+    if (!layerState._trackedNorad || !owner) return;
+    if (owner === layerState._trackedEntity) return;
+    parts.tracking._clearTracking(true, {
+      origin: owner.gevSelectionOrigin || 'programmatic',
+    });
+  }
+
+  function _deselectUnlessSibling(picked) {
+    // A pick that belongs to a sibling layer (plane, vessel, station, CCTV
+    // camera…) is not "empty space" — leave OUR tracking (and crucially
+    // viewer.trackedEntity, which that sibling may have JUST set) alone (H2).
+    if (picked) {
+      const pickedId = resolvePickId(picked);
+      if (pickedId && isOwnedByOtherLayer('satellites', pickedId)) return;
+    }
+    // Clicked empty space — deselect
+    if (layerState._trackedNorad) {
+      parts.tracking._cancelPendingTrackingRestore();
+      parts.tracking._clearTracking(false, { origin: 'user' });
+    }
+  }
+
+  function _handleClick(viewer, click) {
+    // A tool owns the pointer (src/data/inputOwnership.js): yield the click.
+    if (!isPointerFree()) return;
+    if (!layerState._enabled) return;
+    const picked = viewer.scene.pick(click.position);
+    // Clicking tracked entity itself — ignore
+    if (picked && picked.id === layerState._trackedEntity) return;
+    const pickedId = _pickedNorad(picked);
+    // The model loads with allowPicking:false, so a click on the tracked
+    // hull picks nothing: it is still the tracked satellite (P4 T5).
+    if (!picked && parts.models?.screenHit?.(click.position)) return;
+    if (pickedId === null) {
+      _deselectUnlessSibling(picked);
+      return;
+    }
+    const noradId = _resolveClickedNorad(viewer, click.position, pickedId);
+    if (noradId === layerState._trackedNorad) return;
+    parts.tracking._cancelPendingTrackingRestore();
+    parts.tracking._trackSatellite(noradId, { origin: 'user' });
+  }
+
   function _installClickHandler(viewer) {
     if (layerState._clickHandler) return; // already installed
 
@@ -26,64 +104,23 @@ export function createInteraction({
     // briefly undefined mid-_trackSatellite) doesn't self-clear.
     if (!layerState._trackedEntityChangedRemove) {
       layerState._trackedEntityChangedRemove =
-        viewer.trackedEntityChanged.addEventListener(() => {
-          if (!layerState._enabled) return;
-          if (
-            layerState._trackedNorad &&
-            layerState._viewer &&
-            layerState._viewer.trackedEntity &&
-            layerState._viewer.trackedEntity !== layerState._trackedEntity
-          ) {
-            parts.tracking._clearTracking(true, {
-              origin:
-                layerState._viewer.trackedEntity?.gevSelectionOrigin ||
-                'programmatic',
-            });
-          }
-        });
+        viewer.trackedEntityChanged.addEventListener(_onTrackedEntityChanged);
     }
 
     layerState._clickHandler = new Cesium.ScreenSpaceEventHandler(
       viewer.scene.canvas,
     );
-    layerState._clickHandler.setInputAction((click) => {
-      // A tool owns the pointer (src/data/inputOwnership.js): yield the click.
-      if (!isPointerFree()) return;
-      if (!layerState._enabled) return;
-      const picked = viewer.scene.pick(click.position);
-
-      if (picked) {
-        // Clicking tracked entity itself — ignore
-        if (picked.id === layerState._trackedEntity) return;
-
-        // Check if it's a satellite point (id is NORAD catalog number)
-        const prim = picked.primitive;
-        if (prim && prim.id != null) {
-          const noradId = Number(prim.id);
-          if (!isNaN(noradId) && layerState._catalog.has(noradId)) {
-            parts.tracking._cancelPendingTrackingRestore();
-            parts.tracking._trackSatellite(noradId, { origin: 'user' });
-            return;
-          }
-        }
-      }
-
-      // A pick that belongs to a sibling layer (plane, vessel, station, CCTV
-      // camera…) is not "empty space" — leave OUR tracking (and crucially
-      // viewer.trackedEntity, which that sibling may have JUST set) alone (H2).
-      if (picked) {
-        const pickedId = resolvePickId(picked);
-        if (pickedId && isOwnedByOtherLayer('satellites', pickedId)) return;
-      }
-
-      // Clicked empty space — deselect
-      if (layerState._trackedNorad) {
-        parts.tracking._cancelPendingTrackingRestore();
-        parts.tracking._clearTracking(false, { origin: 'user' });
-      }
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    layerState._clickHandler.setInputAction(
+      (click) => _handleClick(viewer, click),
+      Cesium.ScreenSpaceEventType.LEFT_CLICK,
+    );
 
     document.addEventListener('keydown', _onKeyDown);
   }
-  return { _onKeyDown, _installClickHandler };
+  return {
+    _onKeyDown,
+    _installClickHandler,
+    _handleClick,
+    _onTrackedEntityChanged,
+  };
 }

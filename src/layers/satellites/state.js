@@ -143,9 +143,44 @@ export function createState({ services }) {
 
   state._trackedFrameCartesian = new Cesium.Cartesian3();
 
+  /** Epoch (ms) of the shared tracked sample; the tracked model's velocity uses it. */
+
+  state._trackedFrameDateMs = Number.NaN;
+
+  /** SGP4 failed for the tracked satellite: no valid pose (P4-20). */
+
+  state._trackedPropagationFailed = false;
+
+  // P4 near-field models (modelsHost.js): the createSatelliteModels instance
+  // for the viewer's lifetime and the profile chosen at attach. Loads are
+  // invalidated by _catalogRevision, bumped on every ingestion rebuild.
+
+  state._models = null;
+
+  state._modelProfile = null;
+
+  // P4 T5 framing of the tracked camera ('orbit' | 'inspect'), the orbit
+  // landing it returns to, the in-flight framing tween, the last point→model
+  // handoff written to the tracked dot, and the last presentation signature
+  // announced to the dossier (gev:awareness-subject-updated).
+
+  state._trackedFraming = 'orbit';
+
+  state._trackedOrbitViewFrom = null;
+
+  state._framingTween = null;
+
+  state._trackedCardClearance = null;
+  state._trackedCardClearanceKey = null;
+  state._trackedHandoffKey = null;
+
+  state._presentationSignature = null;
+
   /** Optional deterministic clock used only by the production-frame test seam. */
 
   state._trackedFrameNowForTest = null;
+  // Test seam: () => {bandPx, widthPx, heightPx} in place of the browser read.
+  state._dockViewportForTest = null;
 
   // Scratch variables
 

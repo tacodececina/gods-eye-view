@@ -51,6 +51,10 @@ export function createLifecycle({
 
       parts.interaction._installClickHandler(viewer);
 
+      // Near-field models (P4): one instance per viewer lifetime.
+      parts.models.destroy();
+      parts.models.attach(viewer);
+
       // Pre-render listener for real-time position updates
       // (fleet propagation + tracked per-frame dot + orbit ring GMST rotation)
       layerState._preRenderListener = viewer.scene.preRender.addEventListener(
@@ -89,6 +93,8 @@ export function createLifecycle({
           parts.rendering._preRenderTick,
         );
       }
+      // A destroyed models part is rebuilt; an attached one refills on reconcile.
+      parts.models.attach(viewer);
       parts.tracking._applyPendingTrackingRestore();
     },
 
@@ -101,6 +107,7 @@ export function createLifecycle({
       for (const path of layerState._orbitPaths.values())
         path.primitive.show = false;
       parts.tracking._clearTracking();
+      parts.models.releaseAll('disabled');
       parts.labels._syncIssOverlay();
       // Remove click handler + keydown listener + preRender propagation while disabled
       if (layerState._clickHandler) {
@@ -125,6 +132,7 @@ export function createLifecycle({
       layerState._enabled = false;
       parts.tracking._clearTracking();
       parts.tracking._cancelPendingTrackingRestore();
+      parts.models.destroy();
       if (layerState._clickHandler) {
         layerState._clickHandler.destroy();
         layerState._clickHandler = null;

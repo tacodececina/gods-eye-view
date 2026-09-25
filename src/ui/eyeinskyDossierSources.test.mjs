@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { EARTH_VIEW_KEY } from './eyeinskyDossierModel.js';
+import { EARTH_VIEW_KEY, contextFromRecord } from './eyeinskyDossierModel.js';
+import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
+import {
+  contextRecord,
+  flush,
+  frame as sceneFrame,
+  satellitesLayer,
+  scene,
+} from '../testSupport/satelliteTrackingScene.mjs';
+import {
+  ATTITUDE_SUBJECTS,
+  attitudeSubjectRows,
+  attitudeViolations,
+  walkAttitudeSubject,
+} from '../testSupport/satelliteAttitudeAudit.mjs';
 import { connectDossierSources } from './eyeinskyDossierSources.js';
 
 /** Evento sintético con la misma forma que usan las capas reales. */
@@ -423,4 +437,145 @@ test('observar no arranca trabajo: no se toca cámara, capas ni fetch', () => {
     'ningún conector puede activar capas ni pedir refrescos por su cuenta',
   );
   env.cleanup();
+});
+
+// ─── P4 T6 · el satélite seguido se refresca por su propio aviso ───
+
+test('gev:awareness-subject-updated refreshes the same subject, never selects', async () => {
+  const env = createEnvironment();
+  env.storeSubject(satelliteRecord({ framing: 'orbit' }));
+  env.emit('gev:awareness-subject-selected', {
+    layerId: 'satellites',
+    id: 25544,
+    label: 'ISS (ZARYA)',
+  });
+  await new Promise((resolve) => queueMicrotask(resolve));
+  const selected = env.published.at(-1);
+  assert.equal(selected.context.key, 'satellites:25544');
+  assert.equal(selected.context.status, 'predicted');
+
+  env.storeSubject(satelliteRecord({ framing: 'inspect' }));
+  env.emit('gev:awareness-subject-updated', {
+    layerId: 'satellites',
+    id: '25544',
+  });
+  const refreshed = env.published.at(-1);
+  assert.equal(refreshed.type, 'refresh');
+  assert.equal(refreshed.explicit, false);
+  const framing = refreshed.context.fields.find((f) => f.key === 'framing');
+  assert.equal(framing.code, 'inspect');
+
+  const before = env.published.length;
+  env.emit('gev:awareness-subject-updated', { layerId: 'flights', id: 'x' });
+  assert.equal(env.published.length, before, 'someone else is ignored');
+  env.cleanup();
+});
+
+// P4-21 sobre lo que PUBLICA producción: la capa de satélites real sigue a
+// cada sujeto, escribe el store y emite sus eventos; el expediente los observa
+// con connectDossierSources. Se audita el registro del store, lo que la voz
+// compacta de él y el contexto que el expediente publicó — nunca una copia.
+async function auditPublishedAttitude(env, s, settle, onCase) {
+  const seen = new Set();
+  const frame = () => sceneFrame(s);
+  for (const subject of ATTITUDE_SUBJECTS) {
+    const onRead = (label) => {
+      const record = contextRecord(subject.noradId);
+      const published = env.published.at(-1)?.context ?? null;
+      onCase(`${subject.name}/${label}`, record, published, subject);
+      seen.add(
+        `${subject.asset ? 'asset' : 'none'}:${record?.properties?.framing}:${record?.properties?.modelStatus}`,
+      );
+    };
+    await walkAttitudeSubject(
+      s,
+      satellitesLayer,
+      subject,
+      settle,
+      async (label) => {
+        await flush();
+        onRead(label);
+      },
+      frame,
+    );
+    await flush();
+    satellitesLayer.stopTracking({ origin: 'user' });
+  }
+  return seen;
+}
+
+test('P4-21: no attitude numbers in what the layer publishes, the voice reads or the dossier shows', async () => {
+  const env = createEnvironment();
+  const s = scene({ others: attitudeSubjectRows() });
+  await flush();
+  const seen = new Set();
+  let cases = 0;
+  const onCase = (where, record, published, subject) => {
+    cases += 1;
+    assert.equal(
+      published?.key,
+      `satellites:${subject.noradId}`,
+      `${where}: the dossier observed this subject`,
+    );
+    const framing = published.fields.find((f) => f.key === 'framing');
+    assert.equal(
+      framing?.code,
+      record.properties.framing,
+      `${where}: the dossier shows the published framing`,
+    );
+    assert.deepEqual(attitudeViolations(where, record, published), []);
+  };
+  try {
+    for (const settle of ['resolve', 'reject'])
+      for (const state of await auditPublishedAttitude(env, s, settle, onCase))
+        seen.add(state);
+  } finally {
+    satellitesLayer.stopTracking({ origin: 'user' });
+    env.cleanup();
+  }
+  assert.ok(cases >= 40, `cases audited: ${cases}`);
+  for (const expected of [
+    'asset:orbit:listo',
+    'asset:inspect:listo',
+    'asset:inspect:fallido',
+    'none:orbit:n/a',
+  ])
+    assert.ok(seen.has(expected), `state ${expected} covered (${[...seen]})`);
+});
+
+test('P4-21: the audit catches a number injected into the published record', async () => {
+  const env = createEnvironment();
+  scene({ others: attitudeSubjectRows() });
+  await flush();
+  try {
+    assert.equal(satellitesLayer.trackById(25544, { origin: 'user' }), true);
+    await flush();
+    const real = contextRecord(25544);
+    const published = env.published.at(-1).context;
+    assert.deepEqual(attitudeViolations('real', real, published), []);
+    const tamper = (properties) => ({
+      ...real,
+      properties: { ...real.properties, ...properties },
+    });
+    for (const [label, record] of [
+      ['número en attitude', tamper({ attitude: 'lvlh 12.5' })],
+      ['ángulo en attitude', tamper({ attitude: '45°' })],
+      ['cuaternión en attitude', tamper({ attitude: '0.1, 0.2, 0.3, 0.9' })],
+    ]) {
+      assert.ok(
+        attitudeViolations(label, record).length > 0,
+        `${label} must be caught`,
+      );
+      const context = contextFromRecord(record, { kind: 'tracked' });
+      assert.ok(
+        attitudeViolations(label, real, context).length > 0,
+        `${label} must be caught in the dossier context`,
+      );
+    }
+    const extraKey = { ...real, properties: { ...real.properties, yaw: '12' } };
+    assert.ok(attitudeViolations('clave yaw', extraKey).length > 0);
+  } finally {
+    satellitesLayer.stopTracking({ origin: 'user' });
+    env.cleanup();
+  }
 });

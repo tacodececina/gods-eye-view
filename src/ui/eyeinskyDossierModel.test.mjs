@@ -9,6 +9,7 @@ import {
   reduceDossier,
   resolveContextStatus,
 } from './eyeinskyDossierModel.js';
+import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
 
 test('cerrar sobrevive al refresh y medios viejos no cambian B', () => {
   const a = { key: 'flights:fixture-a', title: 'Fixture A', assetIds: [] };
@@ -241,4 +242,76 @@ test('un registro de contexto se traduce sin inventar fuente ni hora', () => {
 test('un registro sin identidad no produce contexto', () => {
   assert.equal(contextFromRecord(null), null);
   assert.equal(contextFromRecord({ layerId: 'flights' }), null);
+});
+
+// ─── P4 T6 · expediente honesto del satélite seguido ───
+
+test('a tracked satellite keeps every field, in order, with Spanish labels', () => {
+  const context = contextFromRecord(satelliteRecord(), { kind: 'tracked' });
+  assert.deepEqual(
+    context.fields.map(({ key }) => key),
+    [
+      'name',
+      'noradId',
+      'class',
+      'altitude',
+      'elementAge',
+      'elementEpoch',
+      'geometryFidelity',
+      'attitude',
+      'visualScale',
+      'framing',
+      'modelStatus',
+      'elementFormat',
+      'fetchedAt',
+      'cacheStatus',
+      'modelAsset',
+    ],
+    'no field lost past 12; the empty operator is not a field',
+  );
+  assert.deepEqual(
+    context.fields.map(({ label }) => label),
+    [
+      'NOMBRE',
+      'NORAD',
+      'CLASE',
+      'ALTITUD',
+      'EDAD DE ELEMENTOS',
+      'ÉPOCA',
+      'GEOMETRÍA',
+      'ACTITUD',
+      'ESCALA',
+      'ENCUADRE',
+      'MODELO',
+      'FORMATO',
+      'DESCARGA',
+      'CACHÉ',
+      'ACTIVO 3D',
+    ],
+  );
+  const byKey = Object.fromEntries(context.fields.map((f) => [f.key, f]));
+  assert.equal(byKey.attitude.value, 'LVLH nominal (aprox.)');
+  assert.equal(byKey.attitude.code, 'lvlh-nominal-aprox');
+  assert.equal(byKey.geometryFidelity.value, 'específico');
+  assert.equal(byKey.framing.value, 'órbita');
+  assert.equal(byKey.cacheStatus.value, 'acierto');
+  assert.equal(byKey.cacheStatus.code, 'HIT');
+  assert.match(byKey.elementEpoch.value, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+});
+
+test('the SGP4 position is labelled predicted, never "unreported"', () => {
+  const context = contextFromRecord(satelliteRecord(), { kind: 'tracked' });
+  assert.equal(context.status, 'predicted');
+  const flight = contextFromRecord({
+    id: 'ae1fa4',
+    layerId: 'flights',
+    status: 'whatever-the-feed-says',
+    properties: { name: 'TEST123' },
+  });
+  assert.equal(flight.status, 'unreported', 'only known statuses pass');
+  assert.deepEqual(
+    flight.fields,
+    [{ key: 'name', label: 'name', value: 'TEST123', unit: null }],
+    'other layers keep their own labels',
+  );
 });

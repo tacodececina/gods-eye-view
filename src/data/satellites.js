@@ -38,6 +38,9 @@ export const _removeSatelliteTrackingCandidateForTest =
   layer._removeSatelliteTrackingCandidateForTest;
 export const _clearSatelliteLabelLifecycleForTest =
   layer._clearSatelliteLabelLifecycleForTest;
+export const _attachSatelliteModelsForTest =
+  layer._attachSatelliteModelsForTest;
+export const _satelliteModelStatsForTest = layer._satelliteModelStatsForTest;
 export const applySatellitePointFocusDeemphasis =
   layer.applySatellitePointFocusDeemphasis;
 export const getNextIssPass = layer.getNextIssPass;

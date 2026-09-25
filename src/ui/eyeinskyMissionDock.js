@@ -13,7 +13,9 @@
  *   - los paneles son una pestañera real (`tablist`/`tab`/`tabpanel`) con
  *     navegación por flechas, Inicio y Fin,
  *   - una acción imposible se pinta `disabled` con su motivo en `title` y en el
- *     nombre accesible, en vez de desaparecer sin explicación,
+ *     nombre accesible, en vez de desaparecer sin explicación; el de
+ *     INSPECCIONAR además se lee como texto bajo el riel (`aria-describedby`),
+ *     porque un `title` no lo alcanzan ni el tacto ni muchos lectores,
  *   - el estado de cámara es un `status`: cambia solo y hay que poder oírlo,
  *   - Escape repliega el dock y devuelve el foco a quien lo desplegó.
  */
@@ -25,6 +27,10 @@ const STATUS_LABELS = Object.freeze({
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
   unreported: 'La fuente no informa la hora',
+  // P4: posición calculada con SGP4 desde elementos publicados, no observada.
+  predicted: 'Posición calculada (SGP4)',
+  // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
+  'propagation-failed': 'Propagación falló (SGP4): sin posición',
 });
 
 /**
@@ -101,12 +107,25 @@ export function mountEyeMissionDock({
   actions.setAttribute('role', 'group');
   actions.setAttribute('aria-label', 'Acciones sobre el objetivo');
 
+  // Motivo visible de la acción deshabilitada (P4 T7): texto real, no tooltip.
+  const actionReason = node(doc, 'p', '', 'eye-dock-action-reason');
+  actionReason.id = 'eye-dock-action-reason';
+  actionReason.hidden = true;
+
   const close = node(doc, 'button', '×', 'eye-dock-close');
   close.type = 'button';
   close.id = 'eye-mission-dock-close';
   close.setAttribute('aria-label', 'Cerrar el panel de misión');
 
-  rail.append(identity, cameraLine, keyValues, compass, actions, close);
+  rail.append(
+    identity,
+    cameraLine,
+    keyValues,
+    compass,
+    actions,
+    close,
+    actionReason,
+  );
 
   const tabs = node(doc, 'div', '', 'eye-dock-tabs');
   tabs.setAttribute('role', 'tablist');
@@ -219,6 +238,7 @@ export function mountEyeMissionDock({
       view.visible,
       view.expanded,
       view.contextKey,
+      view.layerId,
       view.generation,
       view.title,
       view.status,
@@ -229,6 +249,7 @@ export function mountEyeMissionDock({
       view.panes,
       view.camera,
       view.actions,
+      view.actionReason,
     ]);
 
   const renderTabs = (view) => {
@@ -287,8 +308,13 @@ export function mountEyeMissionDock({
       button.dataset.eyeDockAction = item.id;
       button.disabled = !item.enabled;
       button.title = item.hint;
-      // Un botón deshabilitado no se lee solo: el motivo entra en su nombre.
-      button.setAttribute('aria-label', `${item.label}. ${item.hint}`);
+      const described = view.actionReason?.actionId === item.id;
+      // Un botón deshabilitado no se lee solo: el motivo entra en su nombre,
+      // o en su descripción cuando además se pinta como texto bajo el riel.
+      if (described) {
+        button.setAttribute('aria-label', item.label);
+        button.setAttribute('aria-describedby', actionReason.id);
+      } else button.setAttribute('aria-label', `${item.label}. ${item.hint}`);
       if (item.id === 'follow')
         button.setAttribute('aria-pressed', String(item.pressed));
       if (item.id === 'more') {
@@ -298,6 +324,8 @@ export function mountEyeMissionDock({
       }
       actions.append(button);
     }
+    actionReason.textContent = view.actionReason?.text ?? '';
+    actionReason.hidden = !view.actionReason;
   };
 
   const control = {
@@ -318,6 +346,7 @@ export function mountEyeMissionDock({
       host.dataset.visible = String(view.visible);
       host.dataset.contextKey = view.contextKey || '';
       host.dataset.contextKind = view.contextKind || '';
+      host.dataset.contextLayer = view.layerId || '';
       host.dataset.expanded = String(view.expanded);
       host.dataset.cameraStatus = view.camera.id;
 

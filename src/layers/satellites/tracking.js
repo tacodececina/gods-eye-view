@@ -1,12 +1,28 @@
 import * as Cesium from 'cesium';
 import { satelliteClassLabel } from '../../data/satelliteClass.js';
+import { ISS_NORAD, CONTEXT_REFRESH_INTERVAL_MS } from './policy.js';
+import { orbitViewFrom } from './framing.js';
+import { createTrackingFraming } from './trackingFraming.js';
 import {
-  ISS_NORAD,
-  CONTEXT_REFRESH_INTERVAL_MS,
-  HIGH_ORBIT_ALTITUDE_M,
-  TRACK_VIEW_FROM_HIGH_SCALE,
-  TRACK_VIEW_FROM_LEO,
-} from './policy.js';
+  PROPAGATION_FAILED_STATUS,
+  PROPAGATION_FAILED_TEXT,
+  createTrackingPropagation,
+} from './trackingPropagation.js';
+import {
+  presentationSignature,
+  satelliteContextFields,
+} from './contextFields.js';
+
+/** Reset the P4 T5 framing/presentation state of a tracked subject. */
+function resetFramingState(layerState) {
+  layerState._trackedFraming = 'orbit';
+  layerState._trackedOrbitViewFrom = null;
+  layerState._framingTween = null;
+  layerState._trackedHandoffKey = null;
+  layerState._trackedCardClearance = null;
+  layerState._trackedCardClearanceKey = null;
+  layerState._presentationSignature = null;
+}
 
 export function createTracking({ state: layerState, services, parts, source }) {
   const { clearFocusTarget, publishFocusTargetFromCachedPosition } =
@@ -18,6 +34,15 @@ export function createTracking({ state: layerState, services, parts, source }) {
     selectTrackedSubjectContext,
   } = services.context;
   const { refreshTrackedReadout } = services.readout;
+  // P4-20: an SGP4 failure republishes the card and the context at once.
+  const propagation = createTrackingPropagation({
+    layerState,
+    parts,
+    onChange: () => {
+      _updateTrackedSatelliteLabelModel();
+      _publishTrackedPresentation();
+    },
+  });
 
   function _normalizeTrackedNorad(candidate) {
     const numeric = Number(candidate);
@@ -122,9 +147,37 @@ export function createTracking({ state: layerState, services, parts, source }) {
    *   and clearing it would yank the camera off their target (mirror of flights).
    */
 
+  /**
+   * Re-show the primitive (hidden while the tracked entity rendered the dot)
+   * and restore the original group palette from the shared style table (WS-D3).
+   * @param {number} noradId The satellite being released.
+   */
+  function _restoreTrackedPoint(noradId) {
+    const lastPos = layerState._points.get(noradId);
+    if (!lastPos) return;
+    const style = parts.controls._pointStyleFor(
+      noradId,
+      layerState._catalog.get(noradId)?.group,
+    );
+    lastPos.show = true;
+    lastPos.pixelSize = style.pixelSize;
+    lastPos.color = style.color;
+    lastPos.outlineColor = style.outlineColor;
+    lastPos.outlineWidth = style.outlineWidth;
+    lastPos.disableDepthTestDistance = 0;
+  }
+
+  /** Invalidate the per-frame tracked-position cache (WS-D2). */
+  function _invalidateTrackedFrameCache() {
+    layerState._trackedFrameNumber = -1;
+    layerState._trackedFrameGeo = null;
+    layerState._trackedFrameDateMs = Number.NaN;
+    propagation.reset();
+  }
+
   function _clearTracking(
     skipViewerUntrack = false,
-    { origin = 'programmatic' } = {},
+    { origin = 'programmatic', keepModelOf = null } = {},
   ) {
     // Untracking dissolves the cluster: every companion returns to its own
     // ambient label on the next collection.
@@ -137,27 +190,12 @@ export function createTracking({ state: layerState, services, parts, source }) {
     }
     const clearedNorad = layerState._trackedNorad;
     clearFocusTarget('satellites', layerState._trackedNorad);
+    // Target change: the old target's model leaves at once (P4), unless the
+    // same satellite is being re-tracked.
+    if (clearedNorad !== keepModelOf) parts.models.releaseTarget(clearedNorad);
 
-    const lastPos = layerState._points.get(layerState._trackedNorad);
-
-    // Re-show the primitive (hidden while the tracked entity rendered the dot)
-    // and restore the original group palette from the shared style table (WS-D3)
-    if (lastPos) {
-      const style = parts.controls._pointStyleFor(
-        layerState._trackedNorad,
-        layerState._catalog.get(layerState._trackedNorad)?.group,
-      );
-      lastPos.show = true;
-      lastPos.pixelSize = style.pixelSize;
-      lastPos.color = style.color;
-      lastPos.outlineColor = style.outlineColor;
-      lastPos.outlineWidth = style.outlineWidth;
-      lastPos.disableDepthTestDistance = 0;
-    }
-
-    // Invalidate the per-frame tracked-position cache (WS-D2)
-    layerState._trackedFrameNumber = -1;
-    layerState._trackedFrameGeo = null;
+    _restoreTrackedPoint(clearedNorad);
+    _invalidateTrackedFrameCache();
 
     // Remove tracked entity and orbit path (unless ISS — keep its path)
     if (layerState._trackedNorad !== ISS_NORAD) {
@@ -170,6 +208,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
       layerState._trackedEntity = null;
     }
     layerState._trackedNorad = null;
+    resetFramingState(layerState);
     parts.labels._syncIssOverlay();
     clearTrackedSubjectContext('satellites');
     layerState._contextRefreshedAtMs = 0;
@@ -197,19 +236,20 @@ export function createTracking({ state: layerState, services, parts, source }) {
 
     const frameNumber =
       layerState._viewer?.scene?.frameState?.frameNumber ?? -1;
-    if (
-      frameNumber === -1 ||
-      frameNumber !== layerState._trackedFrameNumber ||
-      layerState._trackedFrameGeo === null
-    ) {
-      const pos = parts.orbits.propagatePosition(
-        sat.satrec,
-        layerState._trackedFrameNowForTest
-          ? new Date(layerState._trackedFrameNowForTest())
-          : new Date(),
-      );
-      if (!pos) return layerState._trackedFrameGeo; // propagation hiccup — keep last good sample
+    if (propagation.needsSample(frameNumber)) {
+      const sampleDate = layerState._trackedFrameNowForTest
+        ? new Date(layerState._trackedFrameNowForTest())
+        : new Date();
+      const pos = parts.orbits.propagatePosition(sat.satrec, sampleDate);
+      // P4-20: no sample is no pose — never the last good one dressed as now.
+      if (!pos) {
+        propagation.markFailed(frameNumber);
+        return null;
+      }
+      if (propagation.markRecovered()) layerState._contextRefreshedAtMs = 0;
       layerState._trackedFrameGeo = pos;
+      // The tracked model's attitude re-derives velocity at this same epoch.
+      layerState._trackedFrameDateMs = sampleDate.getTime();
       Cesium.Cartesian3.fromDegrees(
         pos.longitude,
         pos.latitude,
@@ -274,9 +314,12 @@ export function createTracking({ state: layerState, services, parts, source }) {
     const sat = layerState._catalog.get(noradId);
     if (!sat) return null;
     const pos = position || _getTrackedFramePosition();
-    if (!pos) return null;
+    // P4-20: a tracked subject whose SGP4 failed keeps its record, posless.
+    const failed =
+      !pos && noradId === layerState._trackedNorad && propagation.isFailed();
+    if (!pos && !failed) return null;
     const name = sat.name?.trim() || `SAT-${noradId}`;
-    const altitudeKm = Number.isFinite(pos.altitude)
+    const altitudeKm = Number.isFinite(pos?.altitude)
       ? Math.round(pos.altitude / 1000)
       : null;
     return {
@@ -284,11 +327,13 @@ export function createTracking({ state: layerState, services, parts, source }) {
       layerId: 'satellites',
       layerName: 'Satellites',
       source: 'CelesTrak',
+      // SGP4 computes the position from published elements: nobody observed it.
+      status: failed ? PROPAGATION_FAILED_STATUS : 'predicted',
       label: name,
-      latitude: pos.latitude,
-      longitude: pos.longitude,
+      latitude: pos?.latitude ?? null,
+      longitude: pos?.longitude ?? null,
       // Flat text only: the voice payload compacts properties through a string
-      // cleaner that drops nested objects.
+      // cleaner that drops nested objects. Order: contextFields.js.
       properties: {
         name,
         operator: '',
@@ -296,8 +341,39 @@ export function createTracking({ state: layerState, services, parts, source }) {
         class: satelliteClassLabel(sat.group, { isIss: noradId === ISS_NORAD }),
         altitude:
           altitudeKm === null ? '' : `${altitudeKm.toLocaleString('en-US')} km`,
+        ...satelliteContextFields({
+          sat,
+          asset: parts.models.assetFor(noradId),
+          modelStatus: parts.models.statusOf(noradId),
+          framing: layerState._trackedFraming,
+          nowMs: Date.now(),
+        }),
       },
     };
+  }
+
+  /**
+   * Announce a presentation change of the tracked subject (framing, model
+   * status, element age...) so the dossier re-reads its record. Position-only
+   * refreshes stay silent: the dock must not repaint every second.
+   * @param {object|null} metadata Freshly published context metadata.
+   */
+  function _announcePresentation(metadata) {
+    if (!metadata) return;
+    const signature = presentationSignature(metadata.properties);
+    if (signature === layerState._presentationSignature) return;
+    layerState._presentationSignature = signature;
+    _emitAwarenessEvent('gev:awareness-subject-updated', {
+      layerId: 'satellites',
+      id: metadata.id,
+    });
+  }
+
+  /** Republish the tracked subject now (framing or model state changed). */
+  function _publishTrackedPresentation() {
+    if (layerState._trackedNorad === null) return;
+    layerState._contextRefreshedAtMs = 0;
+    _refreshTrackedSubjectContext();
   }
 
   /**
@@ -394,9 +470,9 @@ export function createTracking({ state: layerState, services, parts, source }) {
     if (now - layerState._contextRefreshedAtMs < CONTEXT_REFRESH_INTERVAL_MS)
       return;
     layerState._contextRefreshedAtMs = now;
-    refreshTrackedSubjectContext(
-      _contextSubjectMetadata(layerState._trackedNorad),
-    );
+    const metadata = _contextSubjectMetadata(layerState._trackedNorad);
+    refreshTrackedSubjectContext(metadata);
+    _announcePresentation(metadata);
   }
 
   function _updateTrackedSatelliteLabelModel(fallbackAltitudeM = null) {
@@ -405,7 +481,9 @@ export function createTracking({ state: layerState, services, parts, source }) {
     const title = sat?.name?.trim() || `SAT-${layerState._trackedNorad}`;
     const altitudeM =
       layerState._trackedFrameGeo?.altitude ?? fallbackAltitudeM;
-    const detail = `${Number.isFinite(altitudeM) ? Math.round(altitudeM / 1000) : '?'} km · NORAD ${layerState._trackedNorad}`;
+    const detail = propagation.isFailed()
+      ? `${PROPAGATION_FAILED_TEXT} · NORAD ${layerState._trackedNorad}`
+      : `${Number.isFinite(altitudeM) ? Math.round(altitudeM / 1000) : '?'} km · NORAD ${layerState._trackedNorad}`;
     // Class leads the detail block: it is what tells the operator WHAT they are
     // looking at, and it stays readable under the IR styles that flatten the
     // dot colors to a single channel (the card is painted above post-FX).
@@ -427,9 +505,12 @@ export function createTracking({ state: layerState, services, parts, source }) {
       );
     }
     const current = layerState._trackedEntity.gevLabelModel;
+    // Over a drawn model the card clears its projected hull (P4 T7).
+    const clearance = layerState._trackedCardClearance;
     // Compare the WHOLE detail array: comparing only `details[0]` swallowed any
     // change confined to the companions line, so the card would never republish.
     const unchanged =
+      current?.gapPx === clearance?.gapPx &&
       current?.title === title &&
       current?.details?.length === details.length &&
       details.every((line, index) => current.details[index] === line);
@@ -438,12 +519,27 @@ export function createTracking({ state: layerState, services, parts, source }) {
       title,
       details,
       accent: '#ffd84d',
+      ...clearance,
     };
     refreshTrackedReadout(layerState._trackedEntity);
   }
 
+  /**
+   * Claim the shared context slot for a newly tracked satellite. The selection
+   * event already carries this presentation, so its signature is recorded
+   * without announcing an update.
+   */
+  function _selectTrackedSubject(noradId, initialPos) {
+    const metadata = _contextSubjectMetadata(noradId, initialPos);
+    selectTrackedSubjectContext(metadata);
+    layerState._presentationSignature = metadata
+      ? presentationSignature(metadata.properties)
+      : null;
+    layerState._contextRefreshedAtMs = Date.now();
+  }
+
   function _trackSatellite(noradId, { origin = 'programmatic' } = {}) {
-    _clearTracking(false, { origin });
+    _clearTracking(false, { origin, keepModelOf: noradId });
 
     const point = layerState._points.get(noradId);
     const sat = layerState._catalog.get(noradId);
@@ -452,6 +548,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._trackedNorad = noradId;
     layerState._trackedFrameNumber = -1;
     layerState._trackedFrameGeo = null;
+    propagation.reset();
     parts.labels._syncIssOverlay();
 
     // Hide the primitive — the tracked ENTITY renders the dot below. The
@@ -465,10 +562,11 @@ export function createTracking({ state: layerState, services, parts, source }) {
 
     // Tracked entity position propagates per evaluation through the per-frame
     // cache (WS-D2) — dot, host readout, and camera share one SGP4 epoch per frame.
-    // Falls back to the point primitive's 1s-throttled position if SGP4 fails.
+    // If SGP4 fails there is no position (P4-20): the dot is not drawn at a
+    // stale pose; the card and the dossier say «propagación falló».
     const positionProperty = new Cesium.CallbackProperty(() => {
       const pos = _getTrackedFramePosition();
-      return pos ? layerState._trackedFrameCartesian : point.position;
+      return pos ? layerState._trackedFrameCartesian : undefined;
     }, false);
 
     const name = sat.name.trim();
@@ -477,15 +575,10 @@ export function createTracking({ state: layerState, services, parts, source }) {
     // "slightly zoomed out" framing — no stutter, label reads cleanly), scaled
     // up for MEO/GEO so the camera doesn't land on top of a high-orbit dot.
     const initialPos = parts.orbits.propagatePosition(sat.satrec, new Date());
-    const viewScale =
-      initialPos && initialPos.altitude > HIGH_ORBIT_ALTITUDE_M
-        ? TRACK_VIEW_FROM_HIGH_SCALE
-        : 1;
-    const viewFrom = Cesium.Cartesian3.multiplyByScalar(
-      TRACK_VIEW_FROM_LEO,
-      viewScale,
-      new Cesium.Cartesian3(),
-    );
+    const viewFrom = orbitViewFrom(initialPos?.altitude);
+    // A new target always lands in orbit framing (P4 T5).
+    resetFramingState(layerState);
+    layerState._trackedOrbitViewFrom = Cesium.Cartesian3.clone(viewFrom);
 
     layerState._trackedEntity = layerState._viewer.entities.add({
       position: positionProperty,
@@ -501,6 +594,8 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._trackedEntity.gevSelectionOrigin = origin;
     layerState._trackedEntity.gevTrackedId = `satellites:${noradId}`;
     layerState._trackedEntity.gevDisplayPosition = _trackedDisplayCached;
+    // The card welds to what is drawn (model or dot), not the advanced cache.
+    layerState._trackedEntity.gevVisualPosition = parts.models.visualPosition;
     _updateTrackedSatelliteLabelModel(initialPos?.altitude ?? null);
 
     _emitAwarenessEvent('gev:awareness-subject-selected', {
@@ -510,13 +605,22 @@ export function createTracking({ state: layerState, services, parts, source }) {
       position: Cesium.Cartesian3.clone(point.position),
       origin,
     });
-    selectTrackedSubjectContext(_contextSubjectMetadata(noradId, initialPos));
-    layerState._contextRefreshedAtMs = Date.now();
+    _selectTrackedSubject(noradId, initialPos);
 
     layerState._viewer.trackedEntity = layerState._trackedEntity;
+    // P4: reconcile at once for the new target and warm its model bytes.
+    parts.models.prepareTarget(noradId);
     console.log(`[Data:Satellites] Tracking ${name} (NORAD ${noradId})`);
   }
+  const framingParts = createTrackingFraming({
+    layerState,
+    parts,
+    publishPresentation: _publishTrackedPresentation,
+  });
+
   return {
+    ...framingParts,
+    _publishTrackedPresentation,
     _normalizeTrackedNorad,
     _emitAwarenessEvent,
     _applyPendingTrackingRestore,

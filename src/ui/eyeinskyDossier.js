@@ -9,6 +9,7 @@
  * que un nombre de lugar con `<` es un nombre, nunca markup.
  */
 import { activityAgeLabel } from './eyeinskyActivity.js';
+import { resolveSatelliteChips } from './eyeinskySatelliteChips.js';
 
 /** Etiqueta del tipo de contexto, en la cabecera de la superficie. */
 const KIND_KICKERS = Object.freeze({
@@ -25,6 +26,10 @@ const STATUS_LABELS = Object.freeze({
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
   unreported: 'La fuente no informa la hora',
+  // P4: posición calculada con SGP4 desde elementos publicados, no observada.
+  predicted: 'Posición calculada (SGP4)',
+  // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
+  'propagation-failed': 'Propagación falló (SGP4): sin posición',
 });
 
 /**
@@ -66,6 +71,11 @@ export function mountEyeDossier({
   const title = node(doc, 'h2', '', 'eye-dossier-title');
   title.id = 'eye-dossier-title';
   const statusLine = node(doc, 'p', '', 'eye-dossier-status');
+  // P4 T6: procedencia del satélite seguido en chips monoespaciados (modelo,
+  // escala, actitud, época, caché). Texto plano; sin chip, sin afirmación.
+  const chips = node(doc, 'ul', '', 'eye-sat-chips');
+  chips.setAttribute('aria-label', 'Procedencia del objetivo');
+  chips.hidden = true;
   const sourceLine = node(doc, 'p', '', 'eye-dossier-source');
   const positionRow = node(doc, 'div', '', 'eye-dossier-position');
   // P3.1: la brújula y `Centrar` viven ahora en el riel del Mission Dock, que
@@ -77,10 +87,51 @@ export function mountEyeDossier({
   // P3.1: los medios tienen su propio panel en el dock. El expediente ya no los
   // aloja, así que tampoco deja aquí un contenedor vacío.
   const actions = node(doc, 'div', '', 'eye-dossier-actions');
-  root.append(title, statusLine, sourceLine, positionRow, fields, actions);
+  root.append(
+    title,
+    statusLine,
+    chips,
+    sourceLine,
+    positionRow,
+    fields,
+    actions,
+  );
   host.replaceChildren(root);
 
   const emit = (type, contextKey) => onAction?.({ type, contextKey });
+
+  /** La fuente es pulsable sólo si hay a dónde ir; si no, queda como texto. */
+  const renderSource = (context) => {
+    sourceLine.replaceChildren();
+    if (!context.source) {
+      sourceLine.append(
+        node(doc, 'span', 'Fuente no declarada por el proveedor'),
+      );
+      return;
+    }
+    sourceLine.append(node(doc, 'span', 'Fuente: '));
+    if (!context.sourceUrl) {
+      sourceLine.append(node(doc, 'b', context.source));
+      return;
+    }
+    const link = node(doc, 'a', `${context.source} ↗`, 'eye-dossier-link');
+    link.href = context.sourceUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    sourceLine.append(link);
+  };
+
+  /** P4 T6: chips de procedencia del satélite seguido (texto plano). */
+  const renderChips = (context) => {
+    chips.replaceChildren();
+    for (const item of resolveSatelliteChips(context)) {
+      const chip = node(doc, 'li', item.text, 'eye-sat-chip');
+      chip.dataset.chip = item.id;
+      chip.dataset.tone = item.tone;
+      chips.append(chip);
+    }
+    chips.hidden = chips.childElementCount === 0;
+  };
 
   root.addEventListener('click', (event) => {
     const button = event.target.closest?.('[data-eye-dossier-action]');
@@ -141,27 +192,9 @@ export function mountEyeDossier({
         : STATUS_LABELS[context.status] || STATUS_LABELS.unreported;
       statusLine.dataset.status = context.status;
 
-      // La fuente es pulsable sólo si hay a dónde ir; si no, queda como texto.
-      sourceLine.replaceChildren();
-      if (context.source) {
-        sourceLine.append(node(doc, 'span', 'Fuente: '));
-        if (context.sourceUrl) {
-          const link = node(
-            doc,
-            'a',
-            `${context.source} ↗`,
-            'eye-dossier-link',
-          );
-          link.href = context.sourceUrl;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          sourceLine.append(link);
-        } else sourceLine.append(node(doc, 'b', context.source));
-      } else {
-        sourceLine.append(
-          node(doc, 'span', 'Fuente no declarada por el proveedor'),
-        );
-      }
+      renderChips(context);
+
+      renderSource(context);
 
       if (context.position) {
         positionRow.hidden = false;

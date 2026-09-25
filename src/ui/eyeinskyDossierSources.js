@@ -18,6 +18,7 @@ const ENTITY_SELECTED = 'gev:entity-selected';
 const ENTITY_SELECTION_CLEARED = 'gev:entity-selection-cleared';
 const SUBJECT_SELECTED = 'gev:awareness-subject-selected';
 const SUBJECT_CLEARED = 'gev:awareness-subject-cleared';
+const SUBJECT_UPDATED = 'gev:awareness-subject-updated';
 const MAP_STACK_CHANGED = 'gev:map-stack-changed';
 
 /**
@@ -137,6 +138,19 @@ export function connectDossierSources({
         });
       select(context, true);
     });
+  });
+
+  // Una capa avisa de que su sujeto cambió algo que se lee (encuadre, estado
+  // del modelo, edad de los elementos). Es un refresh del MISMO objetivo:
+  // nunca selecciona, nunca reabre, y un aviso ajeno no pisa la ficha vigente.
+  listen(SUBJECT_UPDATED, (event) => {
+    const id = event?.detail?.id ? String(event.detail.id) : null;
+    const layerId = event?.detail?.layerId ? String(event.detail.layerId) : '';
+    if (!id || currentContext.key !== `${layerId}:${id}`) return;
+    const record = host?.__gevContextStore?.entities?.get(id) ?? null;
+    if (!record || record.layerId !== layerId) return;
+    const context = contextFromRecord(record, { kind: currentContext.kind });
+    if (context) refresh(context);
   });
 
   listen(SUBJECT_CLEARED, () => {

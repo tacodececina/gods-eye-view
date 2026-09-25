@@ -13,6 +13,8 @@
  *   - un dato ausente es `null`, nunca un cero ni una hora inventada.
  */
 
+import { contextField } from './eyeinskyContextFields.js';
+
 /** Identidad del contexto por defecto: el globo, sin nada seleccionado. */
 export const EARTH_VIEW_KEY = 'earth:view';
 
@@ -23,6 +25,20 @@ export const DEFAULT_STALE_AFTER_MS = 5 * 60 * 1000;
 const FUTURE_CLOCK_TOLERANCE_MS = 60 * 1000;
 
 const VISIBILITIES = new Set(['summary', 'expanded', 'closed']);
+
+/**
+ * Campos que un registro puede aportar. El satélite seguido publica 15 no
+ * vacíos (P4 T6); cortar en 12 perdía la procedencia del modelo y la caché.
+ */
+export const CONTEXT_FIELD_LIMIT = 16;
+
+/**
+ * Estados de frescura que un registro puede declarar por sí mismo:
+ * `predicted` (posición calculada por SGP4, nadie la observó) y
+ * `propagation-failed` (SGP4 no dio posición: no hay pose válida, P4-20).
+ * Cualquier otro texto del proveedor se ignora en vez de pintarse como estado.
+ */
+const RECORD_STATUSES = new Set(['predicted', 'propagation-failed']);
 
 /**
  * Número finito, o null. Un `0` legítimo se conserva; `NaN`, `''` y `undefined`
@@ -87,8 +103,18 @@ function normalizeFields(fields) {
     const label = textOrNull(field?.label);
     const value = textOrNull(field?.value);
     if (!label || value === null) continue;
+    // `key` y `code` son la clave y el valor crudos del registro: la etiqueta
+    // y el valor visibles pueden traducirse sin que nadie pierda el dato.
+    const key = textOrNull(field?.key);
+    const code = textOrNull(field?.code);
     normalized.push(
-      Object.freeze({ label, value, unit: textOrNull(field?.unit) }),
+      Object.freeze({
+        ...(key ? { key } : {}),
+        label,
+        value,
+        unit: textOrNull(field?.unit),
+        ...(code ? { code } : {}),
+      }),
     );
   }
   return Object.freeze(normalized);
@@ -205,9 +231,11 @@ export function contextFromRecord(record, { kind = 'entity' } = {}) {
   const fields = [];
   const properties = record?.properties;
   if (properties && typeof properties === 'object') {
-    for (const [label, value] of Object.entries(properties)) {
-      if (fields.length >= 12) break;
-      fields.push({ label, value });
+    for (const [key, value] of Object.entries(properties)) {
+      // Un vacío no es un campo: no gasta plaza del límite.
+      if (textOrNull(value) === null) continue;
+      if (fields.length >= CONTEXT_FIELD_LIMIT) break;
+      fields.push(contextField(layerId, key, value));
     }
   }
   return normalizeContext({
@@ -220,6 +248,7 @@ export function contextFromRecord(record, { kind = 'entity' } = {}) {
     observedAt: record?.observedAt,
     fetchedAt: record?.fetchedAt,
     localUpdatedAt: record?.updatedAt,
+    status: RECORD_STATUSES.has(record?.status) ? record.status : null,
     position: { lat: record?.latitude, lon: record?.longitude },
     fields,
   });

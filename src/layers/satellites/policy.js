@@ -40,16 +40,53 @@ export const RING_ROTATION_MS = 1000;
  * proxy; `tag` is the internal group key used for POINT_STYLES lookup.
  * Note: CelesTrak's GLONASS group is named 'glo-ops' (not
  * 'glonass-operational' — that name 404s upstream).
+ * 'cubesat' (P4) sits right after 'stations': a docked or station-listed
+ * object keeps its station tag, and only members of this group can receive the
+ * CubeSat 1U family model (never by name, never from 'stations').
  */
 
 export const CATALOG_GROUPS = [
   { tag: 'stations', path: 'stations' },
+  { tag: 'cubesat', path: 'cubesat' },
   { tag: 'visual', path: 'visual' },
   { tag: 'gps-ops', path: 'gps-ops' },
   { tag: 'glonass', path: 'glo-ops' },
   { tag: 'galileo', path: 'galileo' },
   { tag: 'geo', path: 'geo' },
 ];
+
+/**
+ * Element-set wire format requested per catalog (P4 T1). Core groups ask the
+ * proxy for CelesTrak OMM JSON (FORMAT=json): it carries the exact NORAD
+ * number (six digits included) and an ISO epoch. The dense Starlink shell stays
+ * on legacy TLE text: ~10K records are parsed in chunks and the TLE body is
+ * roughly a third of the JSON size. The source reports the format it actually
+ * received, so a proxy that ignores FORMAT still parses as TLE.
+ */
+
+export const CORE_ELEMENT_FORMAT = 'omm';
+
+export const DENSE_ELEMENT_FORMAT = 'tle';
+
+/**
+ * Orbital element age thresholds (P4 T1), measured from the element EPOCH —
+ * never from the cache fetch time or TTL. SGP4 error grows fastest in LEO
+ * (drag), so the regime split is by mean motion: above 11.25 rev/day
+ * (period < 128 min) is LEO. Age < FRESH → 'vigente'; age > EXPIRED →
+ * 'caducada'; in between → 'envejecida'; epoch after now → 'futura'.
+ */
+
+export const SAT_ELEMENT_LEO_MIN_REV_PER_DAY = 11.25;
+
+const ELEMENT_DAY_MS = 86_400_000;
+
+export const SAT_ELEMENT_LEO_FRESH_MS = 3 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_LEO_EXPIRED_MS = 14 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_HIGH_FRESH_MS = 14 * ELEMENT_DAY_MS;
+
+export const SAT_ELEMENT_HIGH_EXPIRED_MS = 60 * ELEMENT_DAY_MS;
 
 // Dense-catalog mode (setParams({ catalog: 'dense' })): Starlink shell as
 // points-only extras — no labels, no detection-overlay participation, and a
@@ -113,6 +150,13 @@ export const POINT_STYLES = {
   stations: {
     pixelSize: 8,
     color: _classColor('stations'),
+    outlineColor: POINT_OUTLINE,
+    outlineWidth: 0,
+  },
+  // CubeSats: small (the objects are 10 cm), mineral green of their class.
+  cubesat: {
+    pixelSize: 5,
+    color: _classColor('cubesat'),
     outlineColor: POINT_OUTLINE,
     outlineWidth: 0,
   },
@@ -180,3 +224,151 @@ export const DOCKED_SCAN_INTERVAL_MS = 1000;
  */
 
 export const CONTEXT_REFRESH_INTERVAL_MS = 1000;
+
+/**
+ * Satellite model profiles (P4). 'std' desktop/GPD, 'low' coarse pointer or
+ * small/low-memory devices, 'off' points only. Override: ?satModels=std|low|off.
+ */
+
+export const SAT_MODEL_PROFILE_NAMES = Object.freeze(['std', 'low', 'off']);
+
+/**
+ * Near-field model LOD (P4 T3), decided by projected diameter in CSS pixels
+ * (see modelLod.js) with hysteresis: a model is added at ADD and kept until it
+ * drops below KEEP. The tracked satellite needs only the pixel band; any other
+ * satellite also needs the camera within ADD_M (kept until KEEP_M).
+ * Provisional values from the approved proposal §5; T7 calibrates them on the
+ * GPD and records the evidence path next to each change.
+ */
+
+export const SAT_MODEL_TRACKED_ADD_PX = 6;
+
+export const SAT_MODEL_TRACKED_KEEP_PX = 3;
+
+export const SAT_MODEL_SECONDARY_ADD_PX = 16;
+
+export const SAT_MODEL_SECONDARY_KEEP_PX = 10;
+
+export const SAT_MODEL_SECONDARY_ADD_M = 25000;
+
+export const SAT_MODEL_SECONDARY_KEEP_M = 30000;
+
+/** Model admission/eviction reconcile cadence; pose still updates per frame. */
+
+export const SAT_MODEL_RECONCILE_MS = 250;
+
+/** Leaving the band evicts after this delay (target change/disable: at once). */
+
+export const SAT_MODEL_EVICT_DEBOUNCE_MS = 2000;
+
+/** Device signals that select the 'low' profile when no override is given. */
+
+export const SAT_MODEL_LOW_MAX_VIEWPORT_PX = 650;
+
+export const SAT_MODEL_LOW_MAX_DEVICE_MEMORY_GB = 4;
+
+/**
+ * Per-URI load failure veto (mirror of flights TRACKED_MODEL_MAX_LOAD_FAILS):
+ * after this many failed loads (404, network, Draco/glTF decode) the URI is
+ * vetoed for the session and the satellite stays an SGP4 point. A failed
+ * URI is retried no sooner than SAT_MODEL_RETRY_BACKOFF_MS.
+ */
+
+export const SAT_MODEL_MAX_LOAD_FAILS = 3;
+
+export const SAT_MODEL_RETRY_BACKOFF_MS = 1500;
+
+/**
+ * Conditional credit for the curated NASA 3D Resources models: registered on
+ * the first satellite model-ready and retired when no model is active
+ * (public/models/README.md and the manifest `credit` field).
+ */
+
+export const SAT_MODEL_CREDIT = Object.freeze({
+  key: 'nasa-3d-resources',
+  html:
+    'Satellite models: Source: ' +
+    '<a href="https://github.com/nasa/NASA-3D-Resources" target="_blank" rel="noopener">NASA 3D Resources</a>',
+});
+
+/** Curated satellite model manifest (public/models/satellites/manifest.json). */
+
+export const SAT_MODEL_MANIFEST_URI = '/models/satellites/manifest.json';
+
+/**
+ * Tracked camera framings (P4 T5). 'orbit' is the TRACK_VIEW_FROM_LEO/HIGH
+ * landing; 'inspect' keeps that direction at clamp(8·radiusM, 6 m, 5 km)
+ * from the resolved model asset. The change animates for
+ * SAT_FRAMING_TWEEN_MS, or lands at once under reduced motion.
+ *
+ * Floor lowered from 30 m to 6 m in T7: at 30 m a 1U CubeSat (radiusM 0.149)
+ * projected ≈ 7 px, still a dot under the reticle threshold; at 6 m it reads
+ * ≈ 34 px. Jitter and near plane at 6 m are measured by scripts/eyeinsky-p4.mjs
+ * (projected centre over 30 frames), evidence in output/eyeinsky-p4/t7/.
+ */
+
+export const SAT_TRACK_FRAMINGS = Object.freeze(['orbit', 'inspect']);
+
+export const SAT_INSPECT_RANGE_FACTOR = 8;
+
+export const SAT_INSPECT_MIN_RANGE_M = 6;
+
+export const SAT_INSPECT_MAX_RANGE_M = 5000;
+
+export const SAT_FRAMING_TWEEN_MS = 700;
+
+/**
+ * Mission Dock bias (P4 T5 repair): on a phone (viewport ≤ this width) the
+ * dock covers the lower half of the screen, so the followed target is raised
+ * to the centre of the free area above the band the dock publishes in
+ * `--eye-dock-band`. The band ratio is capped so the target never leaves the
+ * screen; below the epsilon the camera is left alone.
+ */
+
+export const SAT_DOCK_BIAS_MAX_VIEWPORT_PX = 650;
+
+export const SAT_DOCK_BIAS_MAX_BAND_RATIO = 0.8;
+
+export const SAT_DOCK_BIAS_EPSILON_RAD = 1e-4;
+
+/**
+ * Point→model handoff (P4 T5): the tracked 14 px dot becomes a 4 px reticle
+ * at alpha 0.5 once its ready model projects larger than 24 px. The point is
+ * never removed — the follow camera needs its bounding sphere.
+ */
+
+export const SAT_TRACKED_POINT_PX = 14;
+
+export const SAT_RETICLE_PX = 4;
+
+export const SAT_RETICLE_ALPHA = 0.5;
+
+export const SAT_POINT_HANDOFF_PX = 24;
+
+/**
+ * Tracked card over a model (P4 T7): once the dot is a reticle, the card is
+ * placed above the model's projected bounding sphere plus this margin, in
+ * steps of SAT_CARD_GAP_STEP_PX so a zoom republishes it only a few times
+ * (it covered the ISS hull in inspect, output/eyeinsky-p4/t5/kronos-ux-1).
+ */
+
+export const SAT_CARD_HULL_MARGIN_PX = 8;
+
+export const SAT_CARD_GAP_STEP_PX = 4;
+
+/**
+ * Hull pick (P4 T5): a click inside the tracked model's projected bounding
+ * sphere keeps the selection. Minimum hit radius in CSS px, larger for a
+ * coarse (touch) pointer.
+ */
+
+export const SAT_HULL_HIT_MIN_PX = 12;
+
+export const SAT_HULL_HIT_MIN_COARSE_PX = 24;
+
+/**
+ * A model load that has not settled after this long frees its slot, counts
+ * as a failed load, and its late result is destroyed on arrival (P4 T5).
+ */
+
+export const SAT_MODEL_LOAD_TIMEOUT_MS = 20000;

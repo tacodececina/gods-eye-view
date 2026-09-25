@@ -1,9 +1,17 @@
 /** Fixed upstream request URLs; callers own validation, credentials and transport. */
-export function celestrakTleUrl(group) {
+export function celestrakGpUrl(group, { format = 'tle' } = {}) {
+  if (format !== 'tle' && format !== 'json') {
+    throw new TypeError('CelesTrak GP format must be tle or json');
+  }
   const url = new URL('https://celestrak.org/NORAD/elements/gp.php');
   url.searchParams.set('GROUP', group);
-  url.searchParams.set('FORMAT', 'tle');
+  url.searchParams.set('FORMAT', format);
   return url;
+}
+
+/** Backward-compatible legacy TLE request (FORMAT=tle). */
+export function celestrakTleUrl(group) {
+  return celestrakGpUrl(group, { format: 'tle' });
 }
 
 export function launchLibraryRecentUrl(end) {

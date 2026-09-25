@@ -22,5 +22,23 @@
     "url": "https://science.nasa.gov/wp-content/uploads/2023/07/hubble-space-telescope-hst-4.jpg?w=900",
     "sha256": "933a771ba7b628fde2a2cecf214dfb6d5261c7675ceea75ebc8e0a56844f344a",
     "bytes": 157167
+  },
+  {
+    "file": "public/models/satellites/iss-70d0619a.glb",
+    "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/International%20Space%20Station%20%28ISS%29%20%28A%29/International%20Space%20Station%20%28ISS%29%20%28A%29.glb",
+    "sha256": "70d0619a69312a45cbf740ba9a491fad854e10226dc5936c213fb1f93f063678",
+    "bytes": 39708
+  },
+  {
+    "file": "public/models/satellites/hubble-e5ba4de1.glb",
+    "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/Hubble%20Space%20Telescope%20%28A%29/Hubble%20Space%20Telescope%20%28A%29.glb",
+    "sha256": "e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384",
+    "bytes": 1694988
+  },
+  {
+    "file": "public/models/satellites/cubesat-1u-bae308ea.glb",
+    "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/CubeSat%20-%201%20RU%20Generic/CubeSat%20-%201%20RU%20Generic.glb",
+    "sha256": "bae308ea2e33778c93675909f7dc2e0d5d6916cd685668a463566c61224b1e85",
+    "bytes": 149424
   }
 ]
