@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EYEINSKY Editorial Clean</title>
+<meta name="description" content="Maqueta de EYEINSKY: globo real con atmósfera y luces nocturnas, interfaz editorial mínima. Marcadores sintéticos (DEMO).">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%225%22 fill=%22%23a6d7c2%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.118.0/Widgets/widgets.css" rel="stylesheet">
+<script>window.CESIUM_BASE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/cesium/1.118.0/';</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.118.0/Cesium.js"></script>
+<style>
+:root {
+  --space: #020505;
+  --bg: #071110;
+  --glass: rgba(9, 18, 17, 0.62);
+  --glass-strong: rgba(9, 18, 17, 0.82);
+  --hairline: rgba(238, 241, 233, 0.09);
+  --hairline-strong: rgba(238, 241, 233, 0.18);
+  --paper: #eef1e9;
+  --muted: #b2c4b9;
+  --faint: #8fa398;
+  --accent: #a6d7c2;
+  --accent-ink: #062019;
+  --other: #e6b46d;
+  --focus: #e6b46d;
+  --hover: rgba(238, 241, 233, 0.07);
+  --radius-l: 22px;
+  --radius-m: 14px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --t: 180ms;
+  --f-display: "Instrument Serif", "Times New Roman", serif;
+  --f-ui: "Space Grotesk", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --gutter: 32px;
+  color-scheme: dark;
+}
+/* La página es una consola nocturna: el tema oscuro es el único previsto. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --space: #020505; } }
+:root[data-theme="dark"] { --space: #020505; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--space);
+  color: var(--paper);
+  font-family: var(--f-ui);
+  font-size: 15px;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mono { font-family: var(--f-mono); font-feature-settings: "tnum" 1; }
+
+/* ---------- Escenario ---------- */
+#stars, #globe { position: fixed; inset: 0; }
+#stars { z-index: 0; }
+#globe { z-index: 1; }
+#globe .cesium-viewer-bottom, #globe .cesium-widget-credits { display: none !important; }
+.vignette {
+  position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(2,5,5,.78) 0%, rgba(2,5,5,.25) 30%, transparent 48%),
+    linear-gradient(0deg, rgba(2,5,5,.85) 0%, rgba(2,5,5,0) 26%),
+    linear-gradient(180deg, rgba(2,5,5,.6) 0%, rgba(2,5,5,0) 14%);
+}
+
+/* ---------- Capa de interfaz ---------- */
+.ui { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+.ui > * { pointer-events: auto; }
+.reveal { transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
+body.intro .reveal { opacity: 0; transform: translateY(10px); }
+body.clean .hideable { opacity: 0; pointer-events: none; transform: translateY(6px); }
+.hideable { transition: opacity 240ms var(--ease), transform 240ms var(--ease); }
+
+/* Cabecera */
+.top {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 28px;
+  padding: 22px var(--gutter);
+}
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--paper); min-height: 44px; }
+.brand svg { width: 26px; height: 26px; }
+.brand b { font-weight: 600; letter-spacing: .22em; font-size: 13px; }
+.nav { display: flex; gap: 4px; }
+.nav a {
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+  color: var(--muted); text-decoration: none; font-size: 14px; border-radius: 999px;
+  transition: color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.nav a:hover { color: var(--paper); background: var(--hover); }
+.nav a[aria-current="page"] { color: var(--paper); }
+.nav a[aria-current="page"]::after {
+  content: ""; position: absolute; left: 14px; right: 14px; bottom: 8px; height: 1px; background: var(--accent);
+}
+.spacer { flex: 1; }
+.search {
+  display: flex; align-items: center; gap: 10px; width: min(340px, 30vw); min-height: 44px; padding: 0 8px 0 16px;
+  border-radius: 999px; background: rgba(238,241,233,.05); border: 1px solid var(--hairline);
+  transition: border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.search:focus-within { border-color: var(--hairline-strong); background: rgba(238,241,233,.08); }
+.search svg { width: 16px; height: 16px; color: var(--faint); flex: none; }
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; font-size: 14px; }
+.search input::placeholder { color: var(--faint); }
+.kbd { font-family: var(--f-mono); font-size: 11px; color: var(--faint); border: 1px solid var(--hairline); border-radius: 6px; padding: 2px 6px; }
+.icon-btn {
+  width: 44px; height: 44px; display: inline-grid; place-items: center; border-radius: 999px; color: var(--muted);
+  transition: color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.icon-btn:hover { color: var(--paper); background: var(--hover); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* Conmutador de estado (maqueta) */
+.states {
+  position: absolute; top: 84px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; padding: 4px 4px 4px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+body.intro .states.reveal { transform: translateX(-50%) translateY(10px); }
+.states span { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; color: var(--faint); text-transform: uppercase; }
+.seg { display: flex; gap: 2px; }
+.seg button {
+  min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; color: var(--muted);
+  transition: background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.seg button:hover { color: var(--paper); background: var(--hover); }
+.seg button[aria-pressed="true"] { background: var(--paper); color: #0b1413; }
+
+/* Bloque editorial */
+.story { position: absolute; left: var(--gutter); bottom: 128px; width: min(520px, 38vw); }
+.kicker { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.kicker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.headline {
+  font-family: var(--f-display); font-weight: 400; font-size: clamp(44px, 5.6vw, 88px); line-height: .95; letter-spacing: -.01em;
+  margin: 0; text-wrap: balance;
+}
+.headline em { font-style: italic; color: var(--accent); }
+.lede { margin: 18px 0 0; color: var(--muted); max-width: 42ch; font-size: 15px; }
+.swap { transition: opacity 220ms var(--ease), transform 220ms var(--ease); }
+.swap.out { opacity: 0; transform: translateY(6px); }
+
+.layers { margin-top: 30px; border-top: 1px solid var(--hairline); max-width: 420px; }
+.layers-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 4px; }
+.label { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.layer { display: flex; align-items: center; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--hairline); }
+.swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.layer-name { flex: 1; font-size: 15px; }
+.layer-name small { color: var(--faint); font-family: var(--f-mono); font-size: 12px; margin-left: 6px; }
+.layer.off .layer-name, .layer.off .swatch { opacity: .45; }
+.demo { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; color: var(--other); border: 1px solid rgba(230,180,109,.45); border-radius: 4px; padding: 1px 5px; }
+.text-btn {
+  min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.5px; color: var(--muted);
+  transition: color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.text-btn:hover { color: var(--paper); background: var(--hover); }
+.text-btn.accent { color: var(--accent); }
+.add-pop {
+  position: absolute; left: 0; bottom: calc(100% + 8px); width: 280px; padding: 8px; border-radius: var(--radius-m);
+  background: var(--glass-strong); border: 1px solid var(--hairline); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.add-pop.open { opacity: 1; transform: none; pointer-events: auto; }
+.add-pop p { margin: 6px 10px 8px; font-size: 12.5px; color: var(--faint); }
+.add-pop li { list-style: none; display: flex; justify-content: space-between; padding: 10px; font-size: 14px; color: var(--muted); border-radius: 10px; }
+.add-pop ul { margin: 0; padding: 0; }
+
+/* Panel contextual único */
+.panel {
+  position: absolute; right: calc(var(--gutter) + 64px); bottom: 128px; width: 380px; max-height: calc(100vh - 290px);
+  display: flex; flex-direction: column;
+  border-radius: var(--radius-l); background: var(--glass); border: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%);
+  box-shadow: 0 30px 80px -30px rgba(0,0,0,.7);
+  overflow: hidden;
+}
+.panel-body { padding: 22px 24px 20px; overflow: auto; }
+.panel h2 { font-family: var(--f-display); font-weight: 400; font-size: 34px; line-height: 1; margin: 6px 0 6px; }
+.panel .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+.quakes { list-style: none; margin: 16px 0 0; padding: 0; }
+.quakes li { display: grid; grid-template-columns: 52px 1fr auto; align-items: baseline; gap: 12px; padding: 11px 0; border-top: 1px solid var(--hairline); }
+.mag { font-family: var(--f-display); font-size: 28px; line-height: 1; color: var(--other); }
+.quakes .place { font-size: 14px; }
+.quakes .when { font-family: var(--f-mono); font-size: 12px; color: var(--faint); }
+.note { margin: 14px 0 0; font-size: 12.5px; color: var(--faint); }
+
+/* Dock de misión */
+.tabs { display: flex; gap: 2px; padding: 8px 10px 0; border-bottom: 1px solid var(--hairline); }
+.tab {
+  position: relative; min-height: 44px; padding: 0 14px; font-family: var(--f-mono); font-size: 12px; letter-spacing: .12em; color: var(--faint);
+  transition: color var(--t) var(--ease);
+}
+.tab:hover { color: var(--paper); }
+.tab[aria-selected="true"] { color: var(--paper); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 2px; background: var(--accent); border-radius: 2px; }
+.dock-close { margin-left: auto; }
+.status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin: 0; }
+.facts dt { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+.facts dd { margin: 4px 0 0; font-family: var(--f-mono); font-size: 16px; }
+.facts dd small { color: var(--faint); font-size: 11px; }
+.facts .extra { display: none; }
+.panel.expanded .facts .extra { display: block; }
+.cam { display: flex; align-items: center; gap: 14px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--hairline); }
+.compass { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--hairline-strong); display: grid; place-items: center; position: relative; flex: none; }
+.compass i { position: absolute; top: 5px; width: 2px; height: 14px; border-radius: 2px; background: var(--other); transform-origin: 50% 17px; }
+.cam b { font-weight: 500; font-size: 14px; display: block; }
+.cam span { font-size: 12.5px; color: var(--faint); }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 14px 16px 0; }
+.act {
+  min-height: 44px; border-radius: 12px; font-size: 13px; color: var(--muted); background: rgba(238,241,233,.04);
+  transition: background var(--t) var(--ease), color var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.act:hover { background: rgba(238,241,233,.09); color: var(--paper); }
+.act:active { transform: scale(.97); }
+.act[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); }
+.primary {
+  margin: 8px 16px 16px; min-height: 48px; border-radius: 14px; background: var(--paper); color: #0b1413; font-weight: 600; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: calc(100% - 32px);
+  transition: background var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.primary:hover { background: #ffffff; }
+.primary:active { transform: scale(.985); }
+.primary svg { width: 16px; height: 16px; transition: transform var(--t) var(--ease); }
+.primary:hover svg { transform: translateX(3px); }
+.empty { padding: 26px 0 8px; }
+.empty h3 { font-family: var(--f-display); font-weight: 400; font-size: 26px; margin: 0 0 6px; }
+.empty p { margin: 0; color: var(--muted); font-size: 13.5px; }
+[hidden] { display: none !important; }
+
+/* Controles de cámara */
+.camera {
+  position: absolute; right: var(--gutter); top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: 999px;
+  background: rgba(9,18,17,.4); border: 1px solid var(--hairline); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+body.intro .camera.reveal { transform: translateY(-50%) translateX(8px); }
+.camera .icon-btn { position: relative; }
+.camera .icon-btn[aria-pressed="true"] { color: var(--accent); }
+.tip {
+  position: absolute; right: calc(100% + 10px); top: 50%; transform: translate(4px, -50%); white-space: nowrap;
+  font-size: 12.5px; padding: 6px 10px; border-radius: 8px; background: var(--glass-strong); color: var(--paper);
+  opacity: 0; pointer-events: none; transition: opacity var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.camera .icon-btn:hover .tip, .camera .icon-btn:focus-visible .tip { opacity: 1; transform: translate(0, -50%); }
+
+/* Pie: tiempo + telemetría */
+.foot {
+  position: absolute; left: var(--gutter); right: var(--gutter); bottom: 22px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.time { display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; background: var(--glass); border: 1px solid var(--hairline); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.clock { display: flex; align-items: center; gap: 10px; padding: 0 14px 0 12px; min-height: 40px; }
+.clock .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(166,215,194,.5); }
+.clock.live .dot { animation: pulse 2.4s var(--ease) infinite; }
+.clock.paused .dot { background: var(--other); }
+.clock .mode { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.clock .t { font-family: var(--f-mono); font-size: 14px; }
+.time .sep { width: 1px; height: 22px; background: var(--hairline); margin: 0 4px; }
+.time button { min-height: 40px; padding: 0 13px; border-radius: 999px; font-size: 13px; color: var(--muted); transition: background var(--t) var(--ease), color var(--t) var(--ease); }
+.time button:hover:not(:disabled) { background: var(--hover); color: var(--paper); }
+.time button:disabled { opacity: .4; cursor: default; }
+.time button[aria-pressed="true"] { color: var(--paper); background: rgba(238,241,233,.1); }
+.telemetry { display: flex; gap: 22px; margin-left: auto; }
+.telemetry div { display: flex; flex-direction: column; gap: 2px; }
+.telemetry dt { font-family: var(--f-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+.telemetry dd { margin: 0; font-family: var(--f-mono); font-size: 13px; color: var(--paper); white-space: nowrap; }
+.credits { position: absolute; right: var(--gutter); bottom: 4px; font-size: 10.5px; color: var(--faint); display: flex; gap: 10px; align-items: center; }
+.credits a { color: var(--faint); }
+#cesium-credits { display: inline-flex; align-items: center; gap: 6px; }
+#cesium-credits img { height: 12px; opacity: .7; vertical-align: middle; }
+#cesium-credits .cesium-widget-credits { position: static !important; display: inline-flex !important; align-items: center; gap: 8px; padding: 0; font-size: inherit; }
+#cesium-credits .cesium-credit-textContainer:empty { display: none !important; }
+#cesium-credits .cesium-credit-expand-link { color: var(--faint); text-decoration: underline; cursor: pointer; }
+.credit-short { display: none; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(166,215,194,.45); } 70% { box-shadow: 0 0 0 8px rgba(166,215,194,0); } 100% { box-shadow: 0 0 0 0 rgba(166,215,194,0); } }
+
+.show-ui { position: absolute; right: var(--gutter); top: 22px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--glass); border: 1px solid var(--hairline); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity 240ms var(--ease); }
+body.clean .show-ui { opacity: 1; pointer-events: auto; }
+.toast { position: absolute; left: 50%; top: 140px; transform: translate(-50%, -6px); padding: 10px 16px; border-radius: 999px; background: var(--glass-strong); border: 1px solid var(--hairline); font-size: 13px; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease), transform 200ms var(--ease); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.mobile-nav { display: none; }
+
+/* ---------- Tablet / móvil ---------- */
+@media (max-width: 1100px) {
+  .telemetry div:nth-child(n+3) { display: none; }
+  .story { width: min(440px, 44vw); }
+}
+@media (max-width: 760px) {
+  :root { --gutter: 16px; }
+  body { font-size: 14px; }
+  .vignette { background: linear-gradient(180deg, rgba(2,5,5,.78) 0%, rgba(2,5,5,0) 30%), linear-gradient(0deg, rgba(2,5,5,.92) 0%, rgba(2,5,5,.4) 42%, rgba(2,5,5,0) 58%); }
+  .top { padding: 10px var(--gutter); gap: 8px; }
+  .nav, .search .kbd { display: none; }
+  .search { width: 44px; padding: 0; justify-content: center; border-color: transparent; background: none; }
+  .search input { position: absolute; width: 1px; opacity: 0; }
+  .search.open { position: absolute; left: var(--gutter); right: var(--gutter); width: auto; padding: 0 8px 0 16px; background: var(--glass-strong); border-color: var(--hairline-strong); z-index: 2; }
+  .search.open input { position: static; width: auto; opacity: 1; }
+  .states { top: 60px; left: var(--gutter); right: var(--gutter); transform: none; justify-content: space-between; padding: 3px; }
+  body.intro .states.reveal { transform: translateY(10px); }
+  .states span { display: none; }
+  .seg { flex: 1; }
+  .seg button { flex: 1; min-height: 38px; padding: 0 8px; }
+  .story { left: var(--gutter); right: var(--gutter); top: 114px; bottom: auto; width: auto; }
+  .headline { font-size: 34px; }
+  .lede, .layers { display: none; }
+  .kicker { margin-bottom: 8px; font-size: 10.5px; }
+  .camera { top: calc(var(--globe-top, 200px) + 4px); bottom: auto; transform: none; padding: 2px; }
+  body.intro .camera.reveal { transform: translateX(8px); }
+  .camera .icon-btn:nth-child(n+4) { display: none; }
+  .tip { display: none; }
+  .panel { left: var(--gutter); right: var(--gutter); width: auto; bottom: 138px; max-height: 40vh; border-radius: 20px; }
+  .panel-body { padding: 14px 16px 12px; }
+  .panel h2 { font-size: 26px; display: inline; margin-right: 8px; }
+  .panel .sub { display: inline; font-size: 12.5px; }
+  .note { display: none; }
+  .quakes { margin-top: 8px; }
+  .quakes li:nth-child(n+3) { display: none; }
+  .quakes li { padding: 7px 0; grid-template-columns: 40px 1fr auto; }
+  .mag { font-size: 24px; }
+  .status { margin-bottom: 10px; font-size: 12.5px; }
+  .tabs { padding: 2px 6px 0; }
+  .facts { grid-template-columns: 1fr 1fr 1fr; gap: 10px 12px; }
+  .facts > div:nth-child(4) { display: none; }
+  .facts dd { font-size: 14px; }
+  .cam { display: none; }
+  .actions { padding: 10px 12px 0; }
+  .primary { margin: 8px 12px 12px; }
+  .foot { bottom: 76px; gap: 8px; }
+  .time { width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .time::-webkit-scrollbar { display: none; }
+  .time button { flex: none; padding: 0 10px; min-height: 44px; }
+  .clock { flex: none; padding: 0 8px; }
+  .telemetry { display: none; }
+  .credits { left: var(--gutter); right: var(--gutter); bottom: calc(64px + env(safe-area-inset-bottom)); justify-content: center; font-size: 10px; white-space: nowrap; }
+  .credit-long { display: none; }
+  .credit-short { display: inline; }
+  #globe { bottom: auto; }
+  .time { -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .mobile-nav {
+    display: grid; grid-template-columns: repeat(4, 1fr); position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); background: rgba(2,5,5,.9); border-top: 1px solid var(--hairline);
+  }
+  .mobile-nav a { min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--faint); text-decoration: none; font-size: 11.5px; }
+  .mobile-nav a svg { width: 20px; height: 20px; }
+  .mobile-nav a[aria-current="page"] { color: var(--paper); }
+  .add-pop { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation: none !important; }
+}
+</style>
+</head>
+<body class="intro">
+<canvas id="stars" aria-hidden="true"></canvas>
+<div id="globe" role="application" aria-label="Globo terrestre 3D. Arrastra para girar; rueda para acercar."></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<div class="ui">
+  <header class="top reveal hideable">
+    <a class="brand" href="#" aria-label="EYEINSKY, inicio">
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><ellipse cx="16" cy="16" rx="13" ry="6.5" stroke="#eef1e9" stroke-width="1.6" transform="rotate(-18 16 16)"/><circle cx="16" cy="16" r="4.2" fill="#a6d7c2"/><circle cx="27.4" cy="11.6" r="1.6" fill="#e6b46d"/></svg>
+      <b>EYEINSKY</b>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      <a href="#" aria-current="page">Explorar</a>
+      <a href="#">Vistas</a>
+      <a href="#">Instrumentos</a>
+      <a href="#">Más</a>
+    </nav>
+    <div class="spacer"></div>
+    <form class="search" id="search" role="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label class="sr-only" for="q">Buscar nombre o coordenadas</label>
+      <input id="q" type="search" placeholder="Buscar nombre o coordenadas" autocomplete="off">
+      <span class="kbd" aria-hidden="true">⌘K</span>
+    </form>
+    <button class="icon-btn" type="button" aria-label="Ayuda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5V14"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <div class="states reveal hideable" role="group" aria-label="Estado de la maqueta">
+    <span>Maqueta</span>
+    <div class="seg">
+      <button type="button" data-state="none" aria-pressed="true">Sin selección</button>
+      <button type="button" data-state="iss" aria-pressed="false">ISS seleccionada</button>
+    </div>
+  </div>
+
+  <section class="story reveal hideable" aria-live="polite">
+    <div class="swap" id="story-swap">
+      <p class="kicker" id="kicker"><span class="dot" aria-hidden="true"></span><span id="kicker-text">Tierra · luz solar de este instante</span></p>
+      <h1 class="headline" id="headline">El planeta,<br><em>ahora.</em></h1>
+      <p class="lede" id="lede">Día y noche según la hora real de tu reloj. Las ciudades encendidas son el mapa nocturno VIIRS de NASA; los puntos del globo son sintéticos.</p>
+    </div>
+    <div class="layers" style="position:relative">
+      <div class="layers-head">
+        <span class="label">Capas en escena · <span id="layer-count">2</span></span>
+        <button class="text-btn accent" type="button" id="add-btn" aria-expanded="false" aria-controls="add-pop">+ Agregar</button>
+      </div>
+      <div class="add-pop" id="add-pop" role="dialog" aria-label="Agregar capa">
+        <p>Fuentes de la app, fuera de esta maqueta:</p>
+        <ul><li>Vuelos <span class="label">OpenSky</span></li><li>Barcos <span class="label">AIS</span></li><li>Incendios <span class="label">FIRMS</span></li><li>Cámaras <span class="label">CCTV</span></li></ul>
+      </div>
+      <div class="layer" data-layer="sats">
+        <span class="swatch" style="background:var(--paper)"></span>
+        <span class="layer-name">Satélites <small>40</small></span>
+        <span class="demo">DEMO</span>
+        <button class="text-btn" type="button" aria-pressed="false">Apagar</button>
+      </div>
+      <div class="layer" data-layer="quakes">
+        <span class="swatch" style="background:var(--other)"></span>
+        <span class="layer-name">Sismos USGS <small>6</small></span>
+        <span class="demo">DEMO</span>
+        <button class="text-btn" type="button" aria-pressed="false">Apagar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Panel contextual único: señales cuando no hay selección, Mission Dock con objetivo -->
+  <aside class="panel reveal hideable" id="panel" aria-label="Panel contextual">
+    <div id="signals">
+      <div class="panel-body">
+        <p class="kicker" style="margin:0"><span>Señales · USGS</span><span class="demo">DEMO</span></p>
+        <h2>6 sismos</h2>
+        <p class="sub">M2.5+ · últimas 24 h · conjunto sintético de ejemplo</p>
+        <ul class="quakes" id="quake-list"></ul>
+        <p class="note">Maqueta sin consulta a USGS. En la app, la fecha del evento y la última consulta se muestran por separado.</p>
+      </div>
+    </div>
+    <div id="dock" hidden>
+      <div class="tabs" role="tablist" aria-label="Paneles del objetivo">
+        <button class="tab" role="tab" id="tab-obj" aria-selected="true" aria-controls="pane-obj">OBJETIVO</button>
+        <button class="tab" role="tab" id="tab-med" aria-selected="false" aria-controls="pane-med" tabindex="-1">MEDIOS</button>
+        <button class="tab" role="tab" id="tab-ops" aria-selected="false" aria-controls="pane-ops" tabindex="-1">OPS</button>
+        <button class="icon-btn dock-close" type="button" id="dock-close" aria-label="Cerrar el panel de misión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </div>
+      <div class="panel-body" role="tabpanel" id="pane-obj" aria-labelledby="tab-obj">
+        <p class="status"><span class="demo">DEMO</span> Posición ilustrativa · sin TLE consultado</p>
+        <dl class="facts">
+          <div><dt>Altitud</dt><dd>~420 <small>km</small></dd></div>
+          <div><dt>Inclinación</dt><dd>51.6°</dd></div>
+          <div><dt>Periodo</dt><dd>~92.9 <small>min</small></dd></div>
+          <div><dt>Lat / Lon</dt><dd id="iss-ll">—</dd></div>
+          <div class="extra"><dt>NORAD</dt><dd>25544</dd></div>
+          <div class="extra"><dt>COSPAR</dt><dd>1998-067A</dd></div>
+        </dl>
+        <div class="cam">
+          <div class="compass" id="compass" role="img" aria-label="Rumbo de cámara 0°"><i id="needle"></i><span class="sr-only">N</span></div>
+          <div><b id="cam-badge">Cámara libre</b><span id="cam-detail">Arrastra para orbitar alrededor del objetivo</span></div>
+        </div>
+      </div>
+      <div class="panel-body" role="tabpanel" id="pane-med" aria-labelledby="tab-med" hidden>
+        <div class="empty"><h3>Sin medios</h3><p>No hay imágenes ni transmisiones asociadas a este objetivo. Se muestran solo cuando una fuente pública las publica.</p></div>
+      </div>
+      <div class="panel-body" role="tabpanel" id="pane-ops" aria-labelledby="tab-ops" hidden>
+        <div class="empty"><h3>0 operaciones</h3><p>Guarda cámara, capas y notas de esta vista. Se conservan solo en este navegador (máx. 30).</p></div>
+      </div>
+      <div class="actions" role="group" aria-label="Acciones sobre el objetivo">
+        <button class="act" type="button" id="act-follow" aria-pressed="false">Seguir</button>
+        <button class="act" type="button" id="act-center">Centrar</button>
+        <button class="act" type="button" id="act-north">Norte</button>
+        <button class="act" type="button" id="act-more" aria-expanded="false">Más</button>
+      </div>
+      <button class="primary" type="button" id="act-inspect">Inspeccionar
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <nav class="camera reveal hideable" aria-label="Controles de cámara">
+    <button class="icon-btn" type="button" id="cam-in" aria-label="Acercar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="tip">Acercar</span></button>
+    <button class="icon-btn" type="button" id="cam-out" aria-label="Alejar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14"/></svg><span class="tip">Alejar</span></button>
+    <button class="icon-btn" type="button" id="cam-home" aria-label="Vista global"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.8" ry="8.5"/><path d="M3.5 12h17"/></svg><span class="tip">Global</span></button>
+    <button class="icon-btn" type="button" id="cam-north" aria-label="Norte arriba"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l4 9h-8z" fill="currentColor" stroke="none"/><path d="M12 21l-4-9h8z" opacity=".35" fill="currentColor" stroke="none"/></svg><span class="tip">Norte</span></button>
+    <button class="icon-btn" type="button" id="cam-grid" aria-label="Retícula" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 4v16M4 12h16"/></svg><span class="tip">Retícula</span></button>
+    <button class="icon-btn" type="button" id="cam-clean" aria-label="Vista limpia: ocultar interfaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="tip">Limpia</span></button>
+  </nav>
+
+  <footer class="foot reveal hideable">
+    <div class="time" role="group" aria-label="Tiempo">
+      <div class="clock live" id="clock"><span class="dot" aria-hidden="true"></span><span class="mode" id="clock-mode">Reloj en vivo</span><span class="t" id="clock-t">--:--:-- UTC</span></div>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" id="t-pause" aria-pressed="false">Pausa</button>
+      <button type="button" id="t-speed">Avance ×1</button>
+      <button type="button" id="t-now" disabled>Ahora</button>
+      <button type="button" id="t-date">Fecha</button>
+      <input type="date" id="t-date-input" class="sr-only" tabindex="-1" aria-hidden="true">
+    </div>
+    <dl class="telemetry" aria-label="Telemetría de cámara">
+      <div><dt>Coordenadas</dt><dd id="tm-ll">—</dd></div>
+      <div><dt>Altura</dt><dd id="tm-h">—</dd></div>
+      <div><dt>Rumbo</dt><dd id="tm-hd">—</dd></div>
+      <div><dt>Mapa</dt><dd id="tm-map">NASA Blue Marble</dd></div>
+    </dl>
+  </footer>
+  <div class="credits reveal hideable">
+    <span id="cesium-credits"></span>
+    <span class="credit-long">CesiumJS · Imágenes NASA GIBS: Blue Marble, VIIRS City Lights 2012 · En la app: Esri World Imagery</span>
+    <span class="credit-short">CesiumJS · NASA GIBS (Blue Marble, VIIRS 2012)</span>
+  </div>
+
+  <nav class="mobile-nav reveal hideable" aria-label="Principal (móvil)">
+    <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.8" ry="8.5"/></svg>Explorar</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16"/></svg>Vistas</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 18h16M7 18V9M12 18V5M17 18v-6"/></svg>Instrumentos</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>Más</a>
+  </nav>
+
+  <button class="show-ui" type="button" id="show-ui">Mostrar interfaz</button>
+  <div class="toast" id="toast" role="status"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isPhone = () => window.innerWidth <= 760;
+
+  /* ---- Estrellas sobrias: ~70 puntos tenues, dibujados una vez ---- */
+  function drawStars() {
+    const c = $('stars'); const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr;
+    const g = c.getContext('2d'); g.fillStyle = '#020505'; g.fillRect(0, 0, c.width, c.height);
+    let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 70; i++) {
+      const r = (rnd() < 0.9 ? 0.5 : 0.9) * dpr;
+      g.globalAlpha = 0.15 + rnd() * 0.45; g.fillStyle = rnd() < 0.2 ? '#e8efe9' : '#cfdcd5';
+      g.beginPath(); g.arc(rnd() * c.width, rnd() * c.height, r, 0, Math.PI * 2); g.fill();
+    }
+  }
+  drawStars(); addEventListener('resize', drawStars);
+
+  /* ---- Visor Cesium sin token de ion ---- */
+  const viewer = new Cesium.Viewer('globe', {
+    baseLayer: false, baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false,
+    navigationHelpButton: false, animation: false, timeline: false, fullscreenButton: false, infoBox: false,
+    selectionIndicator: false, skyBox: false, creditContainer: $('cesium-credits'),
+    contextOptions: { webgl: { alpha: true, preserveDrawingBuffer: true } }
+  });
+  const scene = viewer.scene; const globe = scene.globe;
+  scene.backgroundColor = Cesium.Color.TRANSPARENT;
+  scene.skyAtmosphere.show = true;
+  scene.skyAtmosphere.brightnessShift = 0.35;
+  scene.skyAtmosphere.saturationShift = 0.15;
+  globe.enableLighting = true;
+  globe.dynamicAtmosphereLighting = true;
+  globe.dynamicAtmosphereLightingFromSun = true;
+  globe.showGroundAtmosphere = true;
+  globe.baseColor = Cesium.Color.fromCssColorString('#06100f');
+  if (scene.moon) scene.moon.show = false;
+  if (!scene.sun) scene.sun = new Cesium.Sun();
+
+  const gibs = (layer) => new Cesium.WebMapTileServiceImageryProvider({
+    url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/' + layer + '/default/default/GoogleMapsCompatible_Level8/{TileMatrix}/{TileRow}/{TileCol}.jpeg',
+    layer: layer, style: 'default', format: 'image/jpeg', tileMatrixSetID: 'GoogleMapsCompatible_Level8',
+    maximumLevel: 8, tilingScheme: new Cesium.WebMercatorTilingScheme(),
+    credit: new Cesium.Credit('NASA GIBS')
+  });
+  const dayProvider = gibs('BlueMarble_ShadedRelief_Bathymetry');
+  const day = viewer.imageryLayers.addImageryProvider(dayProvider);
+  day.dayAlpha = 1; day.nightAlpha = 0.55; day.brightness = 1.05; day.saturation = 0.9;
+  const night = viewer.imageryLayers.addImageryProvider(gibs('VIIRS_CityLights_2012'));
+  night.dayAlpha = 0; night.nightAlpha = 1; night.brightness = 1.6; night.contrast = 1.2;
+
+  let dayErrors = 0; let fellBack = false;
+  dayProvider.errorEvent.addEventListener(async function () {
+    if (fellBack || ++dayErrors < 6) return;
+    fellBack = true;
+    const fallback = await Cesium.TileMapServiceImageryProvider.fromUrl(Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'));
+    viewer.imageryLayers.remove(day, false);
+    const l = viewer.imageryLayers.addImageryProvider(fallback, 0); l.nightAlpha = 1;
+    $('tm-map').textContent = 'Natural Earth II';
+  });
+
+  let grid = null;
+  function toggleGrid() {
+    if (grid) { viewer.imageryLayers.remove(grid, true); grid = null; }
+    else {
+      grid = viewer.imageryLayers.addImageryProvider(new Cesium.GridImageryProvider({
+        cells: 4, color: Cesium.Color.fromCssColorString('#a6d7c2').withAlpha(0.35), glowColor: Cesium.Color.TRANSPARENT, backgroundColor: Cesium.Color.TRANSPARENT
+      }));
+    }
+    $('cam-grid').setAttribute('aria-pressed', String(!!grid));
+  }
+
+  /* Reloj real: el terminador corresponde a este instante */
+  viewer.clock.currentTime = Cesium.JulianDate.now();
+  viewer.clock.shouldAnimate = true; viewer.clock.multiplier = 1;
+  viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK_MULTIPLIER;
+
+  /* ---- Marcadores sintéticos (DEMO) ---- */
+  let seed = 42; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const satColor = Cesium.Color.fromCssColorString('#eef1e9').withAlpha(0.8);
+  const sats = [];
+  for (let i = 0; i < 40; i++) {
+    const alt = i < 30 ? 450e3 + rnd() * 900e3 : 1.8e6 + rnd() * 6e6;
+    const e = viewer.entities.add({
+      id: 'demo-sat-' + i,
+      position: Cesium.Cartesian3.fromDegrees(rnd() * 360 - 180, rnd() * 140 - 70, alt),
+      point: { pixelSize: i < 30 ? 3 : 2.5, color: satColor, outlineWidth: 0 }
+    });
+    sats.push(e);
+  }
+  const quakeData = [
+    { place: 'Costa de Chile central', lon: -72.1, lat: -33.2, m: 5.4, h: 3 },
+    { place: 'Honshu, Japón', lon: 142.4, lat: 37.9, m: 4.7, h: 7 },
+    { place: 'Sumatra, Indonesia', lon: 97.8, lat: 2.1, m: 5.9, h: 11 },
+    { place: 'Oaxaca, México', lon: -96.8, lat: 15.9, m: 4.2, h: 14 },
+    { place: 'Islas Aleutianas, Alaska', lon: -175.2, lat: 51.6, m: 3.8, h: 18 },
+    { place: 'Anatolia oriental, Turquía', lon: 38.3, lat: 38.4, m: 2.9, h: 22 }
+  ];
+  const amber = Cesium.Color.fromCssColorString('#e6b46d');
+  const quakes = quakeData.map((q, i) => viewer.entities.add({
+    id: 'demo-quake-' + i,
+    position: Cesium.Cartesian3.fromDegrees(q.lon, q.lat, 0),
+    point: { pixelSize: 4 + (q.m - 2.5) * 3, color: amber.withAlpha(0.85), outlineColor: amber.withAlpha(0.25), outlineWidth: 6 }
+  }));
+  $('quake-list').innerHTML = '';
+  quakeData.slice().sort((a, b) => a.h - b.h).forEach((q) => {
+    const li = document.createElement('li');
+    const m = document.createElement('span'); m.className = 'mag'; m.textContent = q.m.toFixed(1);
+    const p = document.createElement('span'); p.className = 'place'; p.textContent = q.place;
+    const w = document.createElement('span'); w.className = 'when'; w.textContent = 'hace ' + q.h + ' h';
+    li.append(m, p, w); $('quake-list').append(li);
+  });
+
+  /* ISS: posición ilustrativa sobre una órbita de 51.6° (no es TLE) */
+  const ISS = { lon: -38.0, lat: 27.0, alt: 420e3 };
+  const issPos = Cesium.Cartesian3.fromDegrees(ISS.lon, ISS.lat, ISS.alt);
+  const issEntity = viewer.entities.add({
+    id: 'iss', name: 'ISS', position: issPos,
+    point: { pixelSize: 7, color: Cesium.Color.fromCssColorString('#a6d7c2'), outlineColor: Cesium.Color.fromCssColorString('#a6d7c2').withAlpha(0.3), outlineWidth: 8 },
+    label: {
+      text: 'ISS  ·  DEMO', font: '500 13px "Space Grotesk", sans-serif', fillColor: Cesium.Color.fromCssColorString('#eef1e9'),
+      showBackground: true, backgroundColor: Cesium.Color.fromCssColorString('#071110').withAlpha(0.8), backgroundPadding: new Cesium.Cartesian2(8, 5),
+      pixelOffset: new Cesium.Cartesian2(14, -14), horizontalOrigin: Cesium.HorizontalOrigin.LEFT, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, show: false
+    }
+  });
+  // Órbita circular inclinada 51.6° que pasa por la posición ilustrativa.
+  const orbit = (function () {
+    const inc = Cesium.Math.toRadians(51.6); const lat0 = Cesium.Math.toRadians(ISS.lat);
+    const u0 = Math.asin(Math.sin(lat0) / Math.sin(inc));
+    const node = Cesium.Math.toRadians(ISS.lon) - Math.atan2(Math.cos(inc) * Math.sin(u0), Math.cos(u0));
+    const pts = [];
+    for (let k = 0; k <= 180; k++) {
+      const u = u0 + (k / 180) * Math.PI * 2;
+      const lat = Math.asin(Math.sin(inc) * Math.sin(u));
+      const lon = node + Math.atan2(Math.cos(inc) * Math.sin(u), Math.cos(u));
+      pts.push(Cesium.Cartesian3.fromRadians(lon, lat, ISS.alt));
+    }
+    return viewer.entities.add({
+      id: 'iss-orbit', show: false,
+      polyline: { positions: pts, width: 1.5, material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.fromCssColorString('#a6d7c2').withAlpha(0.7), dashLength: 14 }) }
+    });
+  })();
+  $('iss-ll').textContent = ISS.lat.toFixed(1) + '° / ' + ISS.lon.toFixed(1) + '°';
+
+  /* ---- Cámara: vista inicial que siempre enseña el terminador ---- */
+  function subsolarLon() {
+    const d = new Date(); const h = d.getUTCHours() + d.getUTCMinutes() / 60;
+    return ((12 - h) * 15 + 540) % 360 - 180;
+  }
+  /* Altura de cámara para que el globo ocupe `fill` del lado menor del contenedor */
+  let band = null; // alto útil (px) en móvil: entre titular y hoja
+  function fitHeight(fill) {
+    const el = $('globe'); const w = el.clientWidth; const h = el.clientHeight;
+    const fov = viewer.camera.frustum.fov || Cesium.Math.toRadians(60); const aspect = w / h;
+    const fovy = aspect <= 1 ? fov : 2 * Math.atan(Math.tan(fov / 2) / aspect);
+    const size = fill * Math.min(w, band || h);
+    const half = Math.atan(Math.tan(fovy / 2) * size / h);
+    const R = 6371e3; return R / Math.sin(half) - R;
+  }
+  function homeDest() {
+    const lon = ((subsolarLon() + 55 + 540) % 360) - 180;
+    return Cesium.Cartesian3.fromDegrees(lon, 18, fitHeight(isPhone() ? 0.9 : 0.74));
+  }
+  /* Móvil: el globo vive entre el titular y la hoja inferior */
+  function layoutPhone() {
+    const g = $('globe');
+    if (!isPhone()) { g.style.height = ''; band = null; return; }
+    const top = $('story-swap').getBoundingClientRect().bottom + 6;
+    const bottom = $('panel').getBoundingClientRect().top - 6;
+    band = Math.max(160, bottom - top);
+    // Contenedor centrado en la franja libre, sin recorte visible: se extiende bajo la hoja.
+    g.style.height = Math.round(top + bottom) + 'px';
+    document.documentElement.style.setProperty('--globe-top', top + 'px');
+  }
+  layoutPhone();
+  addEventListener('resize', layoutPhone);
+  function flyHome(duration) {
+    viewer.trackedEntity = undefined;
+    viewer.camera.flyTo({ destination: homeDest(), orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 }, duration: reduceMotion ? 0 : duration, easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT });
+  }
+
+  function endIntro() { document.body.classList.remove('intro'); }
+  if (reduceMotion) { viewer.camera.setView({ destination: homeDest() }); endIntro(); }
+  else {
+    const from = Cesium.Cartesian3.fromDegrees(((subsolarLon() + 110 + 540) % 360) - 180, 30, 95e6);
+    viewer.camera.setView({ destination: from });
+    viewer.camera.flyTo({ destination: homeDest(), duration: 2.6, easingFunction: Cesium.EasingFunction.CUBIC_OUT });
+    setTimeout(endIntro, 1500);
+  }
+
+  /* ---- Telemetría real de cámara ---- */
+  const fmt = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 });
+  function updateTelemetry() {
+    const c = viewer.camera.positionCartographic;
+    const lat = Cesium.Math.toDegrees(c.latitude); const lon = Cesium.Math.toDegrees(c.longitude);
+    $('tm-ll').textContent = Math.abs(lat).toFixed(2) + '° ' + (lat >= 0 ? 'N' : 'S') + '  ' + Math.abs(lon).toFixed(2) + '° ' + (lon >= 0 ? 'E' : 'O');
+    $('tm-h').textContent = fmt.format(c.height / 1000) + ' km';
+    const hd = (Cesium.Math.toDegrees(viewer.camera.heading) + 360) % 360;
+    $('tm-hd').textContent = hd.toFixed(0) + '°';
+    $('needle').style.transform = 'rotate(' + (-hd) + 'deg)';
+    $('compass').setAttribute('aria-label', 'Rumbo de cámara ' + hd.toFixed(0) + '°');
+  }
+  viewer.camera.percentageChanged = 0.001;
+  viewer.camera.changed.addEventListener(updateTelemetry);
+  updateTelemetry();
+
+  /* ---- Tiempo ---- */
+  const speeds = [1, 60, 600, 3600]; let speedIdx = 0;
+  function renderClock() {
+    const d = Cesium.JulianDate.toDate(viewer.clock.currentTime);
+    const iso = d.toISOString();
+    const drift = Math.abs(Date.now() - d.getTime());
+    const live = viewer.clock.shouldAnimate && viewer.clock.multiplier === 1 && drift < 5000;
+    $('clock-t').textContent = (live ? '' : iso.slice(0, 10) + ' ') + iso.slice(11, 19) + ' UTC';
+    $('clock-mode').textContent = live ? 'Reloj en vivo' : (viewer.clock.shouldAnimate ? 'Diferido' : 'En pausa');
+    $('clock').className = 'clock ' + (live ? 'live' : (viewer.clock.shouldAnimate ? '' : 'paused'));
+    $('t-now').disabled = live;
+  }
+  setInterval(renderClock, 250); renderClock();
+  $('t-pause').addEventListener('click', () => {
+    viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate;
+    $('t-pause').setAttribute('aria-pressed', String(!viewer.clock.shouldAnimate));
+    $('t-pause').textContent = viewer.clock.shouldAnimate ? 'Pausa' : 'Reanudar';
+    renderClock();
+  });
+  $('t-speed').addEventListener('click', () => {
+    speedIdx = (speedIdx + 1) % speeds.length; viewer.clock.multiplier = speeds[speedIdx];
+    $('t-speed').textContent = 'Avance ×' + speeds[speedIdx]; renderClock();
+  });
+  $('t-now').addEventListener('click', () => {
+    viewer.clock.currentTime = Cesium.JulianDate.now(); viewer.clock.multiplier = 1; speedIdx = 0; viewer.clock.shouldAnimate = true;
+    $('t-speed').textContent = 'Avance ×1'; $('t-pause').textContent = 'Pausa'; $('t-pause').setAttribute('aria-pressed', 'false'); renderClock();
+  });
+  $('t-date').addEventListener('click', () => { const i = $('t-date-input'); try { i.showPicker(); } catch (e) { i.focus(); } });
+  $('t-date-input').addEventListener('change', (ev) => {
+    if (!ev.target.value) return;
+    const now = new Date(); const d = new Date(ev.target.value + 'T' + now.toISOString().slice(11, 19) + 'Z');
+    viewer.clock.currentTime = Cesium.JulianDate.fromDate(d); renderClock();
+  });
+
+  /* ---- Toast ---- */
+  let toastTimer = 0;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2400); }
+
+  /* ---- Estados: sin selección / ISS ---- */
+  let state = 'none';
+  function swapStory(fn) {
+    const el = $('story-swap');
+    if (reduceMotion) { fn(); return; }
+    el.classList.add('out'); setTimeout(() => { fn(); el.classList.remove('out'); }, 200);
+  }
+  function setState(next, opts) {
+    if (next === state && !(opts && opts.force)) return;
+    state = next;
+    document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === next)));
+    const sel = next === 'iss';
+    issEntity.label.show = sel; orbit.show = sel;
+    $('signals').hidden = sel; $('dock').hidden = !sel;
+    swapStory(() => {
+      if (sel) {
+        $('kicker-text').textContent = 'Objetivo · satélite tripulado';
+        $('headline').innerHTML = 'Estación Espacial<br><em>Internacional</em>';
+        $('lede').textContent = 'Órbita baja, 51.6° de inclinación. La posición en esta maqueta es ilustrativa: no se ha consultado ningún TLE.';
+      } else {
+        $('kicker-text').textContent = 'Tierra · luz solar de este instante';
+        $('headline').innerHTML = 'El planeta,<br><em>ahora.</em>';
+        $('lede').textContent = 'Día y noche según la hora real de tu reloj. Las ciudades encendidas son el mapa nocturno VIIRS de NASA; los puntos del globo son sintéticos.';
+      }
+    });
+    requestAnimationFrame(() => { layoutPhone(); setTimeout(layoutPhone, 240); });
+    setTimeout(() => { if (sel) centerIss(1.6); else { setFollow(false); flyHome(1.6); } }, isPhone() ? 260 : 0);
+  }
+  function centerIss(duration) {
+    viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(issPos, 1), {
+      offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-62), isPhone() ? fitHeight(0.9) * 0.55 : 7.5e6),
+      duration: reduceMotion ? 0 : duration
+    });
+  }
+  let following = false;
+  function setFollow(on) {
+    following = on;
+    viewer.trackedEntity = on ? issEntity : undefined;
+    $('act-follow').setAttribute('aria-pressed', String(on));
+    $('cam-badge').textContent = on ? 'Siguiendo a la ISS' : 'Cámara libre';
+    $('cam-detail').textContent = on ? 'La cámara acompaña al objetivo' : 'Arrastra para orbitar alrededor del objetivo';
+  }
+  document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setState(b.dataset.state)));
+  $('dock-close').addEventListener('click', () => setState('none'));
+  $('act-follow').addEventListener('click', () => setFollow(!following));
+  $('act-center').addEventListener('click', () => { setFollow(false); centerIss(1.2); });
+  $('act-north').addEventListener('click', northUp);
+  $('act-more').addEventListener('click', () => {
+    const p = $('panel'); const on = !p.classList.contains('expanded'); p.classList.toggle('expanded', on);
+    $('act-more').setAttribute('aria-expanded', String(on)); $('act-more').textContent = on ? 'Menos' : 'Más';
+  });
+  $('act-inspect').addEventListener('click', () => toast('Inspector detallado: disponible en la app, no en esta maqueta'));
+
+  /* Pestañas con teclado (flechas) */
+  const tabs = ['obj', 'med', 'ops'];
+  function selectTab(id, focus) {
+    tabs.forEach((t) => {
+      const on = t === id; const tab = $('tab-' + t);
+      tab.setAttribute('aria-selected', String(on)); tab.tabIndex = on ? 0 : -1; $('pane-' + t).hidden = !on;
+      if (on && focus) tab.focus();
+    });
+  }
+  tabs.forEach((t, i) => {
+    const tab = $('tab-' + t);
+    tab.addEventListener('click', () => selectTab(t));
+    tab.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') selectTab(tabs[(i + 1) % 3], true);
+      if (e.key === 'ArrowLeft') selectTab(tabs[(i + 2) % 3], true);
+    });
+  });
+
+  /* ---- Controles de cámara ---- */
+  function northUp() {
+    const c = viewer.camera.positionCartographic;
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height), orientation: { heading: 0, pitch: viewer.camera.pitch, roll: 0 }, duration: reduceMotion ? 0 : 0.6 });
+  }
+  const zoomStep = () => viewer.camera.positionCartographic.height * 0.35;
+  $('cam-in').addEventListener('click', () => viewer.camera.zoomIn(zoomStep()));
+  $('cam-out').addEventListener('click', () => viewer.camera.zoomOut(zoomStep()));
+  $('cam-home').addEventListener('click', () => { setFollow(false); flyHome(1.4); });
+  $('cam-north').addEventListener('click', northUp);
+  $('cam-grid').addEventListener('click', toggleGrid);
+  $('cam-clean').addEventListener('click', () => { document.body.classList.add('clean'); $('show-ui').focus(); });
+  $('show-ui').addEventListener('click', () => { document.body.classList.remove('clean'); $('cam-clean').focus(); });
+
+  /* ---- Capas ---- */
+  const layerEntities = { sats: sats, quakes: quakes };
+  document.querySelectorAll('.layer').forEach((row) => {
+    const btn = row.querySelector('button');
+    btn.addEventListener('click', () => {
+      const off = !row.classList.contains('off'); row.classList.toggle('off', off);
+      layerEntities[row.dataset.layer].forEach((e) => { e.show = !off; });
+      btn.textContent = off ? 'Encender' : 'Apagar'; btn.setAttribute('aria-pressed', String(off));
+      $('layer-count').textContent = document.querySelectorAll('.layer:not(.off)').length;
+    });
+  });
+  $('add-btn').addEventListener('click', () => {
+    const open = !$('add-pop').classList.contains('open'); $('add-pop').classList.toggle('open', open); $('add-btn').setAttribute('aria-expanded', String(open));
+  });
+
+  /* ---- Picking ---- */
+  const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+  handler.setInputAction((ev) => {
+    const picked = scene.pick(ev.position);
+    const id = picked && picked.id && picked.id.id;
+    if (id === 'iss') setState('iss');
+    else if (id && id.indexOf('demo-') === 0) toast('Punto sintético (DEMO): sin ficha. Prueba con la ISS.');
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  /* ---- Búsqueda ---- */
+  $('search').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = $('q').value.trim();
+    const m = q.match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
+    if (/^(iss|estaci)/i.test(q)) setState('iss');
+    else if (m && Math.abs(+m[1]) <= 90 && Math.abs(+m[2]) <= 180) {
+      viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(+m[2], +m[1], 2.5e6), duration: reduceMotion ? 0 : 1.6 });
+    } else if (q) toast('Sin resultados para “' + q + '” en esta maqueta');
+  });
+  $('search').addEventListener('click', () => { if (isPhone()) { $('search').classList.add('open'); $('q').focus(); } });
+  $('q').addEventListener('blur', () => $('search').classList.remove('open'));
+  addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('q').focus(); }
+    if (e.key === 'Escape') {
+      if (document.body.classList.contains('clean')) document.body.classList.remove('clean');
+      else if ($('add-pop').classList.contains('open')) $('add-btn').click();
+      else if (state === 'iss') setState('none');
+    }
+  });
+
+  /* Estado inicial por URL (?state=iss) para revisión */
+  if (new URLSearchParams(location.search).get('state') === 'iss') setTimeout(() => setState('iss'), reduceMotion ? 0 : 2700);
+
+  window.__eye = { viewer: viewer, setState: setState };
+})();
+</script>
+</body>
+</html>
