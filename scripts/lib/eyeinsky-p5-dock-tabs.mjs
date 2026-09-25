@@ -10,6 +10,7 @@ import {
   FLIGHT_MS,
   MIN_TARGET_PX,
   MIN_TEXT_PX,
+  MIN_TEXT_PX_PHONE,
   aimProbe,
   moonAction,
   readHeaderTargets,
@@ -27,11 +28,14 @@ const MOBILE = Object.freeze({
 });
 const APP_ONLY = Object.freeze({ enableSatellites: false, requireNorad: null });
 
-/** Todo alcanzable, ≥ 44 px, texto ≥ 13 px y sin scroll horizontal. */
-export const targetsOk = (m) =>
+/**
+ * Todo alcanzable, ≥ 44 px, texto ≥ `minText` (13 px escritorio, 14 px
+ * teléfono: el mismo umbral que P3-11) y sin scroll horizontal.
+ */
+export const targetsOk = (m, minText = MIN_TEXT_PX) =>
   !m.horizontalScroll &&
   m.targets.length > 0 &&
-  m.minText >= MIN_TEXT_PX &&
+  m.minText >= minText &&
   m.targets.every(
     (t) =>
       t.inside &&
@@ -88,7 +92,7 @@ async function mobileProbe(page) {
   return { targets, active, system: sys.lastFraming, notice };
 }
 
-/** Móvil 390×844 (táctil): cabecera ≥ 44 px, texto ≥ 13 px; SISTEMA encuadra o avisa. */
+/** Móvil 390×844 (táctil): cabecera ≥ 44 px, texto ≥ 14 px; SISTEMA encuadra o avisa. */
 export async function checkMobile({ browser, baseUrl, result, check, shot }) {
   const { page, tab } = await openTab(browser, baseUrl, MOBILE);
   try {
@@ -99,13 +103,14 @@ export async function checkMobile({ browser, baseUrl, result, check, shot }) {
     );
     check(
       'mobile-390x844-targets',
-      targetsOk(targets) && targets.targets.some((t) => t.label === 'SISTEMA'),
+      targetsOk(targets, MIN_TEXT_PX_PHONE) &&
+        targets.targets.some((t) => t.label === 'SISTEMA'),
       `${targets.targets.length} objetivos [${targets.targets.map((t) => t.label)}]; mín. ${smallest.toFixed(1)} px; texto mín. ${targets.minText} px; scroll horizontal ${targets.horizontalScroll}`,
       ['P5-17'],
     );
     check(
       'mobile-390x844-active-layer-off',
-      targetsOk(active) &&
+      targetsOk(active, MIN_TEXT_PX_PHONE) &&
         active.targets.some((t) => /^Apagar Luna/.test(t.label)),
       active.targets
         .map(
@@ -128,7 +133,10 @@ export async function checkMobile({ browser, baseUrl, result, check, shot }) {
       'mobile-keyboard-focus',
       keyboard.every((step) => step.inside),
       keyboard
-        .map((step) => `${step.id} → ${step.tag} «${step.label ?? ''}»`)
+        .map(
+          (step) =>
+            `${step.id} → ${step.tag} «${step.label ?? ''}» (antes: ${JSON.stringify(step.pre)})`,
+        )
         .join('; '),
       ['P5-17'],
     );

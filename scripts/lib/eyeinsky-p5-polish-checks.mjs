@@ -41,13 +41,22 @@ const blurAll = (page) =>
     document.body.focus?.();
   });
 
-/** Cámara de vuelta al globo completo (la Luna lejos del centro). */
+/**
+ * Cámara de vuelta al globo completo con la Luna lejos del centro: sobre la
+ * longitud a 90° de la sublunar. Una longitud fija dejaba a ciertas horas la
+ * Luna casi detrás de la Tierra (≈ 18° del eje) y la precondición `> 20°`
+ * fallaba según la hora de la corrida, no por la app.
+ */
 const earthView = (page) =>
   page.evaluate(() => {
     const g = window.__godsEyeView;
+    const st = g.moon.getState();
+    const m = st.status === 'ok' ? st.positionFixedM : null;
+    const moonLon = m ? (Math.atan2(m.y, m.x) * 180) / Math.PI : -190;
+    const lon = ((moonLon + 90 + 540) % 360) - 180;
     g.viewer.camera.frustum.fov = Math.PI / 3;
     g.viewer.camera.setView({
-      destination: window.__CESIUM__.Cartesian3.fromDegrees(-100, 20, 2.2e7),
+      destination: window.__CESIUM__.Cartesian3.fromDegrees(lon, 20, 2.2e7),
     });
     g.requestRender('p5-polish');
   });

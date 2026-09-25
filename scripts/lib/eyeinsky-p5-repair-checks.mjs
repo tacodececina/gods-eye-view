@@ -135,6 +135,7 @@ export async function mobileKeyboardProbe(page) {
       dock.querySelector('[data-eye-dock-action="more"]')?.click();
   });
   await settle(page, 600);
+  const aimPre = await page.evaluate(dockPrecondition, moonButton('aim-moon'));
   const aim = await keyboardActivate(page, moonButton('aim-moon'), FLIGHT_MS);
   await page.evaluate(() => {
     const dock = document.getElementById('eye-mission-dock');
@@ -142,13 +143,33 @@ export async function mobileKeyboardProbe(page) {
       dock.querySelector('[data-eye-dock-action="more"]')?.click();
   });
   await settle(page, 600);
+  const backPre = await page.evaluate(
+    dockPrecondition,
+    moonButton('return-to-earth'),
+  );
   const back = await keyboardActivate(
     page,
     moonButton('return-to-earth'),
     FLIGHT_MS + 600,
   );
   return [
-    { id: 'aim-moon', ...aim },
-    { id: 'return-to-earth', ...back },
+    { id: 'aim-moon', ...aim, pre: aimPre },
+    { id: 'return-to-earth', ...back, pre: backPre },
   ];
+}
+
+/**
+ * Estado justo antes de la tecla (diagnóstico de `mobile-keyboard-focus`):
+ * dock desplegado, botón visible/habilitado y foco previo. Si el botón no se
+ * ve, `page.focus` no lo enfoca y el Enter no llega a la acción.
+ */
+function dockPrecondition(selector) {
+  const dock = document.getElementById('eye-mission-dock');
+  const button = document.querySelector(selector);
+  return {
+    expanded: dock?.dataset.expanded ?? null,
+    visible: Boolean(button?.getClientRects().length),
+    disabled: Boolean(button?.disabled),
+    active: document.activeElement?.tagName ?? null,
+  };
 }

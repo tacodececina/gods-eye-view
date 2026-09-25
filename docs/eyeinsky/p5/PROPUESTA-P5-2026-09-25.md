@@ -322,6 +322,29 @@ Son unas **7 jornadas**: el techo del rango 4–7 del plan maestro. Si hay que r
 | P5-17 | En 390×844 y 1920×1080: botones ≥44 px, retícula y reduced-motion                                                           | arnés; teléfono físico o límite declarado                                                       |
 | P5-18 | Procedencia registrada en el ledger y en `DATA_SOURCES.md`                                                                  | revisión                                                                                        |
 
+### Estado al cierre (2026-09-25, aceptada por KRÓNOS con dos criterios de rendimiento no resolubles)
+
+Evidencia local, no versionada, bajo `output/eyeinsky-p5/`. «Arnés» = `scripts/eyeinsky-p5.mjs`, 38/38 en `final/p5/` sobre HEAD `1a929b1` (ANGLE, Radeon 890M). Los ids entre comillas son checks del arnés.
+
+- [x] **P5-01:** `t2/summary.json` y test T3; revalidación de 20 años con máx 0,035 km en float32 (175.488 medias horas, fronteras ±60 s y 265 perigeos), dentro del gate de 1 km / 0,01′. Tabla de 120.792 B.
+- [x] **P5-02:** test `timeScales`; UTC evaluado como TDB falla y la vía TDB pasa. ΔT desde `JulianDate.leapSeconds`.
+- [x] **P5-03:** arnés, `frame-gate-p503` y `sublunar-vs-horizons`: 0,035′ frente a puntos sublunares ITRF de Horizons, con corrección de tiempo de luz; `icrf-fixed-ready`. Guarda contra TEME y contra Simon1994 para la Luna en `src/`.
+- [x] **P5-04:** arnés, `date-field-seek`, `paused-seek-repaints` y `clock-advances`: Luna, Sol, luz y rótulos leen el mismo `JulianDate`; enlace `t=ISO` con el rango leído de la tabla.
+- [x] **P5-05:** test `sceneClock` y arnés (`clock-advances`, `resume-after-live-pause`, `ahora-restores-layers`): pausa congela, avance ×1…×3600, AHORA vuelve a vivo con resincronización suave.
+- [x] **P5-06:** arnés, `moon-native-off` y `ring-moon-matches-3d`.
+- [x] **P5-07:** test `scaleMode` y arnés `moon-didactic-x10-band` / `didactic-toggle`: sólo el radio ×10, con banda, no medible; sin `lm` el modo es físico.
+- [x] **P5-08:** test; WGS84 intacto tras alternar modo y contexto.
+- [x] **P5-09:** arnés `p509-out-of-range-pauses` y tests. Con el respaldo astronomy-engine `GeoMoon` (rotulado «≤20 km», barrido denso máx 16,07 km, chunk aparte) la Luna fuera de rango se muestra rotulada; sin respaldo, ausencia visible y PAUSA. Límite: un enlace fuera de rango con la Luna apagada y la tabla sin cargar no pausa.
+- [x] **P5-10:** test `frames` y arnés `disabled-reasons-frame`: «CARGANDO/SIN MARCO», sin fallback TEME.
+- [x] **P5-11:** test del modelo del dock y arnés `sim-suspends-live-layers`, `ahora-restores-layers` y `sim-aim-now-return-keeps-live`; pausa en vivo > 60 s anunciada (`pause-suspension-notice`).
+- [x] **P5-12:** arnés, `aim-moon`, `return-to-earth-restores-state` y `keyboard-focus-stays-in-dock`; el Director restaura el reloj.
+- [x] **P5-13:** arnés, `moon-20-cycles-no-orphans`: 20 ciclos sin fugas de texturas, buffers, listeners ni primitivas.
+- [x] **P5-14:** tests T5 y arnés `moon-terminator-illu`; orientación IAU síncrona a 0,009° de MOON_ME (rotulada aproximada, no ME/PA).
+- [x] **P5-15:** regresión final en secuencia sobre el árbol de `1a929b1` + regfix (`output/eyeinsky-p5/regfix/final2/`, 2026-09-25 18:28–18:41 UTC): p5 38/38, p31 15/15, p4 42/42, p3 30/30, p012 23/23, cámara adversa 9/9, cockpit 4/4, smoke sin fallos, mobile 12/12, focus 12/12, journey 25/25 y states 19/19 (todos exit 0; cámara adversa re-ejecutada tras un fallo de arranque de Chrome «browser is already running» con perfil temporal nuevo, log en `camera-adverse-launchfail.log`). Gates en `final2/gates/`: `npm test` 4.775 tests (4.765 pass, 10 skip de plataforma, 0 fail), build, doctor, format:check y check:boundaries en verde. La regresión p3 27/30 de `final/p3/` (texto de 13 px en la tira TIEMPO y las acciones Tierra–Luna en móvil) se cerró con `--eye-earth-moon-text` (14 px en teléfono) y `.eyeinsky .eye-time-field`; test `src/ui/eyeinskyEarthMoonType.test.mjs`. Límite: el Vite de desarrollo compartido rechaza a veces conexiones de loopback bajo carga y puede hacer fallar un arnés de forma no determinista (no es código de `src/`).
+- [x] **P5-16, cumple parcial: 4/6 criterios, 2 no resolubles.** `perf-clean/` (GPD Win 4, modo `windows`, 69–73 °C en ventana, n=3 intercaladas, vista de P4, condiciones comparables con P4 `perf-repeat`): M1 y M2 ≤ A+3 ms (Δp95 −0,5 y −2,0 ms), S con 0 long tasks y heap ≤ +2 MiB, y E comandos = A cumplen. A′−A Δp95 (mediana −0,4 ms; +1,3 ms en una ronda con una sesión Playwright ajena) y el heap de E (+0,5…+1,5 MiB residual tras apagar, no atribuido) son no resolubles. Sin FPS. Detalle en `docs/PERFORMANCE.md`.
+- [x] **P5-17:** arnés, `mobile-390x844-targets`, `mobile-390x844-active-layer-off`, `mobile-system-frames-or-warns`, `mobile-keyboard-focus`, `mobile-sim-readout-fits`, `reduced-motion-cuts` y `zoom-200-time-strip`. Teléfono físico: límite declarado en `LIMITES-MOVIL.md`. El umbral de texto en teléfono es 14 px en ambos arneses (P3 y P5, `MIN_TEXT_PX_PHONE`).
+- [x] **P5-18:** `ASSET-LEDGER.md` §1–6, `sources-ledger.json`, `asset-manifest.json` y `DATA_SOURCES.md`: DE441 (dominio público sin verificar, siempre atribuido), astronomy-engine (MIT), placeholder propio y textura NASA SVS 4720 (dominio público verificado, crédito SVS en la app).
+
 ## 10. Riesgos y lo que NO haremos
 
 **Riesgos:**

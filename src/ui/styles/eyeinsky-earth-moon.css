@@ -2,8 +2,21 @@
  * EYEINSKY P5 T8 · Tierra–Luna en el Mission Dock.
  * Tira TIEMPO (verde EN VIVO, ámbar SIMULACIÓN), acciones de la Luna con su
  * motivo visible, notas «sin histórico» y retícula de tamaño FIJO.
- * Objetivos táctiles ≥ 44 px en pantallas estrechas; texto ≥ 13 px.
+ * Objetivos táctiles ≥ 44 px en pantallas estrechas; texto ≥ 13 px en
+ * escritorio y ≥ 14 px en teléfono (el mismo mínimo que exige P3-11).
  */
+
+:root {
+  /* Un solo tamaño de texto para la tira TIEMPO y las acciones Tierra–Luna. */
+  --eye-earth-moon-text: 13px;
+}
+
+/* Teléfono (estrecho o apaisado bajo): texto ≥ 14 px, como exige P3-11. */
+@media (max-width: 650px), (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --eye-earth-moon-text: 14px;
+  }
+}
 
 .eyeinsky .eye-visually-hidden {
   position: absolute;
@@ -28,7 +41,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 /* Una sola fila: lectura, PAUSA, AVANCE, AHORA y FECHA; el campo de fecha se
@@ -78,7 +91,7 @@
   margin: 0;
   gap: 6px 10px;
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 .eye-time-suspension[hidden] {
@@ -111,7 +124,7 @@
   min-width: 44px;
   min-height: 44px;
   padding: 6px 10px;
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -129,11 +142,11 @@
   gap: 6px;
 }
 
-.eye-time-field {
+.eyeinsky .eye-time-field {
   display: flex;
   align-items: center;
   color: var(--text-dim);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
   gap: 6px;
 }
 
@@ -145,7 +158,7 @@
   border-radius: var(--eye-radius-small);
   background: rgb(6 16 14 / 70%);
   color: var(--text-primary);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
   color-scheme: dark;
 }
 
@@ -157,7 +170,7 @@
 .eye-moon-reason {
   margin: 0;
   color: var(--eye-danger);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 .eye-moon-reason {
@@ -171,7 +184,7 @@
 .eye-moon-notice {
   margin: 0;
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 .eye-time-notes {
@@ -183,7 +196,7 @@
   gap: 4px 14px;
   list-style: none;
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 .eye-moon-actions {
@@ -196,7 +209,7 @@
 .eye-active-note {
   display: block;
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
 }
 
 [data-eye-active-suspended] {
@@ -262,7 +275,7 @@
   border-radius: 4px;
   background: rgb(6 16 14 / 78%);
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
   white-space: nowrap;
 }
 
@@ -370,7 +383,7 @@
   border-radius: 999px;
   background: rgb(6 16 14 / 60%);
   color: #8fe0b0;
-  font: 500 13px var(--font-mono);
+  font: 500 var(--eye-earth-moon-text) var(--font-mono);
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
@@ -423,7 +436,7 @@
   border-radius: 8px;
   background: rgb(6 16 14 / 86%);
   color: var(--eye-amber);
-  font: 13px var(--font-mono);
+  font: var(--eye-earth-moon-text) var(--font-mono);
   letter-spacing: 0.08em;
   pointer-events: none;
   text-align: center;

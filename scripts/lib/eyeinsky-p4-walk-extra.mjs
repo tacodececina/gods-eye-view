@@ -206,7 +206,14 @@ async function faultCase(ctx, page, id, fault) {
   );
 }
 
-/** Trazas de órbita (polilíneas de la capa) presentes en la escena. */
+/**
+ * Trazas de órbita de la capa presentes en la escena: Primitive con
+ * PolylineColorAppearance Y depthFailAppearance del mismo tipo (tramo tras la
+ * Tierra atenuado, layers/satellites/rendering.js). La retícula del shell
+ * (entidades `eyeinsky-graticule`) también pinta con PolylineColorAppearance,
+ * pero sin depthFail; su lote se construye asíncrono y, si terminaba entre
+ * «antes» y «después», el conteo saltaba 1→2 sin que ninguna órbita cambiara.
+ */
 const orbitPathCount = (page) =>
   page.evaluate(() => {
     const C = window.__CESIUM__;
@@ -217,7 +224,11 @@ const orbitPathCount = (page) =>
         for (let i = 0; i < p.length; i += 1) walk(p.get(i));
         return;
       }
-      if (p.appearance instanceof C.PolylineColorAppearance && p.show)
+      if (
+        p.appearance instanceof C.PolylineColorAppearance &&
+        p.depthFailAppearance instanceof C.PolylineColorAppearance &&
+        p.show
+      )
         count += 1;
     };
     walk(window.__godsEyeView.viewer.scene.primitives);

@@ -29,15 +29,20 @@ npm run check:boundaries  # dirección de imports + fronteras de paquete
 node --test ruta/al/archivo.test.mjs   # test puntual
 ```
 
-Arneses Puppeteer de navegador: `scripts/eyeinsky-*.mjs` (p31, p3, p012,
-camera-adverse, p012-cockpit, smoke, ...). Nunca arrancan servidor; apúntalos a
-uno vivo. Los antiguos leen `EYE_URL` (y `EYE_OUT`); los de fase reciben URL y
+Arneses Puppeteer de navegador: `scripts/eyeinsky-*.mjs` (p5, p4, p31, p3,
+p012, camera-adverse, p012-cockpit, smoke, ...). Nunca arrancan servidor;
+apúntalos a uno vivo. Los antiguos leen `EYE_URL` (y `EYE_OUT`); los de fase reciben URL y
 directorio de salida por argv:
 
 ```sh
 EYE_URL=http://127.0.0.1:4204/ node scripts/eyeinsky-smoke.mjs
 node scripts/eyeinsky-p31.mjs http://127.0.0.1:4204/ output/eyeinsky-p31/run-1
 ```
+
+Atajos de teclado de P5 (sin Ctrl/Meta/Alt y nunca al escribir en un campo,
+salvo Esc): **L** apuntar a la Luna, **Shift+L** sistema Tierra–Luna, **P**
+pausa/reanudar, **N** ahora (vivo), **Esc** cierra el campo FECHA o la hoja TIEMPO y devuelve el foco. Espacio es
+«mantener para hablar» de la voz; no lo reasignes.
 
 Servidor canónico compartido: `http://127.0.0.1:4204/` (Vite dev local, no es
 deployment). Compruébalo con `curl` antes de usarlo; no lo mates ni lances otro
@@ -100,17 +105,22 @@ arregla la causa; no se salta ni se silencia.
 | `docs/eyeinsky/`                                         | `FASES.md`, `planning/`, `p3/`, entregas y evidencia documentada                     |
 | `docs/superpowers/`                                      | `plans/` y `specs/` de cada fase                                                     |
 
-## Estado de fases (al 2026-09-24)
+## Estado de fases (al 2026-09-25)
 
 - **P0–P3:** hechas y aceptadas técnicamente.
 - **P3.1 (Mission Dock):** hecha y verificada; integrada en `main`.
 - **Fase A (infra):** cerrada; staging privado vivo en `staging.eyeinsky.org`.
 - **P4 (satélites 3D):** hecha y aceptada (2026-09-24) con excepciones
-  aprobadas por Alex, en `eyeinsky/p4-satellites-3d`; pendiente de integrar en
-  `main` y de release a staging. Matriz: `docs/eyeinsky/p4/PROPUESTA-P4-2026-09-24.md`
+  aprobadas por Alex; integrada en `main` (PR #5). Matriz: `docs/eyeinsky/p4/PROPUESTA-P4-2026-09-24.md`
   §9. Candidatos P4.1 en `docs/eyeinsky/FASES.md`.
-- **P5 (Tierra–Luna):** siguiente; efemérides precisas primero.
-- **P6 (Luna explorable), P7:** pendientes.
+- **P5 (Tierra–Luna):** hecha y aceptada (2026-09-25) con dos criterios de
+  rendimiento no resolubles documentados (P5-16: 4/6), en
+  `eyeinsky/p5-tierra-luna`; pendiente de integrar en `main` y de release a
+  staging. Queda abierta la regresión `p3-11-surface-quality` en móvil (p3
+  27/30: texto de 13 px en la tira TIEMPO). Matriz:
+  `docs/eyeinsky/p5/PROPUESTA-P5-2026-09-25.md` §9. Candidatos P5.1 en
+  `docs/eyeinsky/FASES.md`.
+- **P6 (Luna explorable):** siguiente. **P7:** pendiente.
 - Bhote Koshi: aplazado; reintroducirlo exige fase propia.
 
 Fuente de verdad del estado: `EYEINSKY-SESSION.md` y `docs/eyeinsky/FASES.md`.

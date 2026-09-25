@@ -4,7 +4,9 @@ Estado: P0–P3 verificadas localmente al 20sep2026; P3.1 (Mission Dock)
 implementada y verificada localmente al 21sep2026; Fase A de infraestructura
 (arneses, runtime, staging privado en staging.eyeinsky.org) cerrada al
 24sep2026. P4 (satélites 3D) aceptada por KRÓNOS al 24sep2026 con excepciones
-aprobadas por Alex; lo siguiente es P5. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
+aprobadas por Alex. P5 (Tierra–Luna) aceptada por KRÓNOS al 25sep2026 con dos
+criterios de rendimiento no resolubles documentados y una regresión P3 móvil
+abierta; lo siguiente es integrar P5, release a staging y P6. P3 quedó aceptada por supervisión tras gates estáticos, navegador y una regresión RED→GREEN del estado terminal de mapa. Alex autorizó integrar/publicar el código en el fork público; la aceptación estética, la paridad global y un deployment web siguen separados porque el repositorio no tiene destino de despliegue configurado. Detalle maestro: `../superpowers/plans/2026-09-18-eyeinsky-universo-plan-maestro.md`.
 
 ## P0 — cerrada como base y spike técnico
 
@@ -41,7 +43,7 @@ fase. Evidencia local: `output/eyeinsky-p31/` (no versionada).
       siempre visible y cuerpo desplegable con tres paneles — OBJETIVO, MEDIOS
       (sólo si el contexto trae activos) y OPS.
 - [x] La cápsula de Actividad bajo Ayuda pasa a ser la terminal `EYEINSKY OPS //
-    LIVE`, tercer panel del dock, sobre el mismo modelo y fuentes de P3.
+  LIVE`, tercer panel del dock, sobre el mismo modelo y fuentes de P3.
 - [x] Autoridad de cámara separada de la identidad de selección: un gesto físico
       suelta la cámara y conserva el objetivo. `releaseCameraOwnership` frente a
       `stopTracking` en vuelos, militar y satélites; `refocusTrackedById` (SEGUIR)
@@ -139,12 +141,113 @@ está verificado. Sin release a staging todavía.
 - [ ] Actitud `yaw-steering` (GNSS).
 - [ ] Dos modelos simultáneos ejercitados en el arnés de navegador.
 
-## P5 — Tierra–Luna, NO iniciado
+## P5 — Tierra–Luna, aceptada (2026-09-25) con dos criterios de rendimiento no resolubles
 
-- [ ] Adoptar efemérides versionadas precisas y compararlas con NASA/JPL. No reutilizar la aproximación rechazada por P0 como resultado aprobado.
-- [ ] Unidades, marcos, tiempos y rango temporal explícitos; reloj coherente para cuerpos/luz/etiquetas.
-- [ ] Escala física y modo didáctico claramente separados; no presentar feeds presentes como datos históricos simulados.
-- [ ] Pausa/avance/Ahora, apuntar a Luna y cambiar contexto sin alterar silenciosamente WGS84 terrestre.
+Rama `eyeinsky/p5-tierra-luna` (worktree `C:/Users/Alex/orca/eyeinsky-p5`),
+sin integrar aún en `main`. Propuesta aprobada por Alex y matriz P5-01..18 con
+su estado al cierre: `p5/PROPUESTA-P5-2026-09-25.md` §9. Procedencia:
+`p5/ASSET-LEDGER.md` y `../../DATA_SOURCES.md`; límite de móvil:
+`p5/LIMITES-MOVIL.md`. Commits: `a0b7ef9` propuesta, `51864e3` T0–T3,
+`5ee9868` T4–T7, `36824fa` T8–T9, `1a929b1` pulido. Evidencia local (no
+versionada): `output/eyeinsky-p5/`.
+
+- [x] **Efemérides versionadas y comparadas con JPL.** Tabla Chebyshev DE441
+      (`public/data/moon-de441-2021-2040.bin`, 120.792 B, segmentos de 8 d,
+      orden 10, float32) generada desde JPL Horizons y revalidada en los 20
+      años: máx 0,035 km (175.488 medias horas, fronteras ±60 s y 265
+      perigeos). Simon1994 medido a 782 km / 6,5′ → prohibido para la Luna
+      (confirma P0) y permitido sólo para el Sol (0,074′); una guarda falla si
+      reaparece en `src/`.
+- [x] **Fuera de rango honesto.** Respaldo astronomy-engine `GeoMoon`
+      rotulado «≤20 km» (barrido denso 2021–2040: máx 16,07 km), cargado como
+      chunk aparte sólo fuera de rango; ΔT desde `JulianDate.leapSeconds`.
+- [x] **Un solo reloj.** `sceneClock` gobierna `viewer.clock`: vivo con
+      resincronización suave, pausa y simulación ×1…×3600; hold de render y
+      repintado en seeks. Los consumidores de `currentTime` quedan fijados por
+      test. SGP4 y feeds siguen en hora real.
+- [x] **Marcos explícitos.** ICRF→ECEF con `preloadIcrfFixed`, nunca TEME;
+      gate de 0,035′ frente a puntos sublunares ITRF de Horizons; punto
+      sublunar con corrección de tiempo de luz; «CARGANDO/SIN MARCO» sin
+      fallback.
+- [x] **Una sola Luna, escala física por defecto.** Luna nativa apagada; Luna
+      propia (`Primitive` sobre `Ellipsoid.MOON`, profundidad, pick, Lambert
+      con el Sol de escena, orientación IAU síncrona rotulada aproximada,
+      0,009° frente a MOON_ME). Textura NASA SVS LROC 1k/2k (dominio público,
+      crédito SVS) con placeholder determinista. Modo didáctico ×10 sólo en el
+      radio y con banda. Apagado sin fugas en 20 ciclos; WGS84 intacto.
+- [x] **Presente ≠ simulado.** En simulación las capas en vivo se suspenden con
+      «Sin histórico: solo hora real» y AHORA restaura el mismo conjunto; una
+      pausa en vivo de más de 60 s anuncia la suspensión.
+- [x] **UX.** Tira TIEMPO (chip compacto en móvil), APUNTAR A LA LUNA, SISTEMA
+      TIERRA–LUNA (rótulo TIERRA, callouts despejados), ESCALA, VOLVER A TIERRA
+      con estado exacto, panel OBJETIVO Luna y retícula con flecha de borde.
+      Atajos L / Shift+L / P / N / Esc (Espacio sigue siendo la voz). Enlaces
+      compartidos con `t` / `tr` / `lm` y el rango leído de la tabla; el
+      Director restaura el reloj.
+- [x] **Gates** (`output/eyeinsky-p5/polish/`, sobre el árbol de `1a929b1`):
+      suite de 4.769 tests (4.759 pass, 10 skip, 0 fail); build,
+      format:check y check:boundaries en verde.
+- [x] **Arnés** `scripts/eyeinsky-p5.mjs` 38/38 (`final/p5/`, HEAD
+      `1a929b1`, Radeon 890M). p31 15/15 (`final/p31/`). p4 42/42
+      (`kronos-final/p4/`, árbol de T8–T9). p012 23/23, cámara adversa 9/9,
+      cockpit 4/4 y smoke sin fallos en su JSON (`supervisor-1/reg/`, árbol
+      anterior a T8–T9). Supervisor independiente y reparación (REANUDAR desde
+      pausa en vivo, foto de retorno con capas suspendidas, «Apagar» alcanzable
+      en 390 px, foco de teclado, regresión P4 restaurada) y pulido de mediums.
+- [x] **Regresión P3 en móvil cerrada (P5-15).** `final/p3/` daba 27/30
+      (`p3-11-surface-quality` en 390×844, 360×800 y 844×390: texto de la tira
+      TIEMPO y de las acciones Tierra–Luna a 13 px). Ahora todo tamaño de
+      `eyeinsky-earth-moon.css` pasa por `--eye-earth-moon-text` (13 px
+      escritorio, 14 px con `max-width: 650px` o `max-height: 520px` apaisado)
+      y la etiqueta FECHA UTC usa `.eyeinsky .eye-time-field` para ganar a
+      `.eyeinsky label` (13 px global). Test `src/ui/eyeinskyEarthMoonType.test.mjs`
+      (RED→GREEN). El arnés P5 exige ya 14 px en teléfono
+      (`MIN_TEXT_PX_PHONE`), igual que P3; `mobile-sim-readout-fits` confirma
+      que la lectura cabe en 360 y 390 px y no hay targets < 44 px.
+      regresión final en secuencia sobre el árbol de `1a929b1` + regfix (`output/eyeinsky-p5/regfix/final2/`, 2026-09-25 18:28–18:41 UTC): p5 38/38, p31 15/15, p4 42/42, p3 30/30, p012 23/23, cámara adversa 9/9, cockpit 4/4, smoke sin fallos, mobile 12/12, focus 12/12, journey 25/25 y states 19/19 (todos exit 0; cámara adversa re-ejecutada tras un fallo de arranque de Chrome «browser is already running» con perfil temporal nuevo, log en `camera-adverse-launchfail.log`). Gates en `final2/gates/`: `npm test` 4.775 tests (4.765 pass, 10 skip de plataforma, 0 fail), build, doctor, format:check y check:boundaries en verde.
+      Endurecimiento de arneses (no de la app): la lectura Node→proxy de P4
+      reintenta un `connect ETIMEDOUT 127.0.0.1:4204` transitorio y lo
+      registra (`scripts/eyeinsky-p4-network.test.mjs`); el conteo de órbitas
+      de P4-09 ya no cuenta la retícula del shell; la vista de partida de
+      `shortcuts` (P5) se coloca a 90° de la sublunar en vez de en −100°.
+- [x] **Rendimiento (P5-16), cumple parcial: 4/6 criterios, 2 no resolubles.** GPD Win 4 (`perf-clean/`, modo `windows`,
+      69–73 °C en ventana, n=3 intercaladas, vista de P4): M1 y M2 ≤ A+3 ms
+      cumplen (Δp95 −0,5 y −2,0 ms); S sin long tasks y heap ≤ +2 MiB cumple;
+      E comandos = A cumple. **No resolubles:** A′−A Δp95 (mediana −0,4 ms,
+      pero +1,3 ms en una ronda con una sesión Playwright ajena activa) y el
+      heap de E (+0,5…+1,5 MiB residual tras apagar, no atribuido). La medición
+      anterior se descartó por contaminación (modo `gaming`, 82–92 °C). Sin
+      FPS. Detalle en `../PERFORMANCE.md`.
+
+Límites honestos: sin teléfono físico (`p5/LIMITES-MOVIL.md`); 1k y 2k son
+versiones distintas del mapa SVS (2019 y 2025) y cambian de tono; el despeje de
+SISTEMA oculta todos los callouts de detección, no sólo los que tapan; hay una
+carrera rara con la navegación entre ciudades; un enlace fuera de rango con la
+Luna apagada y la tabla sin cargar no pausa; los +2 comandos constantes con la
+Luna fuera de cuadro no están verificados; `eyeinskyShell.js` mide 1.502 líneas
+(deuda previa, +111 en P5); los satélites no se re-propagan a tiempo simulado
+(por diseño); el servidor Vite de desarrollo compartido rechazó a veces
+conexiones de loopback (`ERR_CONNECTION_TIMED_OUT` / `connect ETIMEDOUT` a los
+~0,3–1,3 s) bajo carga: un módulo sin cargar deja la app en «Preparando el
+observatorio…» y hace fallar cualquier arnés de forma no determinista (visto en
+mobile, cámara adversa y p4; no es código de `src/`). Sin release a staging
+todavía.
+
+## P5.1 — pendientes (candidatos, NO iniciado)
+
+- [x] Cerrar `p3-11-surface-quality` en móvil y re-ejecutar las regresiones
+      sobre el árbol final: hecho en P5 (`regfix/final2/`, ver P5-15 arriba).
+- [ ] Arneses contra un build (`npm run preview`) o servidor dedicado para no
+      depender del Vite de desarrollo compartido (conexiones de loopback
+      rechazadas bajo carga).
+- [ ] Atribuir los +2 comandos con la Luna fuera de cuadro y repetir A/A′ en
+      ≥ 2 rondas sin carga ajena.
+- [ ] Atribuir el heap residual tras apagar la Luna (+0,5…+1,5 MiB).
+- [ ] Tono uniforme de textura entre 1k y 2k.
+- [ ] Despeje selectivo de callouts en SISTEMA TIERRA–LUNA; carrera con la
+      navegación entre ciudades; pausa de enlace fuera de rango con Luna
+      apagada.
+- La superficie lunar explorable es P6, no P5.1.
 
 ## P6 — Luna explorable, NO iniciado
 

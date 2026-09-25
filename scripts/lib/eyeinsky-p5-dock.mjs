@@ -9,7 +9,9 @@
 import { sleep } from './eyeinsky-p4-run.mjs';
 
 export const MIN_TARGET_PX = 44;
+/** Mínimos de texto de P3-11: 13 px en escritorio, 14 px en teléfono. */
 export const MIN_TEXT_PX = 13;
+export const MIN_TEXT_PX_PHONE = 14;
 const SETTLE_MS = 700;
 const FLIGHT_WAIT_MS = 2_200;
 
