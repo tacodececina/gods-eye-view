@@ -4,6 +4,7 @@ import {
   EYE_SCENE_FAR_ENTER_M,
   EYE_SCENE_NEAR_ENTER_M,
   createSceneRegime,
+  mountEyeScenePolicy,
   nextSceneRegime,
   sceneAppearance,
 } from './eyeinskyScenePolicy.js';
@@ -33,4 +34,36 @@ test('space remains black and starred while near treatment tints only imagery', 
     near.imagery.brightness > 0,
     'near imagery never becomes absolute black',
   );
+});
+
+/** Escena falsa con lo que la política toca, sin WebGL. */
+function fakeViewer() {
+  const scene = {
+    moon: { show: true },
+    skyBox: { show: true },
+    skyAtmosphere: { atmosphereLightIntensity: 1 },
+    backgroundColor: null,
+    requestRender() {},
+  };
+  return {
+    scene,
+    imageryLayers: { get: () => null },
+    camera: {
+      positionCartographic: { height: 18_000_000 },
+      moveEnd: { addEventListener: () => () => {} },
+    },
+  };
+}
+
+test('P5: una sola Luna — la política apaga scene.moon nativa en los dos regímenes', () => {
+  assert.equal(sceneAppearance('far').nativeMoon, false);
+  assert.equal(sceneAppearance('near').nativeMoon, false);
+});
+
+test('P5: montar la política apaga scene.moon y desmontarla la restaura', () => {
+  const viewer = fakeViewer();
+  const unmount = mountEyeScenePolicy(viewer, null);
+  assert.equal(viewer.scene.moon.show, false, 'la Luna nativa queda apagada');
+  unmount();
+  assert.equal(viewer.scene.moon.show, true, 'se restaura el valor previo');
 });

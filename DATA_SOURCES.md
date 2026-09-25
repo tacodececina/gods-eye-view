@@ -102,6 +102,17 @@ The [Bhote Koshi event pack](public/events/bhote-koshi-2026/README.md), under `p
 | **DataSF Analysis Neighborhoods** (41 SF neighborhood polygons)             | `neighborhoods/`                  | **PDDL 1.0** (public domain)                                                                              | ✅ (no restrictions)                             | "City & County of San Francisco — DataSF" (courtesy — not legally required) |
 | **CCTV ground heights** (3,445 cameras)                                     | `cctv_ground_heights/`            | Precomputed camera placement heights, aligned to work with Google Photorealistic 3D Tiles (folder README) | —                                                | —                                                                           |
 
+### Moon ephemeris table (`public/data/moon-de441-2021-2040.bin`) — EYEINSKY P5
+
+- **Attribution:** "NASA/JPL Horizons, DE441". Queried offline on 2026-09-25 (UTC) from the public Horizons API (`https://ssd.jpl.nasa.gov/api/horizons.api`). Query: `COMMAND='301' CENTER='500@399' EPHEM_TYPE='VECTORS' REF_SYSTEM='ICRF' REF_PLANE='FRAME' VEC_CORR='NONE' VEC_TABLE='2' OUT_UNITS='KM-S' TIME_TYPE='TDB' STEP_SIZE='30 m'`, 2021-01-01..2041-01-08 TDB.
+- **What ships:** a Chebyshev fit (8-day segments, order 10, float32; header `EYMOON1`). Its validity range is 2021-01-01..2040-12-31 TDB. It is geocentric, geometric ICRF, in km. The file is 120 792 B, sha256 `3e7c488061cd56dcb3412deea41b2716a023c945a89076b62c8116b9a86db96d`.
+- **Validation:** checked against 177 579 Horizons vectors that were not used in the fit, with a maximum error of 0.035 km.
+- **Rights:** the Horizons API documentation and manual state no explicit license or usage terms. Public-domain status is **not verified**. Always keep the attribution.
+- **Test fixture:** `src/data/fixtures/moon-horizons-icrf.json` holds 50 ICRF vectors and 10 ITRF93 sub-Moon points, labelled as a FIXTURE and never shown as live data.
+- **Provenance:** hashes, literal parameters and per-year validation are in [docs/eyeinsky/p5/ASSET-LEDGER.md](docs/eyeinsky/p5/ASSET-LEDGER.md).
+- **Outside 2021–2040:** the fallback is the npm dependency `astronomy-engine` 2.1.19 (`GeoMoon`, **MIT**, © Don Cross; code, not data). It is labelled "analytical model ≤20 km" (dense sweep against the DE441 table over 2021–2040: max 16.07 km).
+- **Pending:** the in-app credit (`src/data/dataCredits.js`) will be added when the Moon renders (P5 T6).
+
 ### ⚠️ TeleGeography is bundled but NonCommercial
 
 The submarine-cable GeoJSON is **CC BY-NC-SA 3.0** (Attribution-**NonCommercial**-**ShareAlike**). It is bundled so the cables layer works out of the box, but it is **not covered by this project's MIT license**. CC BY-NC-SA permits redistribution with attribution and share-alike — which is exactly how it ships here — but the **NonCommercial** clause means:

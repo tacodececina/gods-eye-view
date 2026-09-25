@@ -1270,6 +1270,13 @@
       "src/cctvFocusPolicy.js",
       "src/cctvFocusRequest.js",
       "src/celestialRing.js",
+      "src/celestialEphemeris.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/cockpitCloudEffects.js",
       "src/cockpitMath.js",
       "src/cockpitTracking.js",
@@ -1856,7 +1863,8 @@
       "egm96-universal",
       "mgrs",
       "pbf",
-      "satellite.js"
+      "satellite.js",
+      "astronomy-engine"
     ]
   },
   "application-catalog": {
@@ -1896,6 +1904,13 @@
       "src/sources/sourceSlot.js",
       "src/cctvFocusRequest.js",
       "src/celestialRing.js",
+      "src/celestialEphemeris.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/cockpitMath.js",
       "src/data/aircraftClass.js",
       "src/data/aircraftIcons.js",
@@ -2269,7 +2284,8 @@
       "satellite.js",
       "@mapbox/vector-tile",
       "pbf",
-      "mgrs"
+      "mgrs",
+      "astronomy-engine"
     ]
   },
   "application-operations": {
@@ -2629,6 +2645,13 @@
     "modules": [
       "src/app/sourceSlot.js",
       "src/celestialRing.js",
+      "src/celestialEphemeris.js",
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/frames.js",
+      "src/time/timeScales.js",
       "src/data/cameraSensitivity.js",
       "src/data/contactPlayback.js",
       "src/data/contactTrailRenderer.js",
@@ -2682,7 +2705,7 @@
       "src/sources/overpassFeatures.js",
       "src/sources/featureSource.js"
     ],
-    "external": ["cesium", "egm96-universal", "pbf"]
+    "external": ["cesium", "egm96-universal", "pbf", "astronomy-engine"]
   },
   "transit-layer": {
     "exports": ["./layers/transit"],
@@ -2752,5 +2775,25 @@
       "src/sources/featureSource.js"
     ],
     "external": []
+  },
+  "time": {
+    "exports": ["./time/scales", "./time/frames"],
+    "modules": ["src/time/timeScales.js", "src/time/frames.js"],
+    "external": ["cesium"]
+  },
+  "moon-layer": {
+    "exports": [
+      "./layers/moon/ephemeris",
+      "./layers/moon/fallback",
+      "./layers/moon/position"
+    ],
+    "modules": [
+      "src/layers/moon/ephemeris.js",
+      "src/layers/moon/ephemerisFormat.js",
+      "src/layers/moon/ephemerisFallback.js",
+      "src/layers/moon/position.js",
+      "src/time/timeScales.js"
+    ],
+    "external": ["cesium", "astronomy-engine"]
   }
 }

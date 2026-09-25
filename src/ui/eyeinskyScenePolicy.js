@@ -3,15 +3,21 @@ import * as Cesium from 'cesium';
 export const EYE_SCENE_NEAR_ENTER_M = 6_800_000;
 export const EYE_SCENE_FAR_ENTER_M = 8_600_000;
 
+/**
+ * P5: una sola Luna. La `scene.moon` nativa de Cesium (Simon1994) queda
+ * apagada en los dos regímenes; la Luna la dibuja la capa P5 (DE441).
+ */
 const APPEARANCES = Object.freeze({
   far: Object.freeze({
     skyBox: true,
+    nativeMoon: false,
     background: '#000000',
     atmosphereLightIntensity: 7,
     imagery: Object.freeze({ brightness: 0.82, saturation: 0.78, gamma: 0.98 }),
   }),
   near: Object.freeze({
     skyBox: true,
+    nativeMoon: false,
     background: '#000000',
     atmosphereLightIntensity: 9,
     imagery: Object.freeze({ brightness: 0.74, saturation: 0.9, gamma: 0.94 }),
@@ -41,6 +47,7 @@ export function mountEyeScenePolicy(viewer, root = globalThis.document?.body) {
   const imagery = viewer.imageryLayers?.get?.(0) || null;
   const previous = {
     skyBox: scene.skyBox?.show,
+    nativeMoon: scene.moon?.show,
     background: scene.backgroundColor,
     atmosphereLightIntensity: scene.skyAtmosphere?.atmosphereLightIntensity,
     imagery: imagery
@@ -64,6 +71,7 @@ export function mountEyeScenePolicy(viewer, root = globalThis.document?.body) {
     regime = next;
     const appearance = sceneAppearance(regime);
     if (scene.skyBox) scene.skyBox.show = appearance.skyBox;
+    if (scene.moon) scene.moon.show = appearance.nativeMoon;
     scene.backgroundColor = Cesium.Color.fromCssColorString(
       appearance.background,
     );
@@ -85,6 +93,8 @@ export function mountEyeScenePolicy(viewer, root = globalThis.document?.body) {
     removeMoveEnd?.();
     if (scene.skyBox && previous.skyBox !== undefined)
       scene.skyBox.show = previous.skyBox;
+    if (scene.moon && previous.nativeMoon !== undefined)
+      scene.moon.show = previous.nativeMoon;
     scene.backgroundColor = previous.background;
     if (scene.skyAtmosphere && previous.atmosphereLightIntensity !== undefined)
       scene.skyAtmosphere.atmosphereLightIntensity =

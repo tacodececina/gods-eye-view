@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { createCelestialEphemeris } from './celestialEphemeris.js';
 import { governorRequestRender } from './renderGovernor.js';
 
 /** Outer edge of the existing NVG/FLIR keyhole in normalized shader space. */
@@ -385,9 +386,12 @@ function drawMoonHaze(ctx, cx, cy, radius, angle) {
 export class CelestialRing {
   /**
    * @param {Cesium.Viewer} viewer
-   * @param {{enabled?:boolean,onAutoDisable?:Function}} [options]
+   * @param {{enabled?:boolean,onAutoDisable?:Function,moonPosition?:Function}} [options]
    */
-  constructor(viewer, { enabled = true, onAutoDisable = null } = {}) {
+  constructor(
+    viewer,
+    { enabled = true, onAutoDisable = null, moonPosition = undefined } = {},
+  ) {
     this.viewer = viewer;
     this.enabled = !!enabled;
     this.visible = false;
@@ -407,13 +411,18 @@ export class CelestialRing {
     this._moonRenderKey = '';
     this._outlineRenderKey = '';
 
-    this._sunInertial = new Cesium.Cartesian3();
-    this._moonInertial = new Cesium.Cartesian3();
+    this._moonAvailable = false;
+    this._ephemeris = createCelestialEphemeris({
+      moonPosition,
+      onFrameReady: () => {
+        this._ephemerisDirty = true;
+        governorRequestRender('celestial-ephemeris');
+      },
+    });
     this._sunFixed = new Cesium.Cartesian3();
     this._moonFixed = new Cesium.Cartesian3();
     this._toCenter = new Cesium.Cartesian3();
     this._screenCenter = new Cesium.Cartesian2();
-    this._fixedMatrix = new Cesium.Matrix3();
 
     this._buildDOM();
     this._removePostRender = viewer.scene.postRender.addEventListener(() =>
@@ -617,31 +626,21 @@ export class CelestialRing {
   /**
    * Sample Earth-fixed directions once per enable. Camera movement only
    * re-projects these cached vectors; it never re-runs the planetary model.
+   * P5: the Moon comes from the DE441 table (labelled fallback outside it) and
+   * ICRF→Fixed from preloaded XYS data; without that frame nothing is drawn
+   * (no TEME), and an absent Moon hides its marker.
    */
   _updateEphemeris(time) {
     if (!this._ephemerisDirty) return true;
-
-    Cesium.Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(
+    const sample = this._ephemeris.sample(
       time,
-      this._sunInertial,
-    );
-    Cesium.Simon1994PlanetaryPositions.computeMoonPositionInEarthInertialFrame(
-      time,
-      this._moonInertial,
-    );
-    const matrix =
-      Cesium.Transforms.computeIcrfToFixedMatrix(time, this._fixedMatrix) ||
-      Cesium.Transforms.computeTemeToPseudoFixedMatrix(time, this._fixedMatrix);
-    if (!matrix) return false;
-
-    Cesium.Matrix3.multiplyByVector(matrix, this._sunInertial, this._sunFixed);
-    Cesium.Matrix3.multiplyByVector(
-      matrix,
-      this._moonInertial,
+      this._sunFixed,
       this._moonFixed,
     );
-    Cesium.Cartesian3.normalize(this._sunFixed, this._sunFixed);
-    Cesium.Cartesian3.normalize(this._moonFixed, this._moonFixed);
+    this._root.dataset.ephemerisStatus = sample.status;
+    if (sample.status !== 'ok') return false;
+    this._moonAvailable = sample.moon === 'ok';
+    this._root.dataset.moonSource = sample.moonSource || 'unavailable';
     this._ephemerisDirty = false;
     this._ephemerisUpdateCount += 1;
     return true;
@@ -769,7 +768,7 @@ export class CelestialRing {
     if (sunProjection.stable) this._sunAngle = sunProjection.angle;
     if (moonProjection.stable) this._moonAngle = moonProjection.angle;
     this._sunOpacity = sunProjection.opacity;
-    this._moonOpacity = moonProjection.opacity;
+    this._moonOpacity = this._moonAvailable ? moonProjection.opacity : 0;
 
     const cx = width * 0.5;
     const cy = height * 0.5;

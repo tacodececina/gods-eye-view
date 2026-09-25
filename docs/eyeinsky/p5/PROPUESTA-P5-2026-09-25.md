@@ -3,7 +3,7 @@
 - **Base:** worktree `eyeinsky-p5` en `e3e268e` (P0–P4 integradas), Cesium 1.138.0.
 - **Evidencia (no versionada):** `output/eyeinsky-p5/{ephemeris-eval,code-probe,scene-perf}/`.
 - Lo marcado **(verificar)** no está comprobado.
-- **Aprobada por Alex el 2026-09-25.** Decisiones: fuera de rango → respaldo con astronomy-engine `GeoMoon` rotulado «modelo analítico ≤14 km» (opción b); textura NASA SVS CGI Moon Kit 1k/2k con ledger verificado; placeholder gris hasta entonces.
+- **Aprobada por Alex el 2026-09-25.** Decisiones: fuera de rango → respaldo con astronomy-engine `GeoMoon` rotulado «modelo analítico ≤20 km» (opción b; barrido 2021–2040 contra DE441: máx 16,07 km); textura NASA SVS CGI Moon Kit 1k/2k con ledger verificado; placeholder gris hasta entonces.
 
 ## 1. Decisión recomendada
 

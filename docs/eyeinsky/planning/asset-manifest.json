@@ -40,5 +40,17 @@
     "url": "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/11ebb4ee043715aefbba6aeec8a61746fad67fa7/3D%20Models/CubeSat%20-%201%20RU%20Generic/CubeSat%20-%201%20RU%20Generic.glb",
     "sha256": "bae308ea2e33778c93675909f7dc2e0d5d6916cd685668a463566c61224b1e85",
     "bytes": 149424
+  },
+  {
+    "file": "public/data/moon-de441-2021-2040.bin",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "3e7c488061cd56dcb3412deea41b2716a023c945a89076b62c8116b9a86db96d",
+    "bytes": 120792
+  },
+  {
+    "file": "src/data/fixtures/moon-horizons-icrf.json",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "4de038233a4a33216cc82160da2545209ce683d63f7f03cfed2aeca79795b533",
+    "bytes": 23928
   }
 ]
