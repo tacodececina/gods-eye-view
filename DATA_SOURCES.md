@@ -111,7 +111,9 @@ The [Bhote Koshi event pack](public/events/bhote-koshi-2026/README.md), under `p
 - **Test fixture:** `src/data/fixtures/moon-horizons-icrf.json` holds 50 ICRF vectors and 10 ITRF93 sub-Moon points, labelled as a FIXTURE and never shown as live data.
 - **Provenance:** hashes, literal parameters and per-year validation are in [docs/eyeinsky/p5/ASSET-LEDGER.md](docs/eyeinsky/p5/ASSET-LEDGER.md).
 - **Outside 2021–2040:** the fallback is the npm dependency `astronomy-engine` 2.1.19 (`GeoMoon`, **MIT**, © Don Cross; code, not data). It is labelled "analytical model ≤20 km" (dense sweep against the DE441 table over 2021–2040: max 16.07 km).
-- **Pending:** the in-app credit (`src/data/dataCredits.js`) will be added when the Moon renders (P5 T6).
+- **In-app credit:** while the Moon layer is on, the "Data attribution" popover shows "Moon position: NASA/JPL Horizons, DE441 (computed ephemeris, not live)" (`MOON_CREDIT` in `src/layers/moon/index.js`, P5 T6).
+- **Phase/orientation fixture:** `src/data/fixtures/moon-horizons-phase.json` holds Horizons Illu%, angular diameter and MOON_ME sub-Earth points for the same 10 epochs (observer quantities 10, 13, 14), labelled as a FIXTURE.
+- **Moon texture:** a generated grey placeholder (`public/models/moon/placeholder.png`, own work made by `scripts/eyeinsky-moon-placeholder.mjs`, no external source). The NASA SVS/LROC texture stays out until its licence and ledger are verified.
 
 ### ⚠️ TeleGeography is bundled but NonCommercial
 

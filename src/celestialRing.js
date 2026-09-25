@@ -1,5 +1,6 @@
 import * as Cesium from 'cesium';
-import { createCelestialEphemeris } from './celestialEphemeris.js';
+import { readRingDirections } from './celestialRingDirections.js';
+import { celestialFor } from './layers/moon/celestialService.js';
 import { governorRequestRender } from './renderGovernor.js';
 
 /** Outer edge of the existing NVG/FLIR keyhole in normalized shader space. */
@@ -386,11 +387,12 @@ function drawMoonHaze(ctx, cx, cy, radius, angle) {
 export class CelestialRing {
   /**
    * @param {Cesium.Viewer} viewer
-   * @param {{enabled?:boolean,onAutoDisable?:Function,moonPosition?:Function}} [options]
+   * @param {{enabled?:boolean,onAutoDisable?:Function,celestial?:object}} [options]
+   *   `celestial`: servicio celeste compartido (por defecto el del viewer).
    */
   constructor(
     viewer,
-    { enabled = true, onAutoDisable = null, moonPosition = undefined } = {},
+    { enabled = true, onAutoDisable = null, celestial = null } = {},
   ) {
     this.viewer = viewer;
     this.enabled = !!enabled;
@@ -398,7 +400,6 @@ export class CelestialRing {
     this._onAutoDisable =
       typeof onAutoDisable === 'function' ? onAutoDisable : null;
     this._focusInProgress = false;
-    this._ephemerisDirty = true;
     this._ephemerisUpdateCount = 0;
     this._sunAngle = 0;
     this._moonAngle = Math.PI;
@@ -412,36 +413,21 @@ export class CelestialRing {
     this._outlineRenderKey = '';
 
     this._moonAvailable = false;
-    this._ephemeris = createCelestialEphemeris({
-      moonPosition,
-      onFrameReady: () => {
-        this._ephemerisDirty = true;
-        governorRequestRender('celestial-ephemeris');
-      },
-    });
+    // P5: el estado celeste común (el mismo que la Luna 3D) por instante.
+    this._celestial = celestial ?? celestialFor(viewer);
+    this._removeCelestial = this._celestial.subscribe(() =>
+      governorRequestRender('celestial-ephemeris'),
+    );
     this._sunFixed = new Cesium.Cartesian3();
     this._moonFixed = new Cesium.Cartesian3();
     this._toCenter = new Cesium.Cartesian3();
     this._screenCenter = new Cesium.Cartesian2();
 
     this._buildDOM();
-    this._removePostRender = viewer.scene.postRender.addEventListener(() =>
-      this._draw(),
+    // P5: dibuja con el `time` del fotograma (reloj único), no con la pared.
+    this._removePostRender = viewer.scene.postRender.addEventListener(
+      (_scene, time) => this._draw(time),
     );
-    // Pre-existing staleness fix (perf wave 2 review): the ephemeris was
-    // sampled once per visible-enable from the FROZEN app clock, so the
-    // sun/moon markers aged with the app. Resample real wall time each
-    // minute and request the one frame that repaints the ring.
-    this._ephemerisTimer = setInterval(() => {
-      if (!this.enabled) return;
-      // Always mark dirty so a long-hidden interval can't serve stale
-      // sun/moon vectors on return — but only request the repaint frame
-      // while visible; the visibility-restore request (main.js) picks the
-      // dirty flag up immediately. (review finding)
-      this._ephemerisDirty = true;
-      if (typeof document !== 'undefined' && document.hidden) return;
-      governorRequestRender('celestial-ephemeris');
-    }, 60_000);
     this.setEnabled(this.enabled);
   }
 
@@ -493,12 +479,11 @@ export class CelestialRing {
   setEnabled(enabled) {
     const wasEnabled = this.enabled;
     this.enabled = !!enabled;
-    if (this.enabled && !wasEnabled) this._ephemerisDirty = true;
     // The ring paints its canvases from postRender, which only fires on
     // rendered frames — under the idle render governor an enable (or the
     // clearing disable) must request its frame or the ring never draws at
-    // all. Camera motion covers every later repaint; the 60 s ephemeris
-    // timer requests its own. (perf wave 2 fix — owner playtest finding)
+    // all. Camera motion covers every later repaint; the scene clock's render
+    // policy (P5) requests the time-driven ones. (perf wave 2 fix)
     if (this.enabled !== wasEnabled) governorRequestRender('celestial-ring');
     this._root.classList.toggle('disabled', !this.enabled);
     if (!this.enabled) {
@@ -624,16 +609,13 @@ export class CelestialRing {
   }
 
   /**
-   * Sample Earth-fixed directions once per enable. Camera movement only
-   * re-projects these cached vectors; it never re-runs the planetary model.
-   * P5: the Moon comes from the DE441 table (labelled fallback outside it) and
-   * ICRF→Fixed from preloaded XYS data; without that frame nothing is drawn
-   * (no TEME), and an absent Moon hides its marker.
+   * P5: Earth-fixed directions from the shared celestial state for this
+   * frame's time (the same state the 3D Moon uses; cached per instant). No
+   * frame → nothing drawn (no TEME); an absent Moon hides its marker.
    */
   _updateEphemeris(time) {
-    if (!this._ephemerisDirty) return true;
-    const sample = this._ephemeris.sample(
-      time,
+    const sample = readRingDirections(
+      this._celestial.at(time),
       this._sunFixed,
       this._moonFixed,
     );
@@ -641,7 +623,6 @@ export class CelestialRing {
     if (sample.status !== 'ok') return false;
     this._moonAvailable = sample.moon === 'ok';
     this._root.dataset.moonSource = sample.moonSource || 'unavailable';
-    this._ephemerisDirty = false;
     this._ephemerisUpdateCount += 1;
     return true;
   }
@@ -722,7 +703,7 @@ export class CelestialRing {
   }
 
   /** Per-frame camera projection with GPU-composited cached effect layers. */
-  _draw() {
+  _draw(time = this.viewer.clock.currentTime) {
     if (!this.enabled || !this._sunCtx || !this._moonCtx) return;
     const now = performance.now();
     if (now < this._nextDrawAt) return;
@@ -749,9 +730,6 @@ export class CelestialRing {
       return;
     }
 
-    if (!wasVisible) this._ephemerisDirty = true;
-
-    const time = Cesium.JulianDate.now();
     if (!this._updateEphemeris(time)) return;
     this._root.dataset.ephemerisUpdates = String(this._ephemerisUpdateCount);
     const camera = this.viewer.camera;
@@ -815,6 +793,8 @@ export class CelestialRing {
       moonOpacity: this._moonOpacity,
       markersCollide,
       ephemerisUpdates: this._ephemerisUpdateCount,
+      epochIso: Cesium.JulianDate.toIso8601(time, 3),
+      moonFixed: this._moonAvailable ? { ...this._moonFixed } : null,
       renderScale: this._renderScale,
       disc: { ...disc },
     };
@@ -832,10 +812,8 @@ export class CelestialRing {
 
   /** Detach the render hook and remove all overlay DOM. */
   destroy() {
-    if (this._ephemerisTimer) {
-      clearInterval(this._ephemerisTimer);
-      this._ephemerisTimer = null;
-    }
+    this._removeCelestial?.();
+    this._removeCelestial = null;
     if (this._removePostRender) this._removePostRender();
     this._removePostRender = null;
     this._root?.remove();

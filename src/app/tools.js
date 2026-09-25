@@ -10,6 +10,8 @@ import {
   holdContinuousRender,
   releaseContinuousRender,
 } from '../renderGovernor.js';
+import { mountApplicationSceneTime } from './sceneTime.js';
+import { p5DebugFields } from './moonDebug.js';
 
 /** Attach scene tools, rendering listeners and the application debug handle. */
 export function createApplicationTools({
@@ -63,6 +65,9 @@ export function createApplicationTools({
   // nothing animates per frame. Installed AFTER every module above has had
   // its chance to register pre-install holds. (perf wave 2)
   installRenderGovernor(viewer);
+  // P5: single scene clock, its render policy and the preloaded ICRF frame.
+  const sceneTime = mountApplicationSceneTime(viewer);
+  defer(() => sceneTime.destroy());
 
   // Install the explicit scope mask used by the DISPLAY controls.
   installScopeMask(viewer, { appearance: scopeAppearance });
@@ -117,6 +122,7 @@ export function createApplicationTools({
     getRenderGovernorDiagnostics,
     surfaceServices: operations.surface,
     requestRender: governorRequestRender,
+    ...p5DebugFields({ sceneTime, dataManager, styleManager }),
   };
   const debug = window.__godsEyeView;
   defer(() => {

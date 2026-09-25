@@ -7,6 +7,7 @@ import { utcIsoToTdbSeconds } from '../../time/timeScales.js';
 import {
   FALLBACK_TOLERANCE_KM,
   createMoonFallback,
+  loadMoonFallback,
   ttMinusUtcSeconds,
 } from './ephemerisFallback.js';
 
@@ -43,8 +44,8 @@ test('TT−UTC sale de JulianDate.leapSeconds (32,184 + TAI−UTC), no de un 75 
   );
 });
 
-test('respaldo astronomy-engine GeoMoon dentro de la tolerancia frente a las 50 épocas del fixture', () => {
-  const fallback = createMoonFallback();
+test('respaldo astronomy-engine GeoMoon dentro de la tolerancia frente a las 50 épocas del fixture', async () => {
+  const fallback = await loadMoonFallback();
   const out = { x: 0, y: 0, z: 0 };
   const rows = [
     ...FIXTURE.icrfTdb.rows.map((r) => ({
@@ -76,8 +77,8 @@ test('respaldo astronomy-engine GeoMoon dentro de la tolerancia frente a las 50 
   );
 });
 
-test('el respaldo funciona fuera de 2021–2040 (p. ej. 2045 y 2019)', () => {
-  const fallback = createMoonFallback();
+test('el respaldo funciona fuera de 2021–2040 (p. ej. 2045 y 2019)', async () => {
+  const fallback = await loadMoonFallback();
   for (const iso of ['2019-06-01T00:00:00Z', '2045-06-01T00:00:00Z']) {
     const sample = fallback.moonPositionIcrf(utcIsoToTdbSeconds(iso), {
       x: 0,
@@ -97,8 +98,8 @@ test('el respaldo funciona fuera de 2021–2040 (p. ej. 2045 y 2019)', () => {
   );
 });
 
-test('la tolerancia rotulada acota el barrido completo 2021–2040 contra la tabla DE441 (cada 6 h)', () => {
-  const fallback = createMoonFallback();
+test('la tolerancia rotulada acota el barrido completo 2021–2040 contra la tabla DE441 (cada 6 h)', async () => {
+  const fallback = await loadMoonFallback();
   const out = { x: 0, y: 0, z: 0 };
   const ref = [0, 0, 0];
   let worst = { km: 0, tdb: Number.NaN };
@@ -113,5 +114,92 @@ test('la tolerancia rotulada acota el barrido completo 2021–2040 contra la tab
   assert.ok(
     worst.km < FALLBACK_TOLERANCE_KM,
     `máximo ${worst.km.toFixed(2)} km (TDB ${worst.tdb} s) ≥ ${FALLBACK_TOLERANCE_KM} km`,
+  );
+});
+
+/** TAI−UTC vigente en `iso` leído directamente de JulianDate.leapSeconds. */
+function leapOffsetAt(iso) {
+  const date = Cesium.JulianDate.fromIso8601(iso);
+  let offset = null;
+  for (const leap of Cesium.JulianDate.leapSeconds)
+    if (Cesium.JulianDate.lessThanOrEquals(leap.julianDate, date))
+      offset = leap.offset;
+  return offset;
+}
+
+/** astronomy-engine falso: captura la función ΔT que instala el respaldo. */
+function fakeAstronomy() {
+  const seen = { deltaT: null };
+  return {
+    seen,
+    SetDeltaTFunction: (fn) => {
+      seen.deltaT = fn;
+    },
+    DeltaT_EspenakMeeus: () => 999,
+    MakeTime: (ut) => ({ ut }),
+    GeoMoon: () => ({ x: 0.00257, y: 0, z: 0 }),
+  };
+}
+
+test('ΔT del respaldo fuera de 2021–2040: 1990 y 2035 salen de JulianDate.leapSeconds', () => {
+  const astronomy = fakeAstronomy();
+  createMoonFallback({ astronomy });
+  const cases = [
+    ['1990-06-01T00:00:00Z', 25],
+    ['2035-06-01T00:00:00Z', 37],
+  ];
+  for (const [iso, expected] of cases) {
+    assert.equal(leapOffsetAt(iso), expected, `TAI−UTC de Cesium en ${iso}`);
+    const want = 32.184 + leapOffsetAt(iso);
+    assert.equal(ttMinusUtcSeconds(utDays(iso)), want, iso);
+    assert.equal(
+      astronomy.seen.deltaT(utDays(iso)),
+      want,
+      `ΔT instalado ${iso}`,
+    );
+  }
+  assert.equal(
+    astronomy.seen.deltaT(utDays('1965-01-01T00:00:00Z')),
+    999,
+    'antes del primer intercalar (1972) manda la librería',
+  );
+});
+
+test('el respaldo real en 1990 y 2035 da una Luna plausible con ese ΔT', async () => {
+  const fallback = await loadMoonFallback();
+  for (const iso of ['1990-06-01T00:00:00Z', '2035-06-01T00:00:00Z']) {
+    const { position } = fallback.moonPositionIcrf(utcIsoToTdbSeconds(iso), {
+      x: 0,
+      y: 0,
+      z: 0,
+    });
+    const r = Math.hypot(position.x, position.y, position.z);
+    assert.ok(r > 356_000 && r < 407_000, `${iso}: ${r} km`);
+  }
+});
+
+test('astronomy-engine se importa en diferido: sin import estático en el módulo', () => {
+  const source = readFileSync(
+    new URL('./ephemerisFallback.js', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(source, /^import[^;]*from\s+['"]astronomy-engine['"]/m);
+  assert.match(source, /import\(\s*['"]astronomy-engine['"]\s*\)/);
+});
+
+test('loadMoonFallback usa el cargador inyectado y exige la API GeoMoon', async () => {
+  const astronomy = fakeAstronomy();
+  let imports = 0;
+  const fallback = await loadMoonFallback({
+    importAstronomy: async () => {
+      imports += 1;
+      return astronomy;
+    },
+  });
+  assert.equal(imports, 1);
+  assert.equal(fallback.source, 'astronomy-engine');
+  await assert.rejects(
+    loadMoonFallback({ importAstronomy: async () => ({}) }),
+    TypeError,
   );
 });

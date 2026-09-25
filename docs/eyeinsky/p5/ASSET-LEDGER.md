@@ -127,3 +127,52 @@ Autorizada por Alex el 2026-09-25 como respaldo fuera de rango (opción b).
   `ephemerisFallback.test.mjs` barre respaldo contra tabla cada 6 h en
   2021–2040 y exige que el máximo quede por debajo; si otra época lo supera, se
   sube el rótulo, no se oculta.
+
+## 4. Fixture de fase y orientación `src/data/fixtures/moon-horizons-phase.json` (T5)
+
+Rotulado como FIXTURE: no son datos en vivo. Tiene 3 431 B y su sha256 es
+`be6fbd39fad64af5218d8752f2bd4756c7ef251da509bafd6b2a0bcd9918012a`.
+
+- **Consulta** (API pública, sin clave), 2026-09-25T06:39:34Z, generada por
+  `scripts/eyeinsky-moon-phase-fixture.mjs` (offline, fuera de CI). Parámetros
+  literales:
+
+  ```text
+  COMMAND='301' CENTER='500@399' EPHEM_TYPE='OBSERVER' QUANTITIES='10,13,14'
+  ANG_FORMAT='DEG' CSV_FORMAT='YES' TIME_TYPE='UT' TIME_DIGITS='FRACSEC'
+  EXTRA_PREC='YES' TLIST_TYPE='JD' OBJ_DATA='NO' MAKE_EPHEM='YES'
+  ```
+
+  Las 10 épocas UT son las de `FIXTURE_UTC_EPOCHS` (las mismas del fixture
+  ICRF). La cabecera se comprueba: Moon (301) `{source: DE441}`,
+  `Target pole/equ: MOON_ME {East-longitude positive}`, radio 1737,4 km.
+
+- **Respuesta cruda:** `output/eyeinsky-p5/t5/horizons/fixture_phase_me.txt`
+  (no versionado), sha256
+  `e8dd21abbe30ebf9440ac75cea3e2f03d52ee276ef6e1cf19d78e8241442c284`; URL
+  literal en `output/eyeinsky-p5/t5/horizons/index.json`.
+- **Uso:** Illu% (fase ±1 %), Ang-diam (diámetro aparente) y el punto
+  sub-Tierra en MOON_ME (orientación ≤ 1°) en `lunarPhase.test.mjs`,
+  `pose.test.mjs` y `celestialState.test.mjs`.
+- **Medido** (`output/eyeinsky-p5/t5/phase-check.json`,
+  `orientation-check.json`): fase máx. 0,0055 puntos porcentuales; diámetro
+  máx. 1,0e-4 relativo; orientación IAU (Cesium `IauOrientationAxes`) frente a
+  MOON_ME máx. 0,0091°.
+- Generador: `scripts/eyeinsky-moon-phase-fixture.mjs` sha256
+  `5047c6c856119d4ff01fc72b5741c430e468c5afa1616e40455de0682b59764d` (ya pasado por Prettier; la salida no depende del formato).
+
+## 5. Textura placeholder `public/models/moon/placeholder.png` (T6)
+
+- **Qué es:** un mapa equirectangular GRIS de 512×256 generado por código, sin
+  fuente externa (obra propia). Lleva retícula cada 30°, meridiano 0° al centro
+  (s = 0,5), ecuador y los rótulos «PLACEHOLDER SIN TEXTURA», «0», «90E»,
+  «90W» y «180» para comprobar la orientación. **No es una imagen de la Luna.**
+- **Generador:** `scripts/eyeinsky-moon-placeholder.mjs`, determinista (PNG gris
+  de 8 bits, sin metadatos, zlib nivel 9). `scripts/eyeinsky-moon-placeholder.test.mjs`
+  regenera los bytes y exige el mismo sha256 que el archivo versionado.
+- sha256 del generador (con Prettier): `feb5e27cc85cd584af2ca06bcafc19eb6004b3710ff0dbc4b36f67a1100d2827`.
+- **Archivo:** 1 106 B, sha256
+  `e6e67b38d3a529d19437427b2d84703ab68b860490aca839463d8b68ebfe9235`.
+- **Licencia:** la del repositorio (MIT); no hay terceros.
+- La textura NASA SVS / LROC sigue pendiente de verificar su licencia
+  (propuesta §5); no se descarga ni se usa.

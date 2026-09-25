@@ -120,6 +120,12 @@
       "url": "https://github.com/cosinekitty/astronomy",
       "title": "astronomy-engine 2.1.19 (MIT, © Don Cross) — GeoMoon, respaldo fuera de 2021–2040 autorizado por Alex",
       "accessed": "2026-09-25"
+    },
+    {
+      "id": 21,
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "title": "NASA/JPL Horizons, DE441 — Luna 301 vista desde el geocentro (500@399), OBSERVER, QUANTITIES='10,13,14' (Illu%, Ang-diam, ObsSub-LON/LAT en MOON_ME, longitud Este), 10 épocas UT; origen de src/data/fixtures/moon-horizons-phase.json",
+      "accessed": "2026-09-25"
     }
   ]
 }

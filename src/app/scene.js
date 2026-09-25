@@ -1,6 +1,8 @@
 import { createApplicationOperations } from './operations.js';
 import * as Cesium from 'cesium';
 import { createApplicationViewer } from '../app/viewer.js';
+import { unbindViewerSceneClock } from '../time/sceneClock.js';
+import { releaseCelestial } from '../layers/moon/celestialService.js';
 import { registerDataCredits } from '../data/dataCredits.js';
 import { configureCreditKeyboardAccess } from '../creditKeyboard.js';
 import { MapStackController } from '../mapStackController.js';
@@ -50,6 +52,8 @@ export async function createApplicationScene({
   });
   defer(() => {
     uninstallRenderGovernor(viewer);
+    unbindViewerSceneClock(viewer);
+    releaseCelestial(viewer);
     if (!viewer.isDestroyed()) viewer.destroy();
   });
   registerDataCredits(viewer, credits);

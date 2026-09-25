@@ -51,10 +51,10 @@ export function tdbSecondsFromJ2000(julianDate) {
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 /**
- * ISO 8601 UTC (con `Z`; admite `:60` en un segundo intercalar) → s TDB
- * desde J2000. Rechaza cualquier otra cosa con TypeError.
+ * ISO 8601 UTC estricta (con `Z`; admite `:60` en un segundo intercalar) →
+ * JulianDate. Rechaza cualquier otra cosa con TypeError.
  */
-export function utcIsoToTdbSeconds(iso) {
+export function parseUtcIso(iso) {
   if (typeof iso !== 'string' || !ISO_UTC.test(iso))
     throw new TypeError(`Fecha UTC ISO inválida: ${String(iso)}`);
   let julianDate;
@@ -65,5 +65,10 @@ export function utcIsoToTdbSeconds(iso) {
   }
   if (!julianDate || !Number.isFinite(julianDate.secondsOfDay))
     throw new TypeError(`Fecha UTC ISO inválida: ${iso}`);
-  return tdbSecondsFromJ2000(julianDate);
+  return julianDate;
+}
+
+/** ISO 8601 UTC estricta → s TDB desde J2000 (TypeError si no es válida). */
+export function utcIsoToTdbSeconds(iso) {
+  return tdbSecondsFromJ2000(parseUtcIso(iso));
 }

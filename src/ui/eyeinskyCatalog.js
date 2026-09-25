@@ -40,6 +40,12 @@ export const EYE_LAYER_GUIDE = Object.freeze({
     'Grupos CelesTrak seleccionados; posiciones estimadas, no imagen en vivo.',
     'CelesTrak + SGP4; la precisión decae con la antigüedad del elemento.',
   ),
+  moon: guide(
+    '◐',
+    'Luna 3D en su posición calculada con la efeméride JPL DE441 (tabla Chebyshev).',
+    'Escala física por defecto; 2021–2040 con la tabla, fuera con un modelo analítico rotulado ≤20 km.',
+    'NASA/JPL Horizons DE441, calculada en el navegador; no es un dato en vivo ni una imagen.',
+  ),
   'rocket-launches': guide(
     '↟',
     'Misiones espaciales cercanas y sitios de lanzamiento publicados.',

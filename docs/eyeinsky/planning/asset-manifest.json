@@ -52,5 +52,17 @@
     "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
     "sha256": "4de038233a4a33216cc82160da2545209ce683d63f7f03cfed2aeca79795b533",
     "bytes": 23928
+  },
+  {
+    "file": "public/models/moon/placeholder.png",
+    "url": "generated: scripts/eyeinsky-moon-placeholder.mjs (own work, no external source)",
+    "sha256": "e6e67b38d3a529d19437427b2d84703ab68b860490aca839463d8b68ebfe9235",
+    "bytes": 1106
+  },
+  {
+    "file": "src/data/fixtures/moon-horizons-phase.json",
+    "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+    "sha256": "be6fbd39fad64af5218d8752f2bd4756c7ef251da509bafd6b2a0bcd9918012a",
+    "bytes": 3431
   }
 ]
