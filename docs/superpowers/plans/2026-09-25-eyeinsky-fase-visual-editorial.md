@@ -59,6 +59,8 @@
 
 ## 0. Decisiones de producto para Alex
 
+> **Resueltas el 2026-09-25 por Alex:** D1 = A (sin dock en reposo); D2 = sí (oculta en reposo, accesible desde Instrumentos); D3 = sí (USGS bajo demanda, solo presentación); D4 = cielo real desde catálogo con `skyBox.show === true`; pose la elige Alex con capturas de T2; D5 = «Reloj en vivo» / «Simulación ×N» / «En pausa · motivo». Defaults aceptados sin objeción.
+
 Solo estas cambian el trabajo. Para cada una se da una recomendación y lo que se rompe si no se sigue.
 
 **D1. ¿La ficha «Vista · Tierra» deja de existir en reposo?** (bloquea T3)
