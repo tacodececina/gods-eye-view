@@ -1619,3 +1619,32 @@ test('P5: Stop devuelve el reloj de escena al modo y ritmo previos a la corrida'
     release(); await director.destroy(); unbindViewerSceneClock(viewer); restore();
   }
 });
+
+test('P5: una corrida que TERMINA sola (_finishRun) también devuelve el reloj de escena', async () => {
+  const Cesium = await import('cesium');
+  const { bindViewerSceneClock, unbindViewerSceneClock } = await import('../time/sceneClock.js');
+  const { director, viewer, restore } = makeDirector();
+  viewer.clock = new Cesium.Clock();
+  const sceneClock = bindViewerSceneClock(viewer);
+  try {
+    sceneClock.simulate(600);
+    let moved = false;
+    director._sleep = async () => {
+      if (moved) return;
+      moved = true;
+      // La escena mueve el reloj único mientras corre (época y pausa).
+      sceneClock.setTime('2031-01-01T00:00:00Z');
+      sceneClock.pause('otra cosa');
+    };
+    await director.startScene('scene-1', { single: true, preview: false });
+    assert.equal(moved, true, 'la corrida llegó a mover el reloj');
+    assert.equal(director._running, false, 'terminó sin Stop');
+    const state = sceneClock.getState();
+    assert.equal(state.mode, 'simulated');
+    assert.equal(state.multiplier, 600);
+    assert.notEqual(state.currentIso.slice(0, 4), '2031', 'vuelve a la época previa');
+    assert.equal(director._sceneClockBefore, null, 'la foto se consume una vez');
+  } finally {
+    await director.destroy(); unbindViewerSceneClock(viewer); restore();
+  }
+});

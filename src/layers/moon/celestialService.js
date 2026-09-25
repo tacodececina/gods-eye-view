@@ -66,6 +66,8 @@ export function createCelestialService({
   return Object.freeze({
     at: reader.at,
     sunFixedAt: reader.sunFixedAt,
+    /** Cobertura de la fuente lunar (rango de la tabla cargada, respaldo). */
+    coverage: () => source.getCoverage?.() ?? null,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -92,6 +94,7 @@ function releasedState() {
 const RELEASED = Object.freeze({
   at: () => releasedState(),
   sunFixedAt: () => null,
+  coverage: () => null,
   subscribe: () => () => {},
   destroy() {},
 });

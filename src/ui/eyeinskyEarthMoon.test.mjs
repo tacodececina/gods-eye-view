@@ -10,8 +10,12 @@ import { createSceneClock } from '../time/sceneClock.js';
 import {
   createTimeMemory,
   ensureReturnPoint,
+  isPausedFromLive,
   returnToEarth,
+  sceneShortcutRunner,
+  setSystemPose,
   timeCommands,
+  trackClock,
 } from './eyeinskyEarthMoon.js';
 
 const WALL0 = Date.UTC(2026, 8, 25, 18, 45, 0);
@@ -155,4 +159,102 @@ test('un VOLVER cancelado conserva la foto de retorno', async () => {
   const snapshot = ctx.memory.snapshot;
   await returnToEarth(ctx);
   assert.equal(ctx.memory.snapshot, snapshot);
+});
+
+test('SISTEMA activa el despeje de etiquetas; VOLVER A TIERRA lo restaura', async () => {
+  const { ctx } = returnWorld();
+  const declutter = [];
+  ctx.shell.declutter = (on) => declutter.push(on);
+  setSystemPose(ctx, true);
+  setSystemPose(ctx, true);
+  assert.deepEqual(declutter, [true], 'solo en el cambio');
+  assert.equal(ctx.memory.systemPose, true);
+  ensureReturnPoint(ctx);
+  await returnToEarth(ctx);
+  assert.deepEqual(declutter, [true, false]);
+  assert.equal(ctx.memory.systemPose, false);
+});
+
+test('pausa hecha en vivo frente a una pausa en otra época (FECHA)', (t) => {
+  const { time, sceneClock, press } = setup(t);
+  const memory = createTimeMemory();
+  press('pause');
+  trackClock(memory, sceneClock.getState());
+  time.wall += 61_000;
+  assert.equal(isPausedFromLive(memory, sceneClock.getState()), true);
+  const seek = createTimeMemory();
+  trackClock(seek, sceneClock.getState()); // vivo
+  sceneClock.setNow();
+  trackClock(seek, sceneClock.getState());
+  sceneClock.setTime('2031-01-01T00:00:00Z');
+  trackClock(seek, sceneClock.getState());
+  assert.equal(sceneClock.getState().mode, 'paused');
+  assert.equal(
+    isPausedFromLive(seek, sceneClock.getState()),
+    false,
+    'un salto de FECHA no es «la pausa supera 60 s»',
+  );
+});
+
+/** Contexto mínimo para los atajos de escena. */
+function shortcutWorld(t, moon = { enabled: true, status: 'ok' }) {
+  const { sceneClock, press } = setup(t);
+  const ran = [];
+  const notices = [];
+  let seekOpen = false;
+  const ctx = {
+    sceneClock,
+    memory: { ...createTimeMemory(), snapshot: null },
+    moonState: () => moon,
+    strip: {
+      setError() {},
+      closeSeek: ({ refocus } = {}) => {
+        const was = seekOpen;
+        seekOpen = false;
+        return was && refocus === true;
+      },
+    },
+    shell: { notice: (text) => notices.push(text) },
+    doc: { querySelector: () => null },
+  };
+  const run = sceneShortcutRunner(ctx, { runAction: (id) => ran.push(id) });
+  return { ctx, run, ran, notices, press, openSeek: () => (seekOpen = true) };
+}
+
+test('atajos: L apunta, Shift+L encuadra, P pausa/reanuda, N vuelve a AHORA', (t) => {
+  const { ctx, run, ran } = shortcutWorld(t);
+  assert.equal(run('aim-moon'), true);
+  assert.equal(run('earth-moon-system'), true);
+  assert.deepEqual(ran, ['aim-moon', 'earth-moon-system']);
+  assert.equal(run('toggle-pause'), true);
+  assert.equal(ctx.sceneClock.getState().mode, 'paused');
+  assert.equal(run('toggle-pause'), true);
+  assert.equal(ctx.sceneClock.getState().mode, 'live');
+  assert.equal(run('now'), false, 'ya en vivo: N no consume la tecla');
+  ctx.sceneClock.simulate(600);
+  assert.equal(run('now'), true);
+  assert.equal(ctx.sceneClock.getState().mode, 'live');
+});
+
+test('atajos: L con la Luna apagada no vuela y dice el motivo', (t) => {
+  const { run, ran, notices } = shortcutWorld(t, {
+    enabled: false,
+    status: 'disabled',
+  });
+  assert.equal(run('aim-moon'), true);
+  assert.deepEqual(ran, []);
+  assert.deepEqual(notices, [
+    'APUNTAR A LA LUNA no disponible: Capa Luna apagada',
+  ]);
+});
+
+test('atajos: Esc solo se consume si cerró el campo FECHA; con un diálogo abierto, nada', (t) => {
+  const { ctx, run, openSeek, ran } = shortcutWorld(t);
+  assert.equal(run('close-date-field'), false);
+  openSeek();
+  assert.equal(run('close-date-field'), true);
+  ctx.doc.querySelector = (selector) =>
+    selector === 'dialog[open]' ? {} : null;
+  assert.equal(run('aim-moon'), false);
+  assert.deepEqual(ran, []);
 });

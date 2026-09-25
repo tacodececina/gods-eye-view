@@ -130,12 +130,18 @@ export function resolveCameraStatus({ context, following } = {}) {
       label: 'CÁMARA / SIGUIENDO',
       detail: `La cámara sigue a ${context.title}.`,
     });
+  const selected = FEMININE_KINDS.has(context.kind)
+    ? 'seleccionada'
+    : 'seleccionado';
   return Object.freeze({
     id: 'selected-free',
     label: 'CÁMARA / LIBRE',
-    detail: `${context.title} sigue seleccionado; la cámara es tuya.`,
+    detail: `${context.title} sigue ${selected}; la cámara es tuya.`,
   });
 }
+
+/** Objetivos de nombre femenino (concordancia: «Luna sigue seleccionada»). */
+const FEMININE_KINDS = Object.freeze(new Set(['moon']));
 
 /**
  * @param {string} id Identidad de la acción.
@@ -345,7 +351,11 @@ export function buildMissionDockView({
 // pausa (con motivo). Los feeds en vivo no se re-propagan: fuera de «vivo» se
 // suspenden y se dice; los satélites siguen en hora real y también se dice.
 
-/** Ritmos del botón AVANCE, en el orden en que se recorren. */
+/**
+ * Ritmos del botón AVANCE, en el orden en que se recorren: 1→60→600→3600→1.
+ * El botón muestra el ritmo ACTUAL (vivo = ×1, pausa = ×0) y aplica el
+ * siguiente; desde vivo o pausa, el primero es ×60.
+ */
 export const TIME_ADVANCE_STEPS = Object.freeze([1, 60, 600, 3600]);
 /** Primer ritmo al simular desde vivo o pausa. */
 const FIRST_ADVANCE = 60;
@@ -356,12 +366,18 @@ const FIELD_MAX_YEAR = 2100;
 const FIELD_INVALID = 'Fecha inválida: usa AAAA-MM-DD hh:mm (UTC)';
 const FIELD_RANGE = `Fecha fuera de ${FIELD_MIN_YEAR}–${FIELD_MAX_YEAR} UTC`;
 
-/** ¿La escena ya no muestra «ahora»? Simulando siempre; en pausa, si deriva. */
-export function isSceneOffLive(clock) {
+/**
+ * ¿La escena ya no muestra «ahora»? Simulando siempre; en pausa, si deriva
+ * más de `toleranceMs` (60 s; el arnés lo baja para no esperar de verdad).
+ */
+export function isSceneOffLive(
+  clock,
+  { toleranceMs = LIVE_TOLERANCE_MS } = {},
+) {
   if (clock?.mode === 'simulated') return true;
   return (
     clock?.mode === 'paused' &&
-    Math.abs(Number(clock.driftMs) || 0) > LIVE_TOLERANCE_MS
+    Math.abs(Number(clock.driftMs) || 0) > toleranceMs
   );
 }
 
@@ -396,6 +412,45 @@ function isoParts(iso) {
     minutes: text.slice(11, 16),
     seconds: text.slice(11, 19),
   };
+}
+
+/** Ritmo ACTUAL del reloj: vivo ×1, pausa ×0, simulación ×N. */
+function currentRate(clock) {
+  if (clock?.mode === 'simulated') return clock.multiplier;
+  return clock?.mode === 'paused' ? 0 : 1;
+}
+
+/** Botón AVANCE: rótulo con el ritmo actual; aplica el siguiente. */
+function advanceButton(clock) {
+  const current = currentRate(clock);
+  const next = nextAdvanceMultiplier(clock);
+  const live = clock?.mode !== 'simulated' && clock?.mode !== 'paused';
+  return Object.freeze({
+    label: `AVANCE ×${current}`,
+    short: `×${current}`,
+    current,
+    multiplier: next,
+    ariaLabel: `AVANCE, ritmo actual ×${current}${live ? ' (hora real)' : ''}. Pulsa para simular a ×${next}`,
+    hint: `Simula a ×${next} (Luna, Sol y luz; los feeds no)`,
+  });
+}
+
+/**
+ * Aviso de la pausa larga hecha en vivo (P5-11): al pasar la tolerancia las
+ * capas en vivo se suspenden; se dice, y se ofrecen REANUDAR y AHORA.
+ */
+function suspensionNotice(
+  clock,
+  { suspendedCount = 0, pausedFromLive = false, liveToleranceMs },
+) {
+  const toleranceMs = liveToleranceMs ?? LIVE_TOLERANCE_MS;
+  if (clock?.mode !== 'paused' || !pausedFromLive || suspendedCount < 1)
+    return null;
+  if (!isSceneOffLive(clock, { toleranceMs })) return null;
+  return Object.freeze({
+    text: `Capas en vivo suspendidas: la pausa supera ${Math.round(toleranceMs / 1000)} s`,
+    actions: Object.freeze(['pause', 'now']),
+  });
 }
 
 /** Rótulo, detalle y anuncio de cada modo. */
@@ -452,8 +507,16 @@ function stripChip(clock, words) {
 }
 
 /** Notas visibles fuera de «vivo»: lo que NO se simula. */
-function stripNotes(clock, { suspendedCount = 0, satellitesEnabled = false }) {
-  if (!isSceneOffLive(clock)) return [];
+function stripNotes(
+  clock,
+  {
+    suspendedCount = 0,
+    satellitesEnabled = false,
+    liveToleranceMs = LIVE_TOLERANCE_MS,
+    moonSource = null,
+  },
+) {
+  if (!isSceneOffLive(clock, { toleranceMs: liveToleranceMs })) return [];
   const notes = [];
   if (suspendedCount > 0)
     notes.push(
@@ -461,39 +524,45 @@ function stripNotes(clock, { suspendedCount = 0, satellitesEnabled = false }) {
     );
   if (satellitesEnabled)
     notes.push('Satélites: puntos SGP4 en hora real, no simulados');
+  if (moonSource === 'astronomy-engine') notes.push(FALLBACK_NOTE);
   return notes;
 }
+
+/** Rótulo del respaldo fuera de la tabla DE441 (P5-09, enlace compartido). */
+export const FALLBACK_NOTE =
+  'Luna: astronomy-engine ≤20 km (fuera de la tabla DE441)';
 
 /**
  * Vista inmutable de la tira TIEMPO.
  * @param {object} clock Estado de sceneClock.getState().
- * @param {{suspendedCount?:number, satellitesEnabled?:boolean}} [context]
+ * @param {{suspendedCount?:number, satellitesEnabled?:boolean,
+ *   pausedFromLive?:boolean, liveToleranceMs?:number,
+ *   moonSource?:string|null}} [context]
  * @returns {Readonly<object>} Texto, tono, anuncio, botones y notas.
  */
 export function resolveTimeStrip(clock, context = {}) {
-  const words = stripWording(clock);
+  const notice = suspensionNotice(clock, context);
+  const base = stripWording(clock);
+  const words = notice
+    ? { ...base, announcement: `${base.announcement}. ${notice.text}` }
+    : base;
   const paused = clock?.mode === 'paused';
   const live = clock?.mode === 'live';
-  const next = nextAdvanceMultiplier(clock);
   return Object.freeze({
     mode: clock?.mode ?? 'live',
     ...words,
     text: `${words.icon} ${words.label} ${words.detail}`,
-    chip: stripChip(clock, words),
+    chip: stripChip(clock, base),
+    // Cambia de rótulo (PAUSA ↔ REANUDAR): no es un conmutador aria-pressed.
     pause: Object.freeze({
       label: paused ? 'REANUDAR' : 'PAUSA',
       short: paused ? 'REANUDAR' : 'PAUSA',
-      pressed: paused,
       hint: paused
         ? 'Reanuda el reloj de escena'
         : 'Congela el reloj de escena',
     }),
-    advance: Object.freeze({
-      label: `AVANCE ×${next}`,
-      short: `×${next}`,
-      multiplier: next,
-      hint: `Simula a ×${next} (Luna, Sol y luz; los feeds no)`,
-    }),
+    advance: advanceButton(clock),
+    suspensionNotice: notice,
     now: Object.freeze({
       label: 'AHORA',
       short: 'AHORA',

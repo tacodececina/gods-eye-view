@@ -400,6 +400,11 @@ export class StyleManager extends ShellFacade {
     this._unbindSceneShare = bindSceneShare(this.shareLinkManager, {
       sceneClock: getViewerSceneClock(viewer),
       moonModule: () => this._dataManager?.layers?.get?.('moon')?.module,
+      // Rango de la tabla CARGADA y respaldo (no años fijados en código).
+      ephemerisCoverage: () =>
+        this._dataManager?.layers
+          ?.get?.('moon')
+          ?.module?.getEphemerisCoverage?.() ?? null,
     });
     this.shareLinkManager.setStyleParamStateProvider((styleName) => {
       const shader = STYLES[styleName];

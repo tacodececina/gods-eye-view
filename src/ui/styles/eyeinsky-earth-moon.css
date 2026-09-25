@@ -37,13 +37,17 @@
   display: none;
 }
 
+/* La lectura puede partirse ENTRE piezas (modo · fecha · ritmo), nunca
+ * dentro: en una tira estrecha «×3600» baja de línea en vez de recortarse. */
 .eye-time-readout {
   display: flex;
   min-width: 0;
+  max-width: 100%;
   flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: baseline;
   margin: 0;
-  gap: 8px;
+  gap: 2px 8px;
   letter-spacing: 0.06em;
 }
 
@@ -54,8 +58,31 @@
 }
 
 .eye-time-detail {
+  display: inline-flex;
+  min-width: 0;
+  flex-wrap: wrap;
   color: var(--text-primary);
+  column-gap: 0.6em;
+}
+
+.eye-time-piece {
   white-space: nowrap;
+}
+
+/* Pausa larga hecha en vivo: aviso con REANUDAR y AHORA a la vista. */
+.eye-time-suspension {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  gap: 6px 10px;
+  color: var(--eye-amber);
+  font: 13px var(--font-mono);
+}
+
+.eye-time-suspension[hidden] {
+  display: none;
 }
 
 .eye-time-strip[data-tone='sim'] .eye-time-icon,

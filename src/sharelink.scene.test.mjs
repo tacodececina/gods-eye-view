@@ -91,11 +91,18 @@ test('la restauración dice cuando la fecha del enlace se rechaza o abre en paus
   const { ShareRestoration } = await import('./ui/shareRestoration.js');
   const said = [];
   const owner = { showStatus: (text) => said.push(text) };
-  for (const outcome of ['invalid', 'out-of-range', 'applied', 'skipped'])
+  for (const outcome of [
+    'invalid',
+    'out-of-range',
+    'fallback',
+    'applied',
+    'skipped',
+  ])
     ShareRestoration.prototype._announceSharedScene.call(owner, outcome);
   assert.deepEqual(said, [
     'Fecha del enlace inválida: el reloj sigue en vivo',
     'Fecha fuera de efemérides: reloj en PAUSA',
+    'Fecha fuera de la tabla DE441: Luna por astronomy-engine ≤20 km',
   ]);
 });
 

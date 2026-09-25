@@ -230,5 +230,25 @@ export function resolveMoonReticle({ width, height, margin, point, dx, dy }) {
   if (!dx && !dy) return { mode: 'hidden', x: 0, y: 0, angleDeg: 0 };
   const edge = edgePoint({ width, height, margin, dx, dy });
   const angleDeg = Math.round((Math.atan2(dx, -dy) * 180) / Math.PI);
-  return { mode: 'edge', ...edge, angleDeg };
+  const direction = edgeDirection(dx, dy);
+  return {
+    mode: 'edge',
+    ...edge,
+    angleDeg,
+    direction,
+    label: `Luna fuera de cuadro, hacia ${DIRECTION_WORDS[direction]}`,
+  };
+}
+
+const DIRECTION_WORDS = Object.freeze({
+  izquierda: 'la izquierda',
+  derecha: 'la derecha',
+  arriba: 'arriba',
+  abajo: 'abajo',
+});
+
+/** Dirección dominante en pantalla (y crece hacia abajo). */
+function edgeDirection(dx, dy) {
+  if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? 'izquierda' : 'derecha';
+  return dy < 0 ? 'arriba' : 'abajo';
 }

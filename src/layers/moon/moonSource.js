@@ -106,6 +106,17 @@ export function createLazyMoonSource({
   return Object.freeze({
     moonPosition,
     getSources: () => ({ ...state.status }),
+    /**
+     * Rango de la tabla CARGADA (s TDB desde J2000, de la cabecera del .bin;
+     * null mientras no hay tabla) y estado del respaldo: el enlace compartido
+     * decide con esto, no con años fijados en código.
+     */
+    getCoverage: () => ({
+      tableRange: state.table
+        ? { validFrom: state.table.validFrom, validTo: state.table.validTo }
+        : null,
+      fallback: state.status.fallback,
+    }),
     destroy: () => {
       state.destroyed = true;
     },

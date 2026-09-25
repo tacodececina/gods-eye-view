@@ -37,6 +37,10 @@
  *   `resume-after-live-pause`, `sim-aim-now-return-keeps-live`,
  *   `keyboard-focus-stays-in-dock` y, en 390×844,
  *   `mobile-390x844-active-layer-off`.
+ * - Pulido de aceptación (scripts/lib/eyeinsky-p5-polish-checks.mjs):
+ *   `shortcuts`, `pause-suspension-notice`, `system-earth-label`,
+ *   `mobile-sim-readout-fits` (360 y 390 px) y
+ *   `catalog-space-missions-moon-reason`.
  *
  * Uso: node scripts/eyeinsky-p5.mjs <url> <directorio-de-salida>
  * La salida es OBLIGATORIA y no puede contener ya un result.json.
@@ -84,6 +88,7 @@ import {
   checkResumeAfterLivePause,
   checkSimAimNowReturn,
 } from './lib/eyeinsky-p5-repair-checks.mjs';
+import { runPolishChecks } from './lib/eyeinsky-p5-polish-checks.mjs';
 import {
   chordDiameterPx,
   litFractionAlongAxis,
@@ -522,6 +527,9 @@ async function runDockChecks(page, context) {
   await checkFrameReason(context);
   await checkMobile(context);
   await checkOutOfRangePause(context);
+  await page.evaluate(() => window.__godsEyeView.moon.enable());
+  await waitMoonOk(page);
+  await runPolishChecks(context);
 }
 
 const { baseUrl, out, resultPath } = await prepareRun('eyeinsky-p5.mjs');

@@ -473,3 +473,29 @@ test('P5-15/P4-02: la escala del enlace se aplica antes de init sin romper la re
   assert.doesNotThrow(() => layer.setScaleMode('didactic'));
   assert.equal(layer.getState().scaleMode, 'didactic', 'se recuerda');
 });
+
+test('getEphemerisCoverage: null sin init; tras init, la cobertura del servicio celeste', async () => {
+  const { createMoonLayer } = await import('./index.js');
+  const coverage = {
+    tableRange: { validFrom: 1, validTo: 2 },
+    fallback: 'idle',
+  };
+  const layer = createMoonLayer({
+    render: { hold() {}, release() {}, request() {} },
+    celestialOf: () => ({
+      at: () => ({ status: 'unavailable' }),
+      coverage: () => coverage,
+    }),
+  });
+  assert.equal(layer.getEphemerisCoverage(), null);
+});
+
+test('getEphemerisCoverage tras init: la del servicio celeste de la capa', () => {
+  const { layer, celestial } = setup();
+  const coverage = {
+    tableRange: { validFrom: 1, validTo: 2 },
+    fallback: 'failed',
+  };
+  celestial.coverage = () => coverage;
+  assert.equal(layer.getEphemerisCoverage(), coverage);
+});

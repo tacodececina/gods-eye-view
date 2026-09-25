@@ -180,3 +180,23 @@ test('P5-09: out-of-range dice si el respaldo aún puede cubrir o si ya no hay n
   assert.equal(final.validFrom, VALID_FROM);
   assert.equal(source.moonPosition(50, r).status, 'ok', 'dentro, la tabla');
 });
+
+test('cobertura: el rango de la tabla CARGADA (cabecera) y el estado del respaldo', async () => {
+  const loaders = deferredLoaders();
+  const source = createLazyMoonSource({ ...loaders, onError() {} });
+  assert.deepEqual(source.getCoverage(), {
+    tableRange: null,
+    fallback: 'idle',
+  });
+  source.moonPosition(50, { x: 0, y: 0, z: 0 });
+  loaders.pending.table.resolve(fakeTable());
+  await flush();
+  assert.deepEqual(source.getCoverage(), {
+    tableRange: { validFrom: VALID_FROM, validTo: VALID_TO },
+    fallback: 'idle',
+  });
+  source.moonPosition(500, { x: 0, y: 0, z: 0 });
+  loaders.pending.fallback.reject(new Error('bloqueado'));
+  await flush();
+  assert.equal(source.getCoverage().fallback, 'failed');
+});

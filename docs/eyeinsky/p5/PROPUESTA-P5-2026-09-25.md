@@ -211,6 +211,9 @@ Evaluar la tabla cuesta 0,07 µs en Node.
 
 - Estados: «● EN VIVO 14:32:05 UTC», «◆ SIMULACIÓN 2027-03-14 06:00 UTC ×3600» (en ámbar) y «❚❚ PAUSA».
 - Botones [PAUSA], [AVANCE ×] y [AHORA], y un campo de fecha en UTC.
+- AVANCE muestra el ritmo **actual** (vivo ×1, pausa ×0, simulación ×N) y su nombre accesible lo dice («AVANCE, ritmo actual ×3600. Pulsa para simular a ×1»). Cada pulsación aplica el siguiente del ciclo 1→60→600→3600→1; desde vivo o pausa, el primero es ×60.
+- PAUSA/REANUDAR cambia de rótulo, así que no lleva `aria-pressed`.
+- Una PAUSA hecha en vivo que pasa de 60 s suspende las capas en vivo. Se anuncia con `aria-live="polite"` y con la línea «Capas en vivo suspendidas: la pausa supera 60 s», que trae sus propios REANUDAR y AHORA. REANUDAR continúa a ×1 desde esa época; AHORA vuelve a vivo y devuelve las capas.
 
 **Acciones.**
 
@@ -221,7 +224,8 @@ Evaluar la tabla cuesta 0,07 µs en Node.
 
 **Retícula.**
 
-- Tamaño fijo en px, con la leyenda «RETÍCULA ≠ TAMAÑO» y una flecha en el borde cuando la Luna queda fuera de cuadro.
+- Tamaño fijo en px, con la leyenda «RETÍCULA ≠ TAMAÑO» y una flecha en el borde cuando la Luna queda fuera de cuadro. La flecha tiene nombre accesible: «Luna fuera de cuadro, hacia la izquierda/derecha» (o arriba/abajo si domina el eje vertical).
+- En SISTEMA TIERRA–LUNA, si la Tierra mide < 40 px, lleva el rótulo «TIERRA» con el mismo estilo que la retícula. Mientras dura esa pose se ocultan los callouts de detección (entre ellos el cinturón GEO) y las etiquetas de sismos; VOLVER A TIERRA los devuelve. Si otro dueño ya había suspendido la detección, no se reanuda.
 - A escala real, la Luna mide unos 16–17 px en 1920×1080 y unos 7 px CSS en 390×844. Es un cálculo con FOV 60° sobre la dimensión mayor **(verificar en captura; el prototipo dio ~9 px)**.
 
 **Panel OBJETIVO Luna:** distancia (km y s-luz), fase, diámetro aparente, punto sublunar, la línea «JPL DE441 · geométrico · ICRF→ITRF» y la época en UTC/TDB.
@@ -241,7 +245,7 @@ Evaluar la tabla cuesta 0,07 µs en Node.
 
 - Parámetros: `t=live|ISO`, `tr`, `lm=f|d` y `mv`.
 - Una fecha inválida se rechaza.
-- Una fecha fuera de rango abre en PAUSA con la ausencia visible.
+- Una fecha fuera de rango: el rango se lee de la efeméride cargada (`validFrom`/`validTo` de la cabecera del `.bin`, vía `moonSource`), no de años escritos en el código. Si hay respaldo, el enlace abre lo pedido, en simulación, con el rótulo «astronomy-engine ≤20 km». Solo si no hay respaldo abre en PAUSA con la ausencia visible. Si la tabla aún no ha cargado, se aplica lo pedido y la capa Luna pausa por su cuenta únicamente cuando el respaldo tampoco responde.
 - Sin `lm`, el modo es físico.
 
 **Móvil (≤760 px).**
@@ -272,7 +276,7 @@ Evaluar la tabla cuesta 0,07 µs en Node.
 - `src/celestialRing.js`, `src/hud.js` y `cockpitInstruments.js`;
 - `src/scenes/director.js` y `src/sharelink.js`;
 - modelo y vista del Mission Dock;
-- `applicationShortcuts.js` (L, Shift+L, Espacio, N, Esc; **verificar que no chocan**);
+- `applicationShortcuts.js`: L (APUNTAR A LA LUNA), Shift+L (SISTEMA TIERRA–LUNA), **P** (PAUSA/REANUDAR), N (AHORA) y Esc (cierra el campo FECHA y devuelve el foco a FECHA). Verificado el 2026-09-25: los atajos que ya había son 1–7, H, O, V, F, D, C, «`», Ctrl+K y Esc, así que L y N quedan libres. **Espacio sí choca**: es «mantener para hablar» de la voz (`realtimeInput`, en captura y a los 500 ms), y un toque sobre el fondo llega ya con `defaultPrevented`. Por eso PAUSA/REANUDAR va en **P**. Ningún atajo actúa con Ctrl, Meta o Alt (Ctrl+L y Ctrl+N son del navegador), ni al escribir en un campo, salvo Esc;
 - `eyeinskyActiveLayers`.
 
 **Guarda:** un test con grep falla si aparecen `computeMoonPositionInEarthInertialFrame` o `computeTemeToPseudoFixedMatrix` en `src/`.

@@ -1,3 +1,5 @@
+import { contextLayerUnavailableLabel } from '../contextModePolicy.js';
+
 const LICENSE_RESTRICTED = new Set(['telegeography-submarine-cables']);
 const guide = (icon, description, coverage, access) =>
   Object.freeze({ icon, description, coverage, access });
@@ -188,7 +190,12 @@ function catalogState(layer = {}) {
   return layer.enabled ? 'ready' : 'off';
 }
 
-export function deriveEyeCatalog(layers = []) {
+/**
+ * @param {Array<object>} layers Registros del DataManager.
+ * @param {{contextMode?: string|null}} [context] Modo de contexto activo: una
+ *   capa que no admite sale con `blockedReason` visible (no falla en silencio).
+ */
+export function deriveEyeCatalog(layers = [], { contextMode = null } = {}) {
   return layers.map((layer) => {
     const detail = EYE_LAYER_GUIDE[layer.id] || {};
     return {
@@ -203,6 +210,12 @@ export function deriveEyeCatalog(layers = []) {
         ? Number(layer.stats.count)
         : null,
       error: String(layer.stats?.error || layer.stats?.lastError || ''),
+      blockedReason: layer.enabled
+        ? null
+        : contextLayerUnavailableLabel({
+            contextMode,
+            layerId: String(layer.id || ''),
+          }),
       description: detail.description || 'Capa registrada por el runtime.',
       coverage: detail.coverage || 'Cobertura informada por la fuente.',
       access: detail.access || 'Consulta las condiciones de la fuente.',
@@ -223,6 +236,34 @@ const stateLabel = {
   error: 'Error',
   'coming-soon': 'Próximamente',
 };
+/**
+ * Botón de la fila: rótulo, si se puede pulsar y, cuando el modo activo lo
+ * impide, el motivo en su nombre accesible.
+ */
+export function catalogToggleView(row) {
+  if (row.blockedReason)
+    return {
+      text: 'No disponible',
+      disabled: true,
+      ariaLabel: `Agregar ${row.name}: ${row.blockedReason}`,
+    };
+  const text =
+    row.state === 'coming-soon'
+      ? 'Próximamente'
+      : row.availability === 'config-required' && !row.enabled
+        ? 'Configurar'
+        : row.enabled
+          ? 'Apagar'
+          : row.availability === 'license-restricted'
+            ? 'Agregar · NC'
+            : 'Agregar';
+  return {
+    text,
+    disabled: row.state === 'coming-soon' || row.state === 'loading',
+    ariaLabel: null,
+  };
+}
+
 function element(tag, text, className) {
   const value = document.createElement(tag);
   if (text !== undefined) value.textContent = text;
@@ -236,7 +277,13 @@ function fact(term, value) {
 }
 
 /** Render catalog state directly from DataManager; no durable UI copy exists. */
-export function mountEyeCatalog({ host, dataManager, onToggle, onConfigure }) {
+export function mountEyeCatalog({
+  host,
+  dataManager,
+  onToggle,
+  onConfigure,
+  getContextMode = () => null,
+}) {
   if (!host || !dataManager) return { sync() {}, destroy() {} };
   let destroyed = false;
   const paint = () => {
@@ -244,7 +291,9 @@ export function mountEyeCatalog({ host, dataManager, onToggle, onConfigure }) {
     const active = document.activeElement?.dataset?.eyeCatalogToggle;
     host.replaceChildren();
     for (const row of [
-      ...deriveEyeCatalog(dataManager.getAll()),
+      ...deriveEyeCatalog(dataManager.getAll(), {
+        contextMode: getContextMode(),
+      }),
       ...EYE_COMING_SOON,
     ]) {
       const article = element('article', undefined, 'eye-catalog-row');
@@ -270,6 +319,11 @@ export function mountEyeCatalog({ host, dataManager, onToggle, onConfigure }) {
           row.error ? 'eye-error' : undefined,
         ),
       );
+      if (row.blockedReason) {
+        const reason = element('p', row.blockedReason, 'eye-catalog-reason');
+        reason.id = `eye-catalog-reason-${row.id}`;
+        article.append(reason);
+      }
       const disclosure = element(
         'details',
         undefined,
@@ -287,20 +341,14 @@ export function mountEyeCatalog({ host, dataManager, onToggle, onConfigure }) {
       );
       disclosure.append(facts);
       article.append(disclosure);
-      const button = element(
-        'button',
-        row.state === 'coming-soon'
-          ? 'Próximamente'
-          : row.availability === 'config-required' && !row.enabled
-            ? 'Configurar'
-            : row.enabled
-              ? 'Apagar'
-              : row.availability === 'license-restricted'
-                ? 'Agregar · NC'
-                : 'Agregar',
-      );
+      const view = catalogToggleView(row);
+      const button = element('button', view.text);
       button.dataset.eyeCatalogToggle = row.id;
-      button.disabled = row.state === 'coming-soon' || row.state === 'loading';
+      button.disabled = view.disabled;
+      if (view.ariaLabel) {
+        button.setAttribute('aria-label', view.ariaLabel);
+        button.setAttribute('aria-describedby', `eye-catalog-reason-${row.id}`);
+      }
       button.setAttribute('aria-pressed', String(Boolean(row.enabled)));
       article.append(button);
       host.append(article);

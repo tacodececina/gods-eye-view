@@ -298,6 +298,8 @@ export function createMoonLayer(options) {
       deps.render.request('moon-scale');
     },
     getState: () => snapshot(host),
+    /** Rango de la tabla CARGADA y estado del respaldo (enlace compartido). */
+    getEphemerisCoverage: () => host.celestial?.coverage?.() ?? null,
     debugAt: (iso) => debugAt(host, iso),
     debugTexture: (mode) => debugTexture(host, deps, mode),
     getStats: () => ({

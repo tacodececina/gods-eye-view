@@ -6,6 +6,8 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as Cesium from 'cesium';
+import { createSceneClock } from '../time/sceneClock.js';
 
 import {
   TIME_ADVANCE_STEPS,
@@ -34,11 +36,21 @@ test('EN VIVO: «● EN VIVO hh:mm:ss UTC», tono vivo y AHORA deshabilitado con
   assert.equal(strip.now.enabled, false);
   assert.equal(strip.now.hint, 'Ya estás en la hora real');
   assert.equal(strip.pause.label, 'PAUSA');
-  assert.equal(strip.pause.pressed, false);
-  assert.equal(strip.advance.label, 'AVANCE ×60');
-  assert.equal(strip.advance.short, '×60', 'rótulo corto en cabecera compacta');
+  assert.equal(
+    'pressed' in strip.pause,
+    false,
+    'PAUSA/REANUDAR cambia de rótulo: no es un conmutador aria-pressed',
+  );
+  // AVANCE muestra el ritmo ACTUAL (vivo = ×1) y aplica el siguiente.
+  assert.equal(strip.advance.label, 'AVANCE ×1');
+  assert.equal(strip.advance.short, '×1', 'rótulo corto en cabecera compacta');
+  assert.equal(strip.advance.current, 1);
   assert.equal(strip.pause.short, 'PAUSA');
   assert.equal(strip.advance.multiplier, 60);
+  assert.equal(
+    strip.advance.ariaLabel,
+    'AVANCE, ritmo actual ×1 (hora real). Pulsa para simular a ×60',
+  );
   assert.deepEqual(strip.notes, []);
   assert.ok(Object.isFrozen(strip));
 });
@@ -58,7 +70,18 @@ test('SIMULACIÓN: «◆ SIMULACIÓN <fecha> UTC ×N» en ámbar; AVANCE recorre
   assert.equal(strip.announcement, 'Simulación ×3600');
   assert.equal(strip.now.enabled, true);
   assert.deepEqual(TIME_ADVANCE_STEPS, [1, 60, 600, 3600]);
+  assert.equal(
+    strip.advance.label,
+    'AVANCE ×3600',
+    'el ritmo actual, no el siguiente',
+  );
+  assert.equal(strip.advance.short, '×3600');
+  assert.equal(strip.advance.current, 3600);
   assert.equal(strip.advance.multiplier, 1, 'tras ×3600 vuelve a ×1');
+  assert.equal(
+    strip.advance.ariaLabel,
+    'AVANCE, ritmo actual ×3600. Pulsa para simular a ×1',
+  );
   const cycle = [1, 60, 600, 3600].map((m) =>
     nextAdvanceMultiplier(clock({ mode: 'simulated', multiplier: m })),
   );
@@ -74,7 +97,9 @@ test('PAUSA: «❚❚ PAUSA · <motivo>» y, sin motivo, la época; el botón pa
   assert.equal(reasoned.announcement, 'Pausa: fuera de efemérides');
   assert.equal(reasoned.tone, 'paused');
   assert.equal(reasoned.pause.label, 'REANUDAR');
-  assert.equal(reasoned.pause.pressed, true);
+  assert.equal('pressed' in reasoned.pause, false);
+  assert.equal(reasoned.advance.label, 'AVANCE ×0', 'en pausa el ritmo es 0');
+  assert.equal(reasoned.advance.multiplier, 60);
   const plain = resolveTimeStrip(
     clock({
       mode: 'paused',
@@ -162,4 +187,89 @@ test('P5-17 §6: chip móvil «SIM 07-OCT 03:12» con el modo, la fecha corta y 
   assert.equal(paused.chip.text, '❚❚ PAUSA 14-MAR 06:00');
   assert.match(sim.chip.label, /Simulación ×3600.*controles de tiempo/);
   assert.ok(Object.isFrozen(sim.chip));
+});
+
+/** Reloj único real con la pared inyectada (sin esperar 60 s de verdad). */
+function wallClock(t) {
+  const original = Object.getOwnPropertyDescriptor(performance, 'now');
+  const time = { perf: 1_000, wall: Date.UTC(2026, 8, 25, 18, 45, 0) };
+  performance.now = () => time.perf;
+  t.after(() => {
+    if (original) Object.defineProperty(performance, 'now', original);
+    else delete performance.now;
+  });
+  const sceneClock = createSceneClock({
+    clock: new Cesium.Clock(),
+    now: () => time.wall,
+  });
+  t.after(() => sceneClock.destroy());
+  const advance = (ms) => {
+    time.wall += ms;
+    time.perf += ms;
+  };
+  return { sceneClock, advance };
+}
+
+test('PAUSA desde vivo > 60 s: se anuncia la suspensión y se ofrecen REANUDAR y AHORA', (t) => {
+  const { sceneClock, advance } = wallClock(t);
+  sceneClock.pause();
+  advance(59_000);
+  const early = resolveTimeStrip(sceneClock.getState(), {
+    suspendedCount: 0,
+    pausedFromLive: true,
+  });
+  assert.equal(early.suspensionNotice, null, 'a los 59 s sigue siendo «ahora»');
+  advance(2_000);
+  const state = sceneClock.getState();
+  assert.equal(isSceneOffLive(state), true);
+  const strip = resolveTimeStrip(state, {
+    suspendedCount: 2,
+    pausedFromLive: true,
+  });
+  assert.deepEqual(strip.suspensionNotice, {
+    text: 'Capas en vivo suspendidas: la pausa supera 60 s',
+    actions: ['pause', 'now'],
+  });
+  assert.equal(
+    strip.announcement,
+    'Pausa. Capas en vivo suspendidas: la pausa supera 60 s',
+    'aria-live polite dice el cambio',
+  );
+  assert.ok(Object.isFrozen(strip.suspensionNotice));
+});
+
+test('el aviso de la pausa larga solo si la pausa viene de vivo y hay capas suspendidas', (t) => {
+  const { sceneClock, advance } = wallClock(t);
+  sceneClock.pause();
+  advance(61_000);
+  const state = sceneClock.getState();
+  assert.equal(
+    resolveTimeStrip(state, { suspendedCount: 2, pausedFromLive: false })
+      .suspensionNotice,
+    null,
+    'una pausa en otra época (FECHA, simulación) ya lo dicen las notas',
+  );
+  assert.equal(
+    resolveTimeStrip(state, { suspendedCount: 0, pausedFromLive: true })
+      .suspensionNotice,
+    null,
+  );
+});
+
+test('umbral por parámetro (arnés): 2 s en vez de 60 s, y el texto lo dice', (t) => {
+  const { sceneClock, advance } = wallClock(t);
+  sceneClock.pause();
+  advance(2_500);
+  const state = sceneClock.getState();
+  assert.equal(isSceneOffLive(state), false);
+  assert.equal(isSceneOffLive(state, { toleranceMs: 2_000 }), true);
+  const strip = resolveTimeStrip(state, {
+    suspendedCount: 1,
+    pausedFromLive: true,
+    liveToleranceMs: 2_000,
+  });
+  assert.equal(
+    strip.suspensionNotice.text,
+    'Capas en vivo suspendidas: la pausa supera 2 s',
+  );
 });

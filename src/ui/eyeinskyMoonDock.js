@@ -114,18 +114,22 @@ function paintActionButton(button, item, reasonId) {
 
 /**
  * Retícula FIJA en px sobre la Luna (o flecha de borde si está fuera de
- * cuadro). Decorativa para lectores: el panel OBJETIVO dice lo mismo en texto.
+ * cuadro). El aro y su leyenda son decorativos (el panel OBJETIVO dice lo
+ * mismo en texto); la flecha de borde se nombra: «Luna fuera de cuadro,
+ * hacia la izquierda/derecha».
  * @param {Document} [doc]
  */
 export function mountEyeMoonReticle(doc = globalThis.document) {
   if (!doc?.createElement) return { update() {}, destroy() {} };
   const root = node(doc, 'div', 'eye-moon-reticle');
   root.dataset.eyeMoonReticle = '';
-  root.setAttribute('aria-hidden', 'true');
   root.hidden = true;
   const ring = node(doc, 'span', 'eye-moon-reticle-ring');
+  ring.setAttribute('aria-hidden', 'true');
   const arrow = node(doc, 'span', 'eye-moon-reticle-arrow', '▲');
+  arrow.setAttribute('role', 'img');
   const legend = node(doc, 'span', 'eye-moon-reticle-legend', RETICLE_LEGEND);
+  legend.setAttribute('aria-hidden', 'true');
   root.append(ring, arrow, legend);
   doc.body.append(root);
   let last = '';
@@ -142,6 +146,8 @@ export function mountEyeMoonReticle(doc = globalThis.document) {
       root.dataset.align = reticle.legendAlign ?? 'center';
       root.style.transform = `translate(${reticle.x}px, ${reticle.y}px)`;
       arrow.style.transform = `translate(-50%, -50%) rotate(${reticle.angleDeg}deg)`;
+      if (reticle.label) arrow.setAttribute('aria-label', reticle.label);
+      else arrow.removeAttribute('aria-label');
     },
     destroy() {
       root.remove();

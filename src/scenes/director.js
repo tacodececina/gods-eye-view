@@ -2403,6 +2403,13 @@ export class SceneDirector {
     this._previewRun = false;
     this._updateRuntime('');
     this._running = false;
+    // P5: también al terminar sola (o con error) la corrida devuelve el reloj
+    // único a como estaba; Stop ya lo hizo y dejó la foto a null.
+    restoreSceneClockState(
+      getViewerSceneClock(this.viewer),
+      this._sceneClockBefore,
+    );
+    this._sceneClockBefore = null;
 
     // Finalize telemetry and archive it for download
     if (this._activeRun) {

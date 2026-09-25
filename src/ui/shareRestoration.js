@@ -275,6 +275,10 @@ export class ShareRestoration {
       this.showStatus('Fecha del enlace inválida: el reloj sigue en vivo');
     else if (outcome === 'out-of-range')
       this.showStatus('Fecha fuera de efemérides: reloj en PAUSA');
+    else if (outcome === 'fallback')
+      this.showStatus(
+        'Fecha fuera de la tabla DE441: Luna por astronomy-engine ≤20 km',
+      );
   }
   _settleInitialShareRestore(result) {
     if (!this._resolveInitialShareRestore) return;

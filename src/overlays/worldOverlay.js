@@ -198,6 +198,10 @@ let _frameStamp = 0;
 
 /** @type {Map<string, object>} */
 const _sources = new Map();
+/** sourceId → dueños que la apartan (setOverlaySourceSuppressed). */
+const _suppressedSources = new Map();
+const NO_SUPPRESSED_SOURCES = Object.freeze([]);
+let _suppressedSourceList = NO_SUPPRESSED_SOURCES;
 /** @type {Array<object>} Append-only iteration order for `_sources`. */
 const _sourceList = [];
 /** @type {Map<string, object>} Source-owned painters hosted in fixed lanes. */
@@ -753,7 +757,9 @@ export function selectBoundedOverlayCohort(
 
 function sourceActive(source) {
   return (
-    source.options.visible && !(_cockpitActive && source.options.hideInCockpit)
+    source.options.visible &&
+    !(_cockpitActive && source.options.hideInCockpit) &&
+    !source.suppressed
   );
 }
 
@@ -831,6 +837,7 @@ function getOrCreateSource(sourceId, options = {}) {
       cohortCount: 0,
       demandByDomain: new Map(),
       options: normalizeSourceOptions(options),
+      suppressed: _suppressedSources.has(id),
     };
     _sources.set(id, source);
     _sourceList.push(source);
@@ -1008,6 +1015,30 @@ export function clearOverlaySource(sourceId) {
 }
 
 /**
+ * Aparta (o devuelve) una fuente por DUEÑO sin tocar su visibilidad propia:
+ * la capa sigue gobernando `visible`; la fuente solo pinta cuando ningún
+ * dueño la aparta (P5: SISTEMA TIERRA–LUNA aparta los sismos).
+ * @param {string} sourceId
+ * @param {string} owner
+ * @param {boolean} suppressed
+ */
+export function setOverlaySourceSuppressed(sourceId, owner, suppressed) {
+  if (_destroyed) return;
+  const id = assertSourceId(sourceId);
+  const owners = _suppressedSources.get(id) ?? new Set();
+  const had = owners.size > 0;
+  if (suppressed === true) owners.add(String(owner));
+  else owners.delete(String(owner));
+  if (owners.size) _suppressedSources.set(id, owners);
+  else _suppressedSources.delete(id);
+  if (had === owners.size > 0) return;
+  _suppressedSourceList = Object.freeze([..._suppressedSources.keys()].sort());
+  const source = _sources.get(id);
+  if (source) source.suppressed = owners.size > 0;
+  invalidateHost();
+}
+
+/**
  * Enable/disable one registered source.
  * @param {string} sourceId
  * @param {boolean} visible
@@ -1092,6 +1123,16 @@ export function getWorldOverlayDiagnostics() {
     entriesBySource: { ..._diagnostics.entriesBySource },
     paintedBySource,
   };
+}
+
+/**
+ * Fuentes apartadas ahora (lista congelada y cacheada). Va aparte de
+ * getWorldOverlayDiagnostics: ese objeto se lee por fotograma y una clave
+ * más lo saca de su forma rápida (+650 B/fotograma en el probe de memoria).
+ * @returns {ReadonlyArray<string>}
+ */
+export function getSuppressedOverlaySources() {
+  return _suppressedSourceList;
 }
 
 /**
@@ -2716,6 +2757,8 @@ export function destroyWorldOverlay() {
   }
   _sources.clear();
   _sourceList.length = 0;
+  _suppressedSources.clear();
+  _suppressedSourceList = NO_SUPPRESSED_SOURCES;
   for (let i = 0; i < _customPaintLaneList.length; i++) {
     _customPaintLaneList[i].active = false;
     _customPaintLaneList[i].painter = null;

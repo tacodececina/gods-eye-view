@@ -6,6 +6,7 @@
  * anuncia en una región `aria-live="polite"` que no cambia con cada segundo;
  * los botones llevan su motivo en el nombre accesible; el error del campo de
  * fecha es un `alert` visible. Todo el texto entra por `textContent`.
+ * Esc con el campo FECHA abierto lo cierra y devuelve el foco a FECHA.
  */
 import { utcDateFieldValue } from './eyeinskyMissionDockModel.js';
 
@@ -33,6 +34,8 @@ function buildReadout(doc) {
   const icon = node(doc, 'span', 'eye-time-icon');
   icon.setAttribute('aria-hidden', 'true');
   const label = node(doc, 'b', 'eye-time-label');
+  // Fecha y ritmo en piezas que no se parten: en una tira estrecha el ritmo
+  // baja de línea en vez de quedar recortado (scrollWidth ≤ clientWidth).
   const detail = node(doc, 'span', 'eye-time-detail');
   readout.append(icon, ' ', label, ' ', detail);
   const live = node(doc, 'span', 'eye-visually-hidden');
@@ -82,6 +85,29 @@ function buildChip(doc) {
   return chip;
 }
 
+/**
+ * Línea de la pausa larga hecha en vivo (P5-11): dice que las capas en vivo
+ * se suspendieron y ofrece REANUDAR y AHORA a la vista (también en móvil,
+ * fuera de la hoja de controles).
+ */
+function buildNotice(doc) {
+  const notice = node(doc, 'p', 'eye-time-suspension');
+  notice.dataset.eyeTimeNotice = '';
+  notice.hidden = true;
+  const text = node(doc, 'span', 'eye-time-suspension-text');
+  const resume = commandButton(doc, 'pause');
+  resume.textContent = 'REANUDAR';
+  resume.setAttribute('aria-label', 'REANUDAR. Reanuda el reloj de escena');
+  const now = commandButton(doc, 'now');
+  now.textContent = 'AHORA';
+  now.setAttribute(
+    'aria-label',
+    'AHORA. Vuelve a la hora real y reactiva las capas en vivo',
+  );
+  notice.append(text, resume, now);
+  return { notice, noticeText: text };
+}
+
 /** Nodos de la tira (sin comportamiento). */
 function buildStrip(doc) {
   const root = node(doc, 'div', 'eye-time-strip');
@@ -109,21 +135,44 @@ function buildStrip(doc) {
   error.hidden = true;
   const notes = node(doc, 'ul', 'eye-time-notes');
   notes.dataset.eyeTimeNotes = '';
-  root.append(readout.readout, chip, readout.live, controls, error, notes);
-  return { root, ...readout, ...seek, chip, buttons, error, notes };
+  const { notice, noticeText } = buildNotice(doc);
+  root.append(
+    readout.readout,
+    chip,
+    readout.live,
+    controls,
+    error,
+    notice,
+    notes,
+  );
+  return {
+    root,
+    ...readout,
+    ...seek,
+    chip,
+    buttons,
+    error,
+    notice,
+    noticeText,
+    notes,
+  };
 }
 
-function paintButton(button, { label, short, hint, enabled = true, pressed }) {
+function paintButton(
+  button,
+  { label, short, hint, ariaLabel, enabled = true, pressed },
+) {
   const doc = button.ownerDocument;
   button.replaceChildren(
     node(doc, 'span', 'eye-label-long', label),
     node(doc, 'span', 'eye-label-short', short ?? label),
   );
   button.title = hint;
-  button.setAttribute('aria-label', `${label}. ${hint}`);
+  button.setAttribute('aria-label', ariaLabel ?? `${label}. ${hint}`);
   button.disabled = !enabled;
-  if (pressed !== undefined)
-    button.setAttribute('aria-pressed', String(pressed));
+  // Solo un conmutador de rótulo fijo lleva aria-pressed (no PAUSA/REANUDAR).
+  if (pressed === undefined) button.removeAttribute('aria-pressed');
+  else button.setAttribute('aria-pressed', String(pressed));
 }
 
 /** Abre o cierra el campo de fecha (cabecera compacta). */
@@ -132,6 +181,14 @@ function toggleSeek(parts) {
   parts.root.dataset.dateOpen = String(open);
   parts.toggle.setAttribute('aria-expanded', String(open));
   if (open) parts.input.focus?.({ preventScroll: true });
+}
+
+/** Cierra FECHA si está abierto (con foco de vuelta a FECHA); ¿lo estaba? */
+function closeSeek(parts, { refocus = false } = {}) {
+  if (parts.root.dataset.dateOpen !== 'true') return false;
+  toggleSeek(parts);
+  if (refocus) parts.toggle.focus?.({ preventScroll: true });
+  return true;
 }
 
 /** Abre o cierra la hoja de controles del chip; al cerrar, foco al chip. */
@@ -144,8 +201,14 @@ function setSheet(parts, open, { refocus = false } = {}) {
 /** Escucha clics, envío del campo y foco; devuelve cómo soltarlo todo. */
 function bindStrip(parts, onCommand, focusState) {
   const keydown = (event) => {
-    if (event.key !== 'Escape' || parts.root.dataset.sheetOpen !== 'true')
+    if (event.key !== 'Escape') return;
+    // Primero lo más interno: el campo FECHA; después, la hoja del chip.
+    if (closeSeek(parts, { refocus: true })) {
+      event.preventDefault?.();
+      event.stopPropagation?.();
       return;
+    }
+    if (parts.root.dataset.sheetOpen !== 'true') return;
     event.preventDefault?.();
     setSheet(parts, false, { refocus: true });
   };
@@ -191,7 +254,7 @@ function paintStrip(parts, view, currentIso, memory) {
   parts.chip.dataset.tone = view.chip.tone;
   parts.chip.setAttribute('aria-label', view.chip.label);
   parts.label.textContent = view.label;
-  parts.detail.textContent = view.detail;
+  paintDetail(parts, view.detail);
   if (view.announcement !== memory.announcement) {
     memory.announcement = view.announcement;
     parts.live.textContent = view.announcement;
@@ -208,6 +271,20 @@ function paintStrip(parts, view, currentIso, memory) {
     ...view.notes.map((text) => node(doc, 'li', '', text)),
   );
   parts.notes.hidden = view.notes.length === 0;
+  parts.noticeText.textContent = view.suspensionNotice?.text ?? '';
+  parts.notice.hidden = !view.suspensionNotice;
+}
+
+/** Detalle en piezas que no se parten por dentro (fecha · hora · ritmo). */
+function paintDetail(parts, detail) {
+  const doc = parts.root.ownerDocument;
+  const pieces = String(detail).split(/ (?=×)/);
+  parts.detail.replaceChildren(
+    ...pieces.flatMap((text, index) => [
+      ...(index ? [' '] : []),
+      node(doc, 'span', 'eye-time-piece', text),
+    ]),
+  );
 }
 
 /**
@@ -222,10 +299,11 @@ export function mountEyeTimeStrip({ host, onCommand }) {
   const unbind = bindStrip(parts, onCommand, memory);
   return {
     update: (view, currentIso) => paintStrip(parts, view, currentIso, memory),
-    /** Tras un IR válido el campo se recoge (no roba alto al globo). */
-    closeSeek() {
-      if (parts.root.dataset.dateOpen === 'true') toggleSeek(parts);
-    },
+    /**
+     * Recoge el campo FECHA (tras un IR válido, o Esc con `refocus`).
+     * @returns {boolean} Si estaba abierto.
+     */
+    closeSeek: (options) => closeSeek(parts, options),
     setError(message) {
       parts.error.textContent = message || '';
       parts.error.hidden = !message;

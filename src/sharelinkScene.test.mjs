@@ -141,19 +141,91 @@ test('aplicar: vivo → AHORA; simulado → época + ritmo; pausa → época en 
   assert.deepEqual(scales, ['physical', 'didactic', 'physical']);
 });
 
-test('fuera del rango DE441 (2021–2040) el enlace abre en PAUSA aunque pida ritmo', () => {
+/** Segundos TDB desde J2000 de un ISO (sin la diferencia TDB−UTC: margen). */
+const tdb = (iso) => (Date.parse(iso) - Date.UTC(2000, 0, 1, 12)) / 1000;
+/** Cobertura de la efeméride CARGADA (cabecera del .bin vía moonSource). */
+const coverage =
+  (fallback, from = '2021-01-01', to = '2041-01-01') =>
+  () => ({
+    tableRange: {
+      validFrom: tdb(`${from}T00:00:00Z`),
+      validTo: tdb(`${to}T00:00:00Z`),
+    },
+    fallback,
+  });
+const apply = (query, ephemerisCoverage) => {
   const clock = fakeClock();
-  const out = applySharedScene(
-    decodeSceneParams(
-      new URLSearchParams('t=2045-01-01T00:00:00Z&tr=3600&lm=f'),
-    ),
-    { sceneClock: clock, setMoonScale() {} },
+  const out = applySharedScene(decodeSceneParams(new URLSearchParams(query)), {
+    sceneClock: clock,
+    setMoonScale() {},
+    ephemerisCoverage,
+  });
+  return { calls: clock.calls, out };
+};
+
+test('fuera de rango SIN respaldo: el enlace abre en PAUSA con la ausencia visible', () => {
+  const { calls, out } = apply(
+    't=2045-01-01T00:00:00Z&tr=3600&lm=f',
+    coverage('failed'),
   );
-  assert.deepEqual(clock.calls, [
+  assert.deepEqual(calls, [
     ['setTime', '2045-01-01T00:00:00Z'],
     ['pause', 'fuera de efemérides'],
   ]);
   assert.equal(out.time, 'out-of-range');
+});
+
+test('fuera de rango CON respaldo: no pausa; abre en simulación rotulada «astronomy-engine ≤20 km»', () => {
+  for (const fallback of ['idle', 'loading', 'ready']) {
+    const { calls, out } = apply(
+      't=2045-01-01T00:00:00Z&tr=3600&lm=f',
+      coverage(fallback),
+    );
+    assert.deepEqual(
+      calls,
+      [
+        ['setTime', '2045-01-01T00:00:00Z'],
+        ['simulate', 3600],
+      ],
+      fallback,
+    );
+    assert.equal(out.time, 'fallback');
+    assert.equal(out.label, 'astronomy-engine ≤20 km');
+  }
+});
+
+test('el rango sale de la efeméride cargada, no de 2021–2040 fijado en código', () => {
+  // Una tabla 2030–2031: 2027 queda FUERA (con 2021–2040 fijos, dentro).
+  const narrow = apply(
+    't=2027-03-14T06:00:00Z&tr=600',
+    coverage('failed', '2030-01-01', '2031-01-01'),
+  );
+  assert.equal(narrow.out.time, 'out-of-range');
+  // Una tabla 2041–2060: 2045 queda DENTRO (con 2021–2040 fijos, fuera).
+  const later = apply(
+    't=2045-01-01T00:00:00Z&tr=600',
+    coverage('failed', '2041-01-01', '2060-01-01'),
+  );
+  assert.equal(later.out.time, 'applied');
+  assert.deepEqual(later.calls.at(-1), ['simulate', 600]);
+});
+
+test('tabla aún sin cargar: se aplica lo pedido; la capa Luna pausa solo si no hay respaldo', () => {
+  for (const ephemerisCoverage of [
+    undefined,
+    () => null,
+    () => ({ tableRange: null, fallback: 'idle' }),
+  ]) {
+    const { calls, out } = apply(
+      't=2045-01-01T00:00:00Z&tr=60',
+      ephemerisCoverage,
+    );
+    assert.deepEqual(calls, [
+      ['setTime', '2045-01-01T00:00:00Z'],
+      ['simulate', 60],
+    ]);
+    assert.equal(out.time, 'applied');
+  }
 });
 
 test('fecha inválida: el reloj no se toca y se informa', () => {

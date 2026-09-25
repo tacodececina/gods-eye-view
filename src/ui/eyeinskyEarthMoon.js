@@ -1,11 +1,14 @@
 import * as Cesium from 'cesium';
 import { getViewerSceneClock } from '../time/sceneClock.js';
+import { bindSceneShortcuts } from './applicationShortcuts.js';
 import {
+  LIVE_TOLERANCE_MS,
   isSceneOffLive,
   parseUtcDateField,
   resolveResume,
   resolveTimeStrip,
 } from './eyeinskyMissionDockModel.js';
+import { mountEyeEarthLabel, resolveEarthLabel } from './eyeinskySystemView.js';
 import {
   MOON_CONTEXT_KEY,
   buildMoonContext,
@@ -44,6 +47,7 @@ const OFF_FRAME_NOTICE =
 const COMPACT_MAX_WIDTH = 700;
 const COMPACT_MAX_HEIGHT = 600;
 const DISABLED_MOON = Object.freeze({ enabled: false, status: 'disabled' });
+const EARTH_RADIUS_M = 6_371_000;
 
 function dockBandPx(doc) {
   const raw = doc.documentElement.style.getPropertyValue('--eye-dock-band');
@@ -83,14 +87,34 @@ const RUNNING_LIVE = Object.freeze({ mode: 'live', multiplier: 1 });
 /** Memoria de la tira: el último modo EN MARCHA (de ahí viene una pausa). */
 export const createTimeMemory = () => ({ running: RUNNING_LIVE });
 
-/** Recuerda vivo o simulación ×N; la pausa no borra de dónde se vino. */
+/**
+ * Recuerda vivo o simulación ×N; la pausa no borra de dónde se vino. Al
+ * ENTRAR en pausa guarda la deriva de ese instante: una pausa hecha en vivo
+ * empieza en ≈0; un salto de FECHA empieza lejos.
+ */
 export function trackClock(memory, clock) {
+  if (clock?.mode === 'paused' && memory.lastMode !== 'paused')
+    memory.pauseStartDriftMs = Number(clock.driftMs) || 0;
+  memory.lastMode = clock?.mode ?? null;
   if (clock?.mode === 'live') memory.running = RUNNING_LIVE;
   else if (clock?.mode === 'simulated')
     memory.running = Object.freeze({
       mode: 'simulated',
       multiplier: clock.multiplier,
     });
+}
+
+/** ¿Esta pausa se hizo en vivo (no en otra época ni simulando)? */
+export function isPausedFromLive(
+  memory,
+  clock,
+  toleranceMs = LIVE_TOLERANCE_MS,
+) {
+  return (
+    clock?.mode === 'paused' &&
+    memory.running?.mode === 'live' &&
+    Math.abs(Number(memory.pauseStartDriftMs) || 0) <= toleranceMs
+  );
 }
 
 /** REANUDAR: a vivo si la pausa venía de vivo sin derivar; si no, al ritmo pausado. */
@@ -147,6 +171,11 @@ export function mountEyeEarthMoon(options) {
     onAction: (id) => void runMoonAction(ctx, id),
   });
   ctx.reticle = mountEyeMoonReticle(ctx.doc);
+  ctx.earthLabel = mountEyeEarthLabel(ctx.doc);
+  const shortcuts = bindSceneShortcuts({
+    documentRef: ctx.doc,
+    run: sceneShortcutRunner(ctx),
+  });
   const view = ctx.doc.defaultView;
   const compact = () => syncCompact(ctx, view);
   view?.visualViewport?.addEventListener('resize', compact);
@@ -168,10 +197,13 @@ export function mountEyeEarthMoon(options) {
     destroy() {
       globalThis.clearInterval(timer);
       for (const off of teardown) off();
+      shortcuts.destroy();
+      setSystemPose(ctx, false);
       ctx.suspension.destroy();
       ctx.strip.destroy();
       ctx.actions.destroy();
       ctx.reticle.destroy();
+      ctx.earthLabel.destroy();
       shell.onSuspensionChange?.();
     },
   };
@@ -193,7 +225,10 @@ function createContext(options, sceneClock) {
       busy: false,
       focusFrom: null,
       lastFraming: null,
+      systemPose: false,
     },
+    /** Tolerancia de «ahora» en pausa (60 s; el arnés la baja). */
+    liveToleranceMs: LIVE_TOLERANCE_MS,
     suspension: createLiveSuspension({
       dataManager,
       onChange: () => shell.onSuspensionChange?.(),
@@ -218,13 +253,18 @@ function syncCompact(ctx, view) {
 function renderAll(ctx) {
   const clock = ctx.sceneClock.getState();
   trackClock(ctx.memory, clock);
-  void ctx.suspension.sync(isSceneOffLive(clock));
+  const toleranceMs = ctx.liveToleranceMs;
+  void ctx.suspension.sync(isSceneOffLive(clock, { toleranceMs }));
+  const moon = ctx.moonState();
+  if (!moon.enabled) setSystemPose(ctx, false);
   const view = resolveTimeStrip(clock, {
     suspendedCount: ctx.suspension.getSuspended().length,
     satellitesEnabled: ctx.dataManager.isEnabled?.('satellites') === true,
+    pausedFromLive: isPausedFromLive(ctx.memory, clock, toleranceMs),
+    liveToleranceMs: toleranceMs,
+    moonSource: moon.enabled ? moon.source : null,
   });
   ctx.strip.update(view, clock.currentIso);
-  const moon = ctx.moonState();
   const returnPending = Boolean(ctx.memory.snapshot);
   ctx.actions.update(
     resolveMoonActions({ moon, returnPending }),
@@ -246,6 +286,82 @@ function paintReticle(ctx) {
   ctx.reticle.update(
     visible ? reticleFor(ctx.viewer.scene, moon.positionFixedM) : null,
   );
+  ctx.earthLabel.update(moon.enabled ? earthLabelFor(ctx.viewer.scene) : null);
+}
+
+/** Rótulo TIERRA de un fotograma: centro proyectado y diámetro aparente. */
+function earthLabelFor(scene) {
+  const camera = scene.camera;
+  const distance = Cesium.Cartesian3.magnitude(camera.positionWC);
+  const toCenter = Cesium.Cartesian3.negate(
+    camera.positionWC,
+    new Cesium.Cartesian3(),
+  );
+  const ahead = Cesium.Cartesian3.dot(toCenter, camera.directionWC) > 0;
+  const point = ahead
+    ? Cesium.SceneTransforms.worldToWindowCoordinates(
+        scene,
+        Cesium.Cartesian3.ZERO,
+      )
+    : null;
+  const angular = 2 * Math.asin(Math.min(1, EARTH_RADIUS_M / distance));
+  return resolveEarthLabel({
+    width: scene.canvas.clientWidth,
+    height: scene.canvas.clientHeight,
+    point: point ?? null,
+    diameterPx: (angular / camera.frustum.fovy) * scene.canvas.clientHeight,
+  });
+}
+
+/**
+ * Pose SISTEMA activa o no: mientras lo está, el shell aparta las etiquetas
+ * que tapan la Tierra diminuta; al salir (VOLVER, APUNTAR, Luna apagada) las
+ * devuelve. Solo avisa en el cambio.
+ */
+export function setSystemPose(ctx, on) {
+  const next = on === true;
+  if (ctx.memory.systemPose === next) return;
+  ctx.memory.systemPose = next;
+  ctx.shell.declutter?.(next);
+}
+
+/** Motivo por el que una acción de la Luna no puede ejecutarse, o null. */
+function moonActionRefusal(ctx, id) {
+  const action = resolveMoonActions({
+    moon: ctx.moonState(),
+    returnPending: Boolean(ctx.memory.snapshot),
+  }).find((item) => item.id === id);
+  return action && !action.enabled
+    ? `${action.label} no disponible: ${action.hint}`
+    : null;
+}
+
+/**
+ * Atajos de escena (P5 §7) sobre las mismas órdenes que los botones. Devuelve
+ * `run(id)` → true si atendió la tecla. Con un diálogo abierto, nada (salvo
+ * lo que el diálogo haga con Esc).
+ */
+export function sceneShortcutRunner(
+  ctx,
+  { runAction = (id) => void runMoonAction(ctx, id) } = {},
+) {
+  return (id) => {
+    if (ctx.doc.querySelector?.('dialog[open]')) return false;
+    if (id === 'close-date-field')
+      return ctx.strip.closeSeek({ refocus: true });
+    if (id === 'aim-moon' || id === 'earth-moon-system') {
+      const refusal = moonActionRefusal(ctx, id);
+      if (refusal) ctx.shell.notice?.(refusal);
+      else runAction(id);
+      return true;
+    }
+    if (id === 'now' && ctx.sceneClock.getState().mode === 'live') return false;
+    if (id === 'toggle-pause' || id === 'now') {
+      timeCommands(ctx)({ type: id === 'now' ? 'now' : 'pause' });
+      return true;
+    }
+    return false;
+  };
 }
 
 /** Guarda la instantánea de retorno la PRIMERA vez que se va a la Luna. */
@@ -308,6 +424,10 @@ async function goToMoon(ctx, kind) {
     flight = moveCamera(camera, pose, { reduced: ctx.reduced(), duration });
   });
   const outcome = await flight;
+  setSystemPose(
+    ctx,
+    kind === 'system' && (outcome === 'cut' || outcome === 'flown'),
+  );
   ctx.viewer.scene.requestRender();
   const inFrame = targetsInFrame(ctx.viewer.scene, moon.positionFixedM, {
     bottomBandPx: dockBandPx(ctx.doc),
@@ -332,6 +452,7 @@ export async function returnToEarth(ctx) {
     reduced: ctx.reduced(),
     offLive: ctx.suspension.isOffLive(),
   });
+  if (RETURN_DONE.has(outcome)) setSystemPose(ctx, false);
   if (RETURN_DONE.has(outcome) && ctx.memory.snapshot === snapshot)
     ctx.memory.snapshot = null;
   ctx.viewer.scene.requestRender();
@@ -370,5 +491,11 @@ function createDebug(ctx) {
     lastFraming: () => ctx.memory.lastFraming ?? null,
     settled: () => ctx.suspension.settled(),
     run: (id) => runMoonAction(ctx, id),
+    systemPose: () => ctx.memory.systemPose,
+    /** Solo arnés: baja la tolerancia de «ahora» (no esperar 60 s reales). */
+    setLiveToleranceMs(ms) {
+      ctx.liveToleranceMs = Number(ms) > 0 ? Number(ms) : LIVE_TOLERANCE_MS;
+      ctx.render();
+    },
   });
 }

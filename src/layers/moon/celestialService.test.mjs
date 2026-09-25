@@ -143,3 +143,25 @@ test('tras releaseCelestial, el HUD/anillo no recrean un servicio huérfano', ()
   assert.equal(celestialFor(viewer, options), late, 'siempre el mismo inerte');
   assert.equal(created, 1);
 });
+
+test('coverage: el servicio publica la cobertura de su fuente (null tras release)', () => {
+  const coverage = {
+    tableRange: { validFrom: 1, validTo: 2 },
+    fallback: 'idle',
+  };
+  const service = createCelestialService({
+    createSource: () => ({
+      moonPosition: () => ({ status: 'unavailable' }),
+      getCoverage: () => coverage,
+    }),
+    transforms: identity,
+  });
+  assert.equal(service.coverage(), coverage);
+  const viewer = {};
+  celestialFor(viewer, {
+    createSource: () => ({ moonPosition() {}, getCoverage: () => coverage }),
+    transforms: identity,
+  });
+  releaseCelestial(viewer);
+  assert.equal(celestialFor(viewer).coverage(), null);
+});
