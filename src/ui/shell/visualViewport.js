@@ -13,6 +13,18 @@ const VISUAL_VIEWPORT_PROPERTIES = [
   '--eye-visual-center-y',
 ];
 
+/** Por debajo de este ancho VISIBLE (zoom 200 % en un teléfono) el carril se
+ * compacta y la barra solo rotula la pestaña activa (fase visual T5). */
+const VISUAL_NARROW_PX = 360;
+
+/**
+ * @param {number} width Ancho del viewport visual en px CSS.
+ * @returns {boolean}
+ */
+export function isVisualNarrow(width) {
+  return Number.isFinite(width) && width < VISUAL_NARROW_PX;
+}
+
 function syncVisualViewport() {
   const viewport = window.visualViewport;
   const width = viewport?.width || window.innerWidth;
@@ -34,6 +46,7 @@ function syncVisualViewport() {
   for (const [name, value] of Object.entries(properties)) {
     document.documentElement.style.setProperty(name, `${Math.round(value)}px`);
   }
+  document.body.dataset.eyeVisualNarrow = String(isVisualNarrow(width));
 }
 
 /**
@@ -52,5 +65,6 @@ export function mountVisualViewport({ lifetime, defer }) {
     for (const property of VISUAL_VIEWPORT_PROPERTIES) {
       document.documentElement.style.removeProperty(property);
     }
+    delete document.body.dataset.eyeVisualNarrow;
   });
 }

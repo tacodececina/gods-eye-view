@@ -41,7 +41,12 @@ try {
   }));
   console.log(JSON.stringify({ state, errors, failed }, null, 2));
   if (state.eye) {
-    await page.click('[data-eye-view="signals"]');
+    // Fase visual T3 (D3 de Alex): el panel USGS de reposo (.eye-signal-glance,
+    // cuyo botón era el primer [data-eye-view="signals"]) ya no existe; Señales
+    // se abre por la ruta real Instrumentos → Señales sísmicas (#eye-connect),
+    // como en states y mobile. Mismo criterio: filas USGS reales.
+    await page.click('.eye-function-dock [data-eye-view="instruments"]');
+    await page.click('#eye-connect');
     await page
       .waitForFunction(() => window.__eyeinsky.rows.length > 1, {
         timeout: 35000,

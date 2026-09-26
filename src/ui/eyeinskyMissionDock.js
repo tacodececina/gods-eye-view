@@ -23,6 +23,8 @@ import { activityAgeLabel } from './eyeinskyActivity.js';
 
 /** Cómo se dice cada estado de frescura, sin eufemismos. */
 export const MISSION_DOCK_STATUS_LABELS = Object.freeze({
+  // Fase visual T3: la ficha de la vista es la cámara de este instante.
+  camera: 'Lectura de la cámara · ahora',
   ready: 'Observación reciente',
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
@@ -48,6 +50,47 @@ function node(doc, tag, text = '', className = '') {
   if (text) element.textContent = text;
   if (className) element.className = className;
   return element;
+}
+
+/**
+ * Riel de valores medidos: etiqueta y cifra; mono solo para números (un valor
+ * sin cifras —mapa, clase— es texto).
+ * @param {Document} doc
+ * @param {HTMLElement} list `dl` del riel.
+ * @param {ReadonlyArray<{label:string, value:string, unit?:string}>} fields
+ * @returns {void}
+ */
+function paintKeyValues(doc, list, fields) {
+  list.replaceChildren();
+  for (const field of fields) {
+    const item = node(doc, 'div', '', 'eye-dock-keyvalue');
+    item.append(node(doc, 'dt', field.label));
+    const value = node(
+      doc,
+      'dd',
+      field.unit ? `${field.value} ${field.unit}` : field.value,
+    );
+    value.dataset.eyeValue = /\d/.test(value.textContent) ? 'number' : 'text';
+    item.append(value);
+    list.append(item);
+  }
+  list.hidden = fields.length === 0;
+}
+
+/**
+ * Franja inferior que tapa el dock, medida desde el borde de abajo de la
+ * ventana hasta su borde superior. El panel lateral DERECHO de escritorio
+ * (fase visual T3, §6.4: empieza pasada la mitad) no tapa el centro ni el
+ * borde inferior útil y no desplaza encuadres; la hoja del teléfono y el dock
+ * inferior legacy sí publican su franja.
+ * @param {{hidden: boolean, rect: {left:number,right:number,top:number}|null,
+ *   innerWidth: number, innerHeight: number}} input
+ * @returns {number} Franja en px (≥ 0).
+ */
+export function resolveDockBand({ hidden, rect, innerWidth, innerHeight }) {
+  if (hidden || !rect) return 0;
+  if (rect.left > innerWidth / 2) return 0;
+  return Math.max(0, Math.round(innerHeight - rect.top));
 }
 
 /**
@@ -77,13 +120,12 @@ export function mountEyeMissionDock({
   let expandTrigger = null;
   let currentView = null;
 
-  // P5 T8: cabecera fija del dock. La tira TIEMPO y las acciones de la Luna
-  // las pinta eyeinskyEarthMoon; el dock solo les da sitio estable (no se
-  // repinta con cada objetivo).
+  // Cabecera fija del dock: las acciones de la Luna (P5 T8) cuando la Luna es
+  // el objetivo. La tira TIEMPO ya no vive aquí: el reloj no depende del
+  // objetivo y está en el pie global (fase visual T3, [data-eye-time-host]).
   const header = node(doc, 'div', '', 'eye-dock-header');
-  const timeHost = node(doc, 'div', '', 'eye-dock-time');
   const moonHost = node(doc, 'div', '', 'eye-dock-moon');
-  header.append(timeHost, moonHost);
+  header.append(moonHost);
 
   const rail = node(doc, 'div', '', 'eye-dock-rail');
 
@@ -118,6 +160,11 @@ export function mountEyeMissionDock({
   actions.setAttribute('role', 'group');
   actions.setAttribute('aria-label', 'Acciones sobre el objetivo');
 
+  // Fase visual T4: equivalente textual de la flecha de borde del objetivo.
+  const offscreen = node(doc, 'p', '', 'eye-dock-offscreen');
+  offscreen.setAttribute('role', 'status');
+  offscreen.hidden = true;
+
   // Motivo visible de la acción deshabilitada (P4 T7): texto real, no tooltip.
   const actionReason = node(doc, 'p', '', 'eye-dock-action-reason');
   actionReason.id = 'eye-dock-action-reason';
@@ -136,6 +183,7 @@ export function mountEyeMissionDock({
     actions,
     close,
     actionReason,
+    offscreen,
   );
 
   const tabs = node(doc, 'div', '', 'eye-dock-tabs');
@@ -164,13 +212,14 @@ export function mountEyeMissionDock({
   // cambia al desplegar.
   const publishBand = () => {
     const view = doc.defaultView;
-    const band =
-      host.hidden || !view
-        ? 0
-        : Math.max(
-            0,
-            Math.round(view.innerHeight - host.getBoundingClientRect().top),
-          );
+    const band = view
+      ? resolveDockBand({
+          hidden: host.hidden,
+          rect: host.getBoundingClientRect(),
+          innerWidth: view.innerWidth,
+          innerHeight: view.innerHeight,
+        })
+      : 0;
     doc.documentElement.style.setProperty('--eye-dock-band', `${band}px`);
   };
   const sizeObserver =
@@ -360,6 +409,9 @@ export function mountEyeMissionDock({
       host.dataset.contextLayer = view.layerId || '';
       host.dataset.expanded = String(view.expanded);
       host.dataset.cameraStatus = view.camera.id;
+      // Fase visual T3: sin nada que seguir no hay bloque de cámara.
+      host.dataset.cameraVisible = String(view.camera.visible !== false);
+      cameraLine.hidden = view.camera.visible === false;
 
       kicker.textContent = view.kicker;
       title.textContent = view.title ?? '';
@@ -377,23 +429,7 @@ export function mountEyeMissionDock({
       cameraBadge.textContent = view.camera.label;
       cameraDetail.textContent = view.camera.detail;
 
-      keyValues.replaceChildren();
-      for (const field of view.keyValues) {
-        const item = node(doc, 'div', '', 'eye-dock-keyvalue');
-        item.append(node(doc, 'dt', field.label));
-        const value = node(
-          doc,
-          'dd',
-          field.unit ? `${field.value} ${field.unit}` : field.value,
-        );
-        // Mono solo para números: un valor sin cifras (mapa, clase) es texto.
-        value.dataset.eyeValue = /\d/.test(value.textContent)
-          ? 'number'
-          : 'text';
-        item.append(value);
-        keyValues.append(item);
-      }
-      keyValues.hidden = view.keyValues.length === 0;
+      paintKeyValues(doc, keyValues, view.keyValues);
 
       renderActions(view);
       renderTabs(view);
@@ -425,8 +461,18 @@ export function mountEyeMissionDock({
       compassText.textContent = `${rounded}°`;
       compass.dataset.heading = String(rounded);
     },
-    /** @returns {HTMLElement} Sitio de la tira TIEMPO (P5 T8). */
-    getTimeHost: () => timeHost,
+    /**
+     * Objetivo fuera de cuadro (fase visual T4): «Fuera de vista · N km ·
+     * usa Centrar» o «Tras la Tierra». Sin texto, se oculta.
+     * @param {string|null} text
+     * @returns {void}
+     */
+    setOffscreen(text) {
+      if (destroyed) return;
+      offscreen.hidden = !text;
+      offscreen.textContent = text ? `${text} · usa Centrar` : '';
+      host.dataset.offscreen = String(Boolean(text));
+    },
     /** @returns {HTMLElement} Sitio de las acciones de la Luna (P5 T8). */
     getMoonHost: () => moonHost,
     /** @returns {HTMLElement} Cuerpo del panel OBJETIVO. */

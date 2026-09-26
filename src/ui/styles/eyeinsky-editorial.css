@@ -607,20 +607,10 @@ body[data-eye-skin='editorial'] .eye-telemetry button {
   font-size: var(--ei-fs-ui);
 }
 
-/* CAMPO repetía la escena con un dato desactualizado [S-15]. */
-body[data-eye-skin='editorial'] .eye-sector-readout {
-  display: none;
-}
+/* ── Reposo: D2 (HUD avanzado). D3: el panel USGS de reposo ya no existe. ── */
 
-/* ── Reposo: D3 (USGS bajo demanda) y D2 (HUD avanzado) ── */
-body[data-eye-skin='editorial'] .eye-signal-glance {
-  display: none;
-}
-
-body[data-eye-skin='editorial']:not(.cockpit-mode)
-  .eye-hud-details:not([open]) {
-  display: none;
-}
+/* D2: la regla de reposo del HUD avanzado vive en eyeinsky-editorial-reveal.css
+ * (oculto hasta pedirlo desde Instrumentos; sigue accesible si se pliega). */
 
 body[data-eye-skin='editorial'] .eye-hud-details {
   border-radius: var(--ei-r-l);

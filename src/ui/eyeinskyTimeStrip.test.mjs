@@ -286,3 +286,22 @@ test('D5 · honestidad: en modo vivo con deriva ≥ 5 s no dice «en vivo» hast
   const edge = resolveTimeStrip(clock({ driftMs: 4_999 }));
   assert.equal(edge.label, 'Reloj en vivo');
 });
+
+// ─── Fase visual T3 (8): mono solo en números ───
+test('T3: el chip y el detalle separan palabras (Grotesk) de cifras (Plex Mono)', async () => {
+  const { monoRuns } = await import('./eyeinskyTimeStrip.js');
+  assert.deepEqual(monoRuns('● VIVO 14:32 UTC'), [
+    { text: '● VIVO', kind: 'text' },
+    { text: '14:32 UTC', kind: 'number' },
+  ]);
+  assert.deepEqual(monoRuns('◆ SIM 07-OCT 03:12 ×3600'), [
+    { text: '◆ SIM', kind: 'text' },
+    { text: '07-OCT 03:12 ×3600', kind: 'number' },
+  ]);
+  assert.deepEqual(monoRuns('· fuera de efemérides'), [
+    { text: '· fuera de efemérides', kind: 'text' },
+  ]);
+  assert.deepEqual(monoRuns('2027-03-14 06:00 UTC'), [
+    { text: '2027-03-14 06:00 UTC', kind: 'number' },
+  ]);
+});

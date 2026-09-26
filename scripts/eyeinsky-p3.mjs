@@ -79,27 +79,45 @@ try {
   await page.setViewport({ width: 1440, height: 900 });
   await ready(page);
 
-  // ─── P3-01 · Ficha de vista abierta al inicio, sin robar el foco ───
+  // ─── P3-01 · Sin dock en reposo y sin robar el foco ───
+  // Fase visual T3 (§1.1, D1-A de Alex, 2026-09-25): sin objetivo no hay
+  // Mission Dock. Antes: «ficha de vista abierta al inicio» (earth:view
+  // visible). El nodo existe (contrato de identidad DOM) pero nace oculto; el
+  // foco no se mueve (queda en body).
   const initial = await page.evaluate(() => {
     const inspector = document.getElementById('eye-mission-dock');
-    const dossier = document.querySelector('.eye-dossier');
     const active = document.activeElement;
     return {
-      inspectorVisible: Boolean(inspector) && !inspector.hidden,
-      contextKey: dossier?.dataset.contextKey ?? null,
-      title: document.getElementById('eye-mission-dock-title')?.textContent ?? null,
+      present: Boolean(inspector),
+      hidden: Boolean(inspector?.hidden),
+      dataVisible: inspector?.dataset.visible ?? null,
       focusInsideDossier: Boolean(inspector && active && inspector.contains(active)),
+      activeTag: active?.tagName ?? null,
       inspectingFlag: document.body.dataset.eyeInspecting ?? null,
+      reveal: document.body.dataset.eyeReveal ?? null,
     };
   });
   check(
-    'p3-01-view-dossier-open-without-focus-theft',
-    initial.inspectorVisible &&
-      initial.contextKey === 'earth:view' &&
+    'p3-01-no-dock-at-rest-without-focus-theft',
+    initial.present &&
+      initial.hidden &&
+      initial.dataVisible === 'false' &&
+      initial.reveal === 'rest' &&
       !initial.focusInsideDossier &&
+      initial.activeTag === 'BODY' &&
       initial.inspectingFlag !== 'true',
     initial,
   );
+  // D1-A: la ficha de la vista sigue existiendo A PETICIÓN, por la ruta real
+  // (Instrumentos → Panel de misión, #eye-instrument-dossier). Las
+  // comprobaciones P3 que siguen se hacen sobre ella, con los mismos criterios.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-instrument-dossier');
+  await page.waitForFunction(
+    () => document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+    { timeout: 10_000 },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 600));
 
   // ─── P3-08 · En reposo OPS no inventa trabajo ───
   // Se mide ANTES de encender ninguna capa: con el mapa ya listo y las capas
@@ -918,57 +936,87 @@ try {
     { ...compassControl, sameAuthority },
   );
 
-  // Volver a la vista del globo por la ruta real (Home) deja la ficha de vista
-  // en pantalla para las comprobaciones siguientes.
+  // Volver a la vista del globo por la ruta real (Home). Con D1-A no reabre
+  // la ficha de vista: la lectura de la cámara vive en la telemetría del pie.
   await page.click('#eye-home');
   await new Promise((resolve) => setTimeout(resolve, 1200));
 
-  // ─── P3-01/06 · La ficha de vista dice mapa y cámara reales ───
+  // ─── P3-01b · Mapa y cámara reales: en la telemetría, tras #eye-home ───
+  // Fase visual T3 (§1.1, D1-A): los mismos datos (mapa activo, altura y
+  // coordenadas d.d° / d.d°) se leen en `.eye-telemetry`, su única lectura
+  // (V-04). Antes: `.eye-dossier-fields` / `.eye-dossier-coords` de la ficha
+  // de vista abierta en reposo.
   const viewFields = await page.evaluate(() => {
-    const labels = [
-      ...document.querySelectorAll('.eye-dossier-fields dt'),
-    ].map((dt) => dt.textContent);
-    const values = [
-      ...document.querySelectorAll('.eye-dossier-fields dd'),
-    ].map((dd) => dd.textContent);
+    const text = (id) => document.getElementById(id)?.textContent?.trim() ?? '';
+    const telemetry = document.querySelector('.eye-telemetry');
+    const dock = document.getElementById('eye-mission-dock');
     return {
-      kind: document.querySelector('.eye-dossier')?.dataset.contextKind ?? null,
-      labels,
-      values,
-      coords: document.querySelector('.eye-dossier-coords')?.textContent ?? null,
+      map: text('eye-map-label'),
+      altitude: text('eye-camera-altitude'),
+      coords: text('eye-camera-position'),
+      inTelemetry: ['eye-map-label', 'eye-camera-altitude', 'eye-camera-position'].every(
+        (id) => telemetry?.contains(document.getElementById(id)),
+      ),
+      telemetryVisible: Boolean(telemetry?.getClientRects().length),
+      dockHidden: Boolean(dock?.hidden),
     };
   });
   check(
-    'p3-01-view-dossier-has-real-map-and-camera',
-    viewFields.kind === 'view' &&
-      viewFields.labels.includes('MAPA ACTIVO') &&
-      viewFields.labels.includes('ALTURA') &&
-      viewFields.values.every((value) => value.trim().length > 0) &&
-      /\d+\.\d+°\s*\/\s*-?\d+\.\d+°/.test(viewFields.coords || ''),
+    'p3-01b-telemetry-has-real-map-and-camera',
+    viewFields.inTelemetry &&
+      viewFields.telemetryVisible &&
+      viewFields.dockHidden &&
+      viewFields.map.length > 0 &&
+      viewFields.map !== 'Sin cartografía' &&
+      /^\d[\d,.]*\s*km$/.test(viewFields.altitude) &&
+      /^-?\d+\.\d+°\s*\/\s*-?\d+\.\d+°$/.test(viewFields.coords),
     viewFields,
   );
-
   // ─── P3-06 · Una foto que no carga lo dice y no bloquea la ficha ───
+  // Reparación T5: tras #eye-home la ficha está OCULTA (D1-A, p3-01b) y leer
+  // textContent de nodos ocultos no comprueba nada. Se reabre por la ruta
+  // real (Instrumentos → Panel de misión, como openMissionPanel de p31) y se
+  // exige que la ficha esté a la vista al romperse la foto.
+  await page.click('.eye-function-dock [data-eye-view="instruments"]');
+  await page.click('#eye-instrument-dossier');
+  await page.waitForFunction(
+    () => document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+    { timeout: 10_000 },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 600));
   const brokenMedia = await page.evaluate(async () => {
+    const dock = document.getElementById('eye-mission-dock');
+    const shown = (el) =>
+      Boolean(el) &&
+      el.getClientRects().length > 0 &&
+      getComputedStyle(el).visibility !== 'hidden';
     const image = document.querySelector('.eye-media-image');
     if (!image) return { present: false };
     image.dispatchEvent(new Event('error'));
     await new Promise((resolve) => setTimeout(resolve, 200));
+    const title = document.getElementById('eye-mission-dock-title');
     return {
       present: true,
+      dockVisible: dock?.dataset.visible === 'true',
+      dockHidden: Boolean(dock?.hidden),
       state: document.querySelector('.eye-media')?.dataset.mediaState ?? null,
       caption:
         document.querySelector('.eye-media-caption')?.textContent ?? null,
-      dossierStillThere: Boolean(
-        document.getElementById('eye-mission-dock-title')?.textContent,
+      // La ficha sigue a la vista con su identidad…
+      dossierStillThere: shown(title) && Boolean(title.textContent.trim()),
+      // …y su estado dicho. Antes: `.eye-dossier-fields dt`; la ficha de la
+      // vista ya no tiene campos (mapa/altura/rumbo viven en la telemetría,
+      // V-04), así que se exige el estado del expediente, que sí la describe.
+      fieldsStillThere: Boolean(
+        document.querySelector('.eye-dossier-status')?.textContent?.trim(),
       ),
-      fieldsStillThere:
-        document.querySelectorAll('.eye-dossier-fields dt').length > 0,
     };
   });
   check(
     'p3-06-broken-media-says-so-without-blocking',
     brokenMedia.present &&
+      brokenMedia.dockVisible &&
+      !brokenMedia.dockHidden &&
       brokenMedia.state === 'unavailable' &&
       brokenMedia.caption === 'Fotografía no disponible' &&
       brokenMedia.dossierStillThere &&

@@ -92,6 +92,18 @@ try {
       .textContent.includes('Consultando'),
   );
   check('loading is visible while source is pending', true);
+  // Fase visual T3 (D3): el estado de la fuente vive en el panel Señales (y en
+  // la fila «Sismos USGS · N»), no en un panel de reposo.
+  check(
+    'source state lives in the Signals panel',
+    await page.$eval(
+      '#eye-source-state',
+      (e) =>
+        Boolean(e.closest('[data-eye-panel="signals"]')) &&
+        e.getAttribute('role') === 'status' &&
+        !document.querySelector('.eye-signal-glance'),
+    ),
+  );
   mode = 'ready';
   for (const send of pending.splice(0)) await send();
   await page.waitForFunction(() => window.__eyeinsky.rows.length === 2);

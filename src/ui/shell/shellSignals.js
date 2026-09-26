@@ -10,7 +10,6 @@ import { $ } from './shellDom.js';
 import { eyeDate, paintSignalList, SIGNAL_STATE_LABELS } from './signalList.js';
 
 const ANALYST_RECORD_LIMIT = 5000;
-const SIGNAL_HISTORY_LIMIT = 18;
 const AGE_TICK_MS = 30000;
 const INSPECT_ALT = 4500000;
 const MOBILE_QUERY = '(max-width:650px)';
@@ -42,50 +41,20 @@ function missingEarthquakeContext(id) {
   });
 }
 
+/**
+ * Estado de la fuente (D3): vive en el panel Señales (`#eye-source-state`,
+ * role=status) y en la fila «Sismos USGS · N» de la lista de capas. La
+ * sparkline de muestras se retiró: contaba filas por refresco, sin
+ * denominador ni significado.
+ * @returns {{count: number|null, state: string}} Resumen para la fila.
+ */
 function paintSourceSummary(current, stats, sourceState, rows) {
-  $('eye-total').textContent = current?.enabled ? String(rows.length) : '—';
   $('eye-nav-count').textContent = rows.length ? String(rows.length) : '—';
-  $('eye-source-state').textContent =
-    `USGS · ${SIGNAL_STATE_LABELS[sourceState]}`;
-  $('eye-source-detail').textContent = stats.lastUpdate
-    ? `Consulta: ${eyeDate(stats.lastUpdate)}. ${SIGNAL_STATE_LABELS[sourceState]}.`
-    : 'Fuente pública · sin consulta completada.';
-}
-
-function recordSignalSample(state, stats) {
-  const sampleKey = `${stats.lastUpdate || ''}:${state.rows.length}`;
-  if (stats.lastUpdate && sampleKey !== state.lastSignalSample) {
-    state.lastSignalSample = sampleKey;
-    state.signalHistory.push(state.rows.length);
-    if (state.signalHistory.length > SIGNAL_HISTORY_LIMIT)
-      state.signalHistory.shift();
-  }
-}
-
-function paintTrend(signalHistory) {
-  const trend = $('eye-source-trend');
-  if (trend && signalHistory.length) {
-    const max = Math.max(1, ...signalHistory);
-    trend.setAttribute(
-      'points',
-      signalHistory
-        .map((value, index) => {
-          const x =
-            signalHistory.length === 1
-              ? 90
-              : (index / (signalHistory.length - 1)) * 180;
-          const y = 24 - (value / max) * 20;
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        })
-        .join(' '),
-    );
-    $('eye-source-trend-label').textContent =
-      signalHistory.length === 1
-        ? '1 muestra aceptada'
-        : `${signalHistory.length} muestras aceptadas`;
-  } else if ($('eye-source-trend-label')) {
-    $('eye-source-trend-label').textContent = 'Sin datos aceptados';
-  }
+  const text = `USGS · ${SIGNAL_STATE_LABELS[sourceState]}`;
+  $('eye-source-state').textContent = stats.lastUpdate
+    ? `${text} · consulta ${eyeDate(stats.lastUpdate)}`
+    : text;
+  return { count: current?.enabled ? rows.length : null, state: text };
 }
 
 function paintFeedStatus(current, stats, sourceState, visible, rows) {
@@ -213,9 +182,14 @@ export function createSignals(shell) {
       sourceState = signalState(current);
     state.rows = earthquake()?.getAnalystRecords(ANALYST_RECORD_LIMIT) || [];
     const visible = filterSignals(state.rows, state.filters);
-    paintSourceSummary(current, stats, sourceState, state.rows);
-    recordSignalSample(state, stats);
-    paintTrend(state.signalHistory);
+    const summary = paintSourceSummary(current, stats, sourceState, state.rows);
+    if (
+      state.sourceSummary?.state !== summary.state ||
+      state.sourceSummary?.count !== summary.count
+    ) {
+      state.sourceSummary = summary;
+      shell.activeLayers?.sync();
+    }
     paintFeedStatus(current, stats, sourceState, visible, state.rows);
     paintSignalList(state, visible, sourceState);
     syncEntities(visible);

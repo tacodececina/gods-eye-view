@@ -117,6 +117,7 @@ test('camera status separates "selected" from "the camera is on it"', () => {
       id: 'following',
       label: 'CÁMARA / SIGUIENDO',
       detail: 'La cámara sigue a TEST123.',
+      visible: true,
     },
   );
   assert.deepEqual(
@@ -125,6 +126,7 @@ test('camera status separates "selected" from "the camera is on it"', () => {
       id: 'selected-free',
       label: 'CÁMARA / LIBRE',
       detail: 'TEST123 sigue seleccionado; la cámara es tuya.',
+      visible: true,
     },
     'a gesture frees the camera without losing the target',
   );
@@ -134,6 +136,7 @@ test('camera status separates "selected" from "the camera is on it"', () => {
       id: 'free',
       label: 'CÁMARA / LIBRE',
       detail: 'Sin objetivo seleccionado.',
+      visible: false,
     },
   );
 });
@@ -209,17 +212,60 @@ test('CENTRAR refuses itself when the provider gave no position', () => {
   });
 });
 
-test('NORTE and MÁS are always offered, in that exact dock order', () => {
+// Fase visual T3 (§1.1, D1-A): la brújula del dock YA ejecuta Norte
+// (`[data-eye-dock-action="north"]`, ≥ 44 px, p3-12); el riel deja de
+// repetirla como botón. Antes: ['follow', 'center', 'north', 'more'].
+test('the rail offers SEGUIR, CENTRAR and MÁS; the compass owns NORTE', () => {
   const actions = resolveMissionDockActions({
     context: normalizeContext({}),
     following: false,
   });
   assert.deepEqual(
     actions.map(({ id }) => id),
-    ['follow', 'center', 'north', 'more'],
+    ['follow', 'center', 'more'],
   );
-  assert.equal(actionById(actions, 'north').enabled, true);
+  assert.equal(actionById(actions, 'north'), undefined);
   assert.equal(actionById(actions, 'more').enabled, true);
+});
+
+test('D1-A: without a target there is no dock at rest; the view dossier only on demand', () => {
+  const view = (options) =>
+    buildMissionDockView({
+      dossier: createDossierState(normalizeContext({})),
+      activity: createActivityState(),
+      dock: createMissionDockState(),
+      following: false,
+      ...options,
+    });
+  assert.equal(view().visible, false, 'Vista · Tierra is not a target');
+  assert.equal(view({ viewRequested: true }).visible, true);
+  const target = buildMissionDockView({
+    dossier: createDossierState(trackedContext()),
+    activity: createActivityState(),
+    dock: createMissionDockState(),
+    following: false,
+  });
+  assert.equal(target.visible, true, 'a fixed target opens the panel');
+});
+
+test('the camera block only shows for something a layer can follow', () => {
+  const build = (context, following = false) =>
+    buildMissionDockView({
+      dossier: createDossierState(context),
+      activity: createActivityState(),
+      dock: createMissionDockState(),
+      following,
+    }).camera;
+  assert.equal(build(trackedContext(), true).visible, true);
+  assert.equal(build(trackedContext(), false).visible, true);
+  const quake = normalizeContext({
+    key: 'earthquakes:us1',
+    kind: 'earthquake',
+    layerId: 'earthquakes',
+    title: 'M4.1',
+  });
+  assert.equal(build(quake).visible, false, 'no «CÁMARA / LIBRE» for a quake');
+  assert.equal(build(normalizeContext({})).visible, false);
 });
 
 test('pane selection survives a refresh and falls back when a pane disappears', () => {
@@ -271,7 +317,7 @@ test('the dock view composes the real dossier and activity state', () => {
   );
   assert.deepEqual(
     view.actions.map(({ id }) => id),
-    ['follow', 'center', 'north', 'more'],
+    ['follow', 'center', 'more'],
   );
 });
 
@@ -344,7 +390,7 @@ test('INSPECCIONAR sits after SEGUIR for a satellite with a curated model', () =
   const view = satelliteView({ assetId: 'nasa-iss', framing: 'orbit' });
   assert.deepEqual(
     view.actions.map(({ id }) => id),
-    ['follow', 'inspect', 'center', 'north', 'more'],
+    ['follow', 'inspect', 'center', 'more'],
   );
   const inspect = actionById(view.actions, 'inspect');
   assert.equal(inspect.label, 'Inspeccionar');

@@ -11,6 +11,7 @@ import {
   suspendDetection,
 } from '../../data/detection.js';
 import { setOverlaySourceSuppressed } from '../../overlays/worldOverlay.js';
+import { createMoonActionsHost, placeMoonActions } from './moonActionsHost.js';
 
 function earthMoonShell(shell, systemDeclutter) {
   const { state, dataManager, styleManager } = shell;
@@ -71,13 +72,21 @@ export function mountEarthMoonBridge(shell) {
   });
   shell.systemDeclutter = systemDeclutter;
   defer(() => systemDeclutter.destroy());
+  // Fase visual T3: el reloj vive en el pie global; las acciones de la Luna en
+  // un contenedor que se mueve entre su fila de capa y su panel (D1-A).
+  shell.moonActionsHost = createMoonActionsHost(document);
+  document.querySelector('[data-eye-moon-menu]')?.append(shell.moonActionsHost);
+  defer(() => {
+    shell.moonActionsHost.remove();
+    shell.moonActionsHost = null;
+  });
   const earthMoon = mountEyeEarthMoon({
     viewer,
     dataManager,
     reduced,
     hosts: {
-      time: shell.missionDock.getTimeHost(),
-      moon: shell.missionDock.getMoonHost(),
+      time: document.querySelector('[data-eye-time-host]'),
+      moon: shell.moonActionsHost,
     },
     ring: {
       get: () => styleManager.celestialRingEnabled === true,
@@ -87,4 +96,5 @@ export function mountEarthMoonBridge(shell) {
   });
   shell.earthMoon = earthMoon;
   defer(() => earthMoon.destroy());
+  placeMoonActions(shell);
 }

@@ -238,16 +238,25 @@ function createContext(options, sceneClock) {
   return ctx;
 }
 
-/** Marca la cabecera como compacta según el viewport VISUAL (zoom incluido). */
+/**
+ * Marca como compactas, según el viewport VISUAL (zoom incluido), la casa de
+ * la tira TIEMPO (pie global, fase visual T3) y la cabecera del dock.
+ */
 function syncCompact(ctx, view) {
-  const header = ctx.hosts.time.parentElement;
-  if (!header || !view) return;
+  if (!view) return;
   const width = view.visualViewport?.width ?? view.innerWidth;
   const height = view.visualViewport?.height ?? view.innerHeight;
   const short = height < COMPACT_MAX_HEIGHT;
-  header.dataset.compact = String(width < COMPACT_MAX_WIDTH || short);
-  // Viewport visual bajo (zoom 200 %, teléfono apaisado): ver el CSS.
-  header.dataset.short = String(short);
+  const hosts = [
+    ctx.hosts.time,
+    ctx.doc.querySelector?.('#eye-mission-dock .eye-dock-header'),
+  ];
+  for (const host of hosts) {
+    if (!host) continue;
+    host.dataset.compact = String(width < COMPACT_MAX_WIDTH || short);
+    // Viewport visual bajo (zoom 200 %, teléfono apaisado): ver el CSS.
+    host.dataset.short = String(short);
+  }
 }
 
 function renderAll(ctx) {
@@ -388,7 +397,7 @@ function rescueFocus(ctx) {
   const from = ctx.memory.focusFrom;
   const active = ctx.doc.activeElement;
   if (!from || (active && active !== ctx.doc.body && usable(active))) return;
-  const dock = ctx.hosts.time.closest?.('#eye-mission-dock');
+  const dock = ctx.doc.getElementById?.('eye-mission-dock');
   const candidates = [
     from,
     ...(ctx.hosts.moon?.querySelectorAll?.('button') ?? []),

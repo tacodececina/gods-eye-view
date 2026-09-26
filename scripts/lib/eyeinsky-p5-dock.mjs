@@ -130,13 +130,37 @@ export const ACTIVE_DISABLE_TARGETS =
   '#eye-active-layers [data-eye-active-disable]';
 
 /**
+ * Fase visual T3 (§1.1): el reloj ya no depende del objetivo y vive en el pie
+ * global (`[data-eye-time-host]`); las acciones de la Luna viven en su panel
+ * (cabecera del dock) cuando está fijada y, si no, en el menú de su fila de
+ * capa (`[data-eye-moon-menu]`, D1-A). Mismos umbrales (44 px, 13/14 px).
+ */
+export const TIME_SCOPE = '[data-eye-time-host]';
+export const MOON_MENU_SCOPE = '[data-eye-moon-menu]';
+/** Superficies que hoy alojan los controles de tiempo y de la Luna. */
+export const CONTROL_SCOPES = `#eye-mission-dock, ${TIME_SCOPE}, ${MOON_MENU_SCOPE}`;
+const HEADER_TARGETS = [
+  `${TIME_SCOPE} button`,
+  `${TIME_SCOPE} input`,
+  `${MOON_MENU_SCOPE} button`,
+  '.eye-dock-header button',
+  '.eye-dock-header input',
+  '.eye-dock-rail button',
+].join(', ');
+const HEADER_TEXT = [TIME_SCOPE, MOON_MENU_SCOPE, '.eye-dock-header']
+  .flatMap((scope) =>
+    ['p', 'li', 'b', 'button', 'span:not(.eye-visually-hidden)'].map(
+      (tag) => `${scope} ${tag}`,
+    ),
+  )
+  .join(', ');
+
+/**
  * Objetivos de `selector`: tamaño, texto y si el centro es suyo (un botón
  * recortado por el overflow de su panel devuelve otro elemento, p. ej. CANVAS).
  * El dock (y su cuerpo) se desplaza: lo que vive en él se trae a la vista.
  */
-export function headerTargetsProbe(
-  selector = '.eye-dock-header button, .eye-dock-header input, .eye-dock-rail button',
-) {
+export function headerTargetsProbe(selector) {
   const viewport = window.visualViewport;
   const visible = (el) =>
     el.getClientRects().length > 0 &&
@@ -176,16 +200,12 @@ export function headerTargetsProbe(
   };
 }
 
-/** Tamaño mínimo del texto visible de la cabecera del dock. */
-export function headerTextProbe() {
+/** Tamaño mínimo del texto visible de la cabecera del dock y del pie TIEMPO. */
+export function headerTextProbe(selector) {
   const visible = (el) =>
     el.getClientRects().length > 0 &&
     getComputedStyle(el).visibility !== 'hidden';
-  const texts = [
-    ...document.querySelectorAll(
-      '.eye-dock-header p, .eye-dock-header li, .eye-dock-header b, .eye-dock-header button, .eye-dock-header span:not(.eye-visually-hidden)',
-    ),
-  ]
+  const texts = [...document.querySelectorAll(selector)]
     .filter(visible)
     .filter((el) => el.textContent.trim())
     .map((el) => Number.parseFloat(getComputedStyle(el).fontSize));
@@ -193,9 +213,9 @@ export function headerTextProbe() {
 }
 
 /** Objetivos de `selector` más el texto mínimo de la cabecera (targetsOk). */
-export async function readHeaderTargets(page, selector) {
+export async function readHeaderTargets(page, selector = HEADER_TARGETS) {
   const targets = await page.evaluate(headerTargetsProbe, selector);
-  return { ...targets, ...(await page.evaluate(headerTextProbe)) };
+  return { ...targets, ...(await page.evaluate(headerTextProbe, HEADER_TEXT)) };
 }
 
 const click = (page, selector) =>
@@ -213,18 +233,18 @@ export async function keyboardActivate(page, selector, waitMs = 400) {
   await page.focus(selector);
   await page.keyboard.press('Enter');
   await sleep(waitMs);
-  return page.evaluate(() => {
+  return page.evaluate((scopes) => {
     const active = document.activeElement;
-    const dock = document.getElementById('eye-mission-dock');
     return {
       tag: active?.tagName ?? null,
       label: active?.getAttribute?.('aria-label') ?? null,
-      // Dentro del dock y visible (no un botón oculto al replegarse).
+      // Dentro de la superficie que aloja el control (dock, pie TIEMPO o menú
+      // de la Luna; §1.1) y visible (no un botón oculto al replegarse).
       inside: Boolean(
-        active && dock?.contains(active) && active.getClientRects().length,
+        active?.closest?.(scopes) && active.getClientRects().length,
       ),
     };
-  });
+  }, CONTROL_SCOPES);
 }
 
 const vecDist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);

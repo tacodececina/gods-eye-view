@@ -11,6 +11,7 @@ import { createDecorativeDecoder } from './eyeinskyDecode.js';
 import { $ } from './shell/shellDom.js';
 import { createShellState } from './shell/shellState.js';
 import { mountVisualViewport } from './shell/visualViewport.js';
+import { mountCreditsBand } from './shell/creditsBand.js';
 import { createNotice, mountDialog } from './shell/noticeDialog.js';
 import {
   createPanels,
@@ -41,6 +42,8 @@ import { createShareHelp, mountCommands } from './shell/shellCommands.js';
 import { mountDebugHandle } from './shell/shellDebug.js';
 import { mountIntro } from './shell/homeView.js';
 import { readGlobeFlags } from './eyeinskyGlobeFlags.js';
+import { mountRevealAndStory } from './shell/revealStory.js';
+import { mountTargetEdgeArrow } from './shell/edgeArrow.js';
 
 const MAX_SHARED_HASH_LENGTH = 12000;
 const OSM_CREDIT_HTML =
@@ -202,6 +205,8 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     flags,
     state: createShellState(),
   };
+  // Fase visual T3: estado de revelación y titular antes que nadie los pida.
+  mountRevealAndStory(shell);
   defer(
     configureEyeCameraInteraction(viewer, (kind) => {
       const generation =
@@ -225,6 +230,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   });
   defer(() => panelKickerDecode.destroy());
   mountVisualViewport({ lifetime, defer });
+  mountCreditsBand({ lifetime, defer });
   const advancedTelemetry = mountCockpitTelemetry(defer);
   Object.assign(shell, {
     panelKickerDecode,
@@ -258,6 +264,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   mountDockSources(shell);
   mountSurfaceSuspension(shell);
   mountEarthMoonBridge(shell);
+  mountTargetEdgeArrow(shell);
   mountCleanView(shell);
   mountCommands(shell);
   mountLayerSurfaces(shell, advancedTelemetry);

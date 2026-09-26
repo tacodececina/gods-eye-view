@@ -15,8 +15,10 @@ export function createShellState() {
     rows: [],
     generation: 0,
     lastListSignature: '',
-    lastSignalSample: '',
-    signalHistory: [],
+    // Estado USGS publicado en la fila de capa (D3).
+    sourceSummary: null,
+    // La persona pidió la ficha de la vista (Instrumentos → Panel de misión).
+    viewRequested: false,
     lastCameraTargetId: null,
     // Razones de suspensión de las superficies P3. Existen desde el arranque
     // porque `openView` puede correr antes de que las superficies se monten.

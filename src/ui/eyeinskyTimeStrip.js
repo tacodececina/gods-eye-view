@@ -250,7 +250,9 @@ function paintStrip(parts, view, currentIso, memory) {
   parts.root.dataset.tone = view.tone;
   parts.root.dataset.mode = view.mode;
   parts.icon.textContent = view.icon;
-  parts.chip.textContent = view.chip.text;
+  parts.chip.replaceChildren(
+    ...runNodes(doc, view.chip.text, 'eye-time-chip-run'),
+  );
   parts.chip.dataset.tone = view.chip.tone;
   parts.chip.setAttribute('aria-label', view.chip.label);
   parts.label.textContent = view.label;
@@ -275,6 +277,39 @@ function paintStrip(parts, view, currentIso, memory) {
   parts.notice.hidden = !view.suspensionNotice;
 }
 
+/** Unidades que acompañan a una cifra (se quedan con ella, en mono). */
+const UNIT_TOKENS = new Set(['UTC', 'km', 's', 'min', 'h']);
+
+/**
+ * Fase visual T3 (8): «mono solo en números». Parte un rótulo en tramos de
+ * palabras (Grotesk) y de cifras con su unidad (Plex Mono), sin cambiar el
+ * texto (los tramos se unen con un espacio).
+ * @param {string} text
+ * @returns {Array<{text: string, kind: 'text'|'number'}>}
+ */
+export function monoRuns(text) {
+  const runs = [];
+  for (const token of String(text).split(' ').filter(Boolean)) {
+    const previous = runs.at(-1);
+    const numeric =
+      /\d|^×/.test(token) ||
+      (UNIT_TOKENS.has(token) && previous?.kind === 'number');
+    const kind = numeric ? 'number' : 'text';
+    if (previous?.kind === kind) previous.text += ` ${token}`;
+    else runs.push({ text: token, kind });
+  }
+  return runs;
+}
+
+/** Tramos con su marca `data-eye-value` (el CSS pone la familia). */
+function runNodes(doc, text, className) {
+  return monoRuns(text).flatMap((run, index) => {
+    const span = node(doc, 'span', className, run.text);
+    span.dataset.eyeValue = run.kind;
+    return index ? [' ', span] : [span];
+  });
+}
+
 /** Detalle en piezas que no se parten por dentro (fecha · hora · ritmo). */
 function paintDetail(parts, detail) {
   const doc = parts.root.ownerDocument;
@@ -282,7 +317,7 @@ function paintDetail(parts, detail) {
   parts.detail.replaceChildren(
     ...pieces.flatMap((text, index) => [
       ...(index ? [' '] : []),
-      node(doc, 'span', 'eye-time-piece', text),
+      ...runNodes(doc, text, 'eye-time-piece'),
     ]),
   );
 }

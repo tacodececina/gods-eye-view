@@ -380,9 +380,10 @@ async function readoutAt(browser, baseUrl, width, height) {
     await sleep(500);
     const natural = await page.evaluate(readoutFitProbe);
     await page.evaluate(() => {
+      // §1.1: la tira vive en el pie global; su casa lleva las marcas.
       const header = document
         .querySelector('[data-eye-time-strip]')
-        .closest('.eye-dock-header');
+        .closest('[data-eye-time-host]');
       header.dataset.compact = 'false';
       header.dataset.short = 'false';
     });

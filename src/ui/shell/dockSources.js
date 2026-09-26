@@ -83,7 +83,10 @@ function mountDossierReopen(shell) {
     // la razón `mobile-workspace`: sin retirarla, reabrir dejaba la ficha en
     // display:none. Se sale a Explorar primero y sólo después se mueve el foco.
     shell.openView('explore', opener);
+    // D1-A: la ficha de la vista solo existe a petición de la persona.
+    state.viewRequested = true;
     shell.publishDossier({ type: 'reopen' });
+    shell.applyDossier();
     // Vista limpia manda: si sigue activa, la ficha no debe aparecer ni robar
     // el foco; la reapertura queda registrada para cuando se restaure.
     if (state.suspensionReasons.size > 0) return;

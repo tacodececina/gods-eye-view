@@ -7,7 +7,6 @@
  */
 import {
   createViewContext,
-  isDossierVisible,
   normalizeContext,
   reduceDossier,
 } from '../eyeinskyDossierModel.js';
@@ -20,26 +19,23 @@ import { mountEyeMissionDock } from '../eyeinskyMissionDock.js';
 import { mountEyeMedia, resolveContextMedia } from '../eyeinskyMedia.js';
 import { $ } from './shellDom.js';
 
-const DETAILED_ALT_M = 100000;
+import { placeMoonActions } from './moonActionsHost.js';
+import { releaseDockTarget } from './dockRelease.js';
 
-function viewFields(pose, stack) {
-  const fields = [];
-  const mapLabel =
-    stack?.label || stack?.name || stack?.activeId || stack?.id || null;
-  if (mapLabel) fields.push({ label: 'MAPA ACTIVO', value: mapLabel });
-  if (Number.isFinite(pose?.alt))
-    fields.push({
-      label: 'ALTURA',
-      value: (pose.alt / 1000).toFixed(pose.alt >= DETAILED_ALT_M ? 0 : 1),
-      unit: 'km',
-    });
-  if (Number.isFinite(pose?.heading))
-    fields.push({
-      label: 'RUMBO',
-      value: String(Math.round(((pose.heading % 360) + 360) % 360)),
-      unit: '°',
-    });
-  return fields;
+/**
+ * Titular y revelación (fase visual T3): con objetivo visible, el titular es
+ * el objetivo y el cuerpo publica `data-eye-reveal="target"`.
+ * @param {object} shell Contexto del shell.
+ * @param {object} view Vista del dock.
+ * @returns {boolean} Si hay objetivo a la vista.
+ */
+function publishReveal(shell, view) {
+  const target = view.visible && view.contextKind !== 'view';
+  shell.reveal?.setTarget(target);
+  shell.story?.setTarget(
+    target ? { title: view.title, kicker: view.kicker } : null,
+  );
+  return target;
 }
 
 /**
@@ -124,42 +120,39 @@ export function createDossierAuthority(shell) {
     });
   }
   /**
-   * Ficha de la vista con datos REALES: mapa activo y cámara de este instante.
-   *
-   * Sólo lee: no enciende capas, no mueve la cámara y no pide nada. Si un dato
-   * no está disponible se omite el campo en vez de inventarlo.
+   * Ficha de la vista (a petición: Instrumentos → Panel de misión). Fase
+   * visual T3 (V-04): mapa, altura, rumbo y coordenadas tienen UNA lectura, la
+   * telemetría del pie; la ficha ya no los repite. Es la cámara de este
+   * instante (`status: camera`), sin línea de fuente.
    * @returns {object} Contexto de vista.
    */
   function currentViewContext() {
-    const pose = styleManager.getCameraState?.() ?? null;
-    const stack = mapStackController?.getState?.() ?? null;
-    const fields = viewFields(pose, stack);
-    return withResolvedMedia(
-      createViewContext({
-        position:
-          Number.isFinite(pose?.lat) && Number.isFinite(pose?.lon)
-            ? { lat: pose.lat, lon: pose.lon }
-            : null,
-        fields,
-      }),
-    );
+    void styleManager;
+    void mapStackController;
+    return withResolvedMedia(createViewContext());
   }
+
   function applyDossier() {
-    const visible = isDossierVisible(state.dossierState);
-    shell.setSurface('eye-mission-dock', visible);
-    // `eyeInspecting` sigue significando «hay un objetivo inspeccionado». La
-    // ficha de vista no es un objetivo, así que Home y el arranque no lo activan
-    // y las regresiones que dependen de esa semántica siguen valiendo.
-    document.body.dataset.eyeInspecting = String(
-      visible && state.dossierState.context.kind !== 'view',
-    );
+    // Un objetivo sustituye a la ficha de vista pedida: al volver a la vista
+    // (objetivo soltado, Home) no reaparece sola (D1-A).
+    if (state.dossierState.context.kind !== 'view') state.viewRequested = false;
     state.dockView = buildMissionDockView({
       dossier: state.dossierState,
       activity: state.activityState,
       dock: state.dockState,
       following: shell.isFollowingCurrentTarget(),
+      viewRequested: state.viewRequested,
     });
+    const visible = state.dockView.visible;
+    shell.setSurface('eye-mission-dock', visible);
+    // `eyeInspecting` sigue significando «hay un objetivo inspeccionado». La
+    // ficha de vista no es un objetivo, así que Home y el arranque no lo activan
+    // y las regresiones que dependen de esa semántica siguen valiendo.
+    document.body.dataset.eyeInspecting = String(
+      publishReveal(shell, state.dockView),
+    );
     shell.missionDock.update(state.dockView);
+    placeMoonActions(shell);
     shell.dossier.update(state.dossierState);
     shell.dossierMedia.setContext({
       key: state.dossierState.context.key,
@@ -171,6 +164,7 @@ export function createDossierAuthority(shell) {
     if (!visible || !mediaOpen) shell.dossierMedia.pause();
   }
   function publishDossier(event) {
+    if (event?.type === 'close') state.viewRequested = false;
     const nextState = reduceDossier(state.dossierState, event);
     if (nextState === state.dossierState) return;
     state.dossierState = nextState;
@@ -213,7 +207,17 @@ export function mountDockSurfaces(shell) {
   const { defer, reduced } = shell;
   shell.missionDock = mountEyeMissionDock({
     host: $('eye-mission-dock'),
-    onClose: () => shell.closeInspector(),
+    // × suelta el objetivo (reparación T5): sin esto la cámara seguía
+    // enganchada a un objetivo sin panel y «Volver a Tierra» lo resucitaba.
+    onClose: () => {
+      releaseDockTarget({
+        context: shell.state.dossierState.context,
+        layers: shell.dataManager.layers,
+        viewer: shell.viewer,
+        goGlobal: () => shell.sector('global'),
+      });
+      shell.closeInspector();
+    },
     onPane: (pane) => shell.publishDock({ type: 'select-pane', pane }),
     onToggle: (expanded) =>
       shell.publishDock({ type: expanded ? 'expand' : 'collapse' }),

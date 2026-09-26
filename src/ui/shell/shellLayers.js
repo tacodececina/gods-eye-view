@@ -26,9 +26,6 @@ export function createLayers(shell) {
     );
   }
   function syncLayers() {
-    const count = dataManager.getAll().filter((entry) => entry.enabled).length;
-    if ($('eye-active-layer-count'))
-      $('eye-active-layer-count').textContent = String(count);
     shell.activeLayers?.sync();
     shell.catalog?.sync();
   }
@@ -131,15 +128,21 @@ export function mountLayerSurfaces(shell, advancedTelemetry) {
     onAdd: (button) => shell.openView('catalog', button),
     onDisable: (id, button) =>
       shell.toggleLayer(id, button, { returnToActive: true }),
+    // D3: la fila «Sismos USGS · N» abre Señales y lleva el estado de la fuente.
+    onOpen: (view, button) => shell.openView(view, button),
+    getSources: () =>
+      shell.state.sourceSummary
+        ? { earthquakes: shell.state.sourceSummary }
+        : {},
     getSuspended: () => shell.earthMoon.debug?.suspended() ?? [],
   });
   defer(() => shell.activeLayers?.destroy());
+  defer(() => delete document.body.dataset.eyeAdvanced);
   lifetime.listen($('eye-catalog-back'), 'click', shell.closePanel);
-  lifetime.listen($('eye-instrument-layers'), 'click', () => {
-    shell.closePanel();
-    shell.activeLayers?.focusAdd();
-  });
   lifetime.listen($('eye-instrument-data'), 'click', () => {
+    // D2: oculto en reposo; pedido desde Instrumentos queda accesible aunque
+    // la persona lo pliegue con su summary (el <details> sigue en pantalla).
+    document.body.dataset.eyeAdvanced = 'shown';
     advancedTelemetry.open = true;
     shell.closePanel();
     advancedTelemetry.focus?.({ preventScroll: true });

@@ -77,6 +77,13 @@ try {
     'one Cesium canvas',
     (await page.$$eval('.cesium-widget canvas', (n) => n.length)) === 1,
   );
+  // Fase visual (V-01/V-02, reparación T5): en reposo el carril de cámara
+  // espera a la primera interacción; se revela como lo haría la persona
+  // (rueda mínima lejos del centro) antes de medir el zoom. Criterio igual.
+  await page.mouse.move(1440 * 0.3, 960 * 0.4);
+  await page.mouse.wheel({ deltaY: 1 });
+  await page.waitForFunction(() => document.body.dataset.eyeReveal !== 'rest');
+  await new Promise((r) => setTimeout(r, 900));
   const before = await page.evaluate(() =>
     window.__godsEyeView.styleManager.getCameraState(),
   );
@@ -213,6 +220,10 @@ try {
           .name === 'Pacífico revisado',
     ),
   );
+  // Fase visual T3 paso 8 (reparación T5): Compartir vive en Más (y en la
+  // paleta de acciones), ya no en la línea de telemetría. Se llega por Más y
+  // se vuelve a Operación para seguir con el registro.
+  await page.click('.eye-function-dock [data-eye-view="more"]');
   await page.click('#eye-share');
   const share = await page.$eval('#eye-dialog textarea', (e) => e.value);
   result.publicLink = share;
@@ -223,6 +234,7 @@ try {
   );
   await shot('journey-private-share');
   await page.click('#eye-dialog-cancel');
+  await page.click('[data-eye-panel="more"] [data-eye-view="operations"]');
   await page.click('[data-operation-action="delete"]');
   await page.click('#eye-dialog-cancel');
   check(

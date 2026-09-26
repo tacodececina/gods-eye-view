@@ -1,0 +1,509 @@
+/*
+ * EYEINSKY · Piel «Editorial Clean» — jerarquía y revelación (fase visual T3).
+ *
+ * Lee el estado que publica src/ui/shell/reveal.js en <body>:
+ *   data-eye-reveal (rest|explore|target) · data-eye-story (headline|hidden|target)
+ *   data-eye-motion (fade|none)
+ * Titular de entrada §6.3, pie global (TIEMPO + telemetría) §6.7–§6.8, panel
+ * contextual único anclado a la derecha §6.4, capas en línea §6.5 y buscador
+ * §6.2. Todo bajo body[data-eye-skin='editorial']; el pie base (sin piel) va
+ * en eyeinsky-earth-moon.css para que ?skin=legacy siga funcionando.
+ */
+
+/* ── Titular de entrada §6.3 ── */
+body[data-eye-skin='editorial'] .eye-story {
+  position: fixed;
+  z-index: 30;
+  bottom: calc(128px + var(--eye-visual-bottom, 0px));
+  left: calc(var(--eye-safe-left) + var(--eye-visual-left, 0px));
+  width: min(520px, 38vw);
+  margin: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--ei-t-reveal) var(--ei-ease),
+    transform var(--ei-t-reveal) var(--ei-ease),
+    visibility 0s linear 0s;
+}
+
+body[data-eye-skin='editorial'] .eye-story-kicker {
+  display: flex;
+  align-items: center;
+  margin: 0 0 14px;
+  gap: 10px;
+  color: var(--ei-muted);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial'] .eye-story-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--ei-live);
+}
+
+body[data-eye-skin='editorial'] .eye-story-title {
+  margin: 0;
+  color: var(--ei-paper);
+  font: 400 clamp(44px, 5.6vw, 88px) / 0.95 var(--ei-f-display);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+body[data-eye-skin='editorial'] .eye-story-em {
+  color: var(--ei-live);
+  font-style: italic;
+}
+
+body[data-eye-skin='editorial'] .eye-story-lede {
+  max-width: 42ch;
+  margin: 18px 0 0;
+  color: var(--ei-muted);
+  font: 400 15px / 1.45 var(--ei-f-ui);
+}
+
+/* Primera interacción: se retira (fundido corto; sin animación con
+ * movimiento reducido, porque los tokens --ei-t-* valen 0 ms). */
+body[data-eye-skin='editorial'][data-eye-story='hidden'] .eye-story {
+  opacity: 0;
+  transform: translateY(6px);
+  visibility: hidden;
+  transition:
+    opacity var(--ei-t-swap) var(--ei-ease),
+    transform var(--ei-t-swap) var(--ei-ease),
+    visibility 0s linear var(--ei-t-swap);
+}
+
+body[data-eye-skin='editorial'][data-eye-motion='none'] .eye-story {
+  transition: none;
+}
+
+/* Con objetivo el titular ES el objetivo: lo dice el título serif del panel
+ * contextual; la región viva lo anuncia una vez y no se pinta dos veces. */
+body[data-eye-skin='editorial'][data-eye-story='target'] .eye-story {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Revelación V-01/V-02 (plan §2.2, T3 paso 2) ──
+ * En reposo solo barra, titular y tira: carril de cámara, telemetría, capas
+ * vacías y el chip de proveedores esperan a la primera interacción. Con
+ * opacity/visibility, NUNCA `hidden` ni display:none: los destinos de foco y
+ * los hit-tests siguen existiendo en cuanto se explora. */
+body[data-eye-skin='editorial'][data-eye-reveal='rest']
+  :is(
+    .eye-instruments,
+    .eye-telemetry,
+    #eye-active-layers[data-empty='true'],
+    #key-setup-chip
+  ) {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Al explorar aparecen con --ei-t-reveal (0 ms con movimiento reducido): la
+ * visibilidad cambia al instante y la opacidad funde. */
+body[data-eye-skin='editorial']:is(
+    [data-eye-reveal='explore'],
+    [data-eye-reveal='target']
+  )
+  :is(
+    .eye-instruments,
+    .eye-telemetry,
+    #eye-active-layers[data-empty='true'],
+    #key-setup-chip
+  ) {
+  transition:
+    opacity var(--ei-t-reveal) var(--ei-ease),
+    visibility 0s linear 0s;
+}
+
+/* ── Pie global §6.7–§6.8: TIEMPO a la izquierda, telemetría a la derecha ── */
+body[data-eye-skin='editorial'] .eye-time-host {
+  bottom: calc(var(--eye-safe-bottom) + 26px + var(--eye-visual-bottom, 0px));
+  left: calc(var(--eye-safe-left) + var(--eye-visual-left, 0px));
+  /* Reserva el ancho MEDIDO de la telemetría (src/ui/shell/footMetrics.js),
+   * que se ancla a 68 px del borde derecho, más 24 px de aire: en Simulación
+   * ×3600 la tira ya no pasa por debajo de la telemetría. */
+  max-width: calc(
+    100% - 2 * var(--ei-gutter) - 68px - var(--eye-telemetry-width, 420px) -
+      24px
+  );
+  padding: 2px 6px 2px 14px;
+  border: 1px solid var(--ei-hairline);
+  border-radius: var(--ei-r-l);
+  background: var(--ei-glass);
+  box-shadow: none;
+  backdrop-filter: var(--ei-blur-strip);
+  -webkit-backdrop-filter: var(--ei-blur-strip);
+}
+
+body[data-eye-skin='editorial'] .eye-time-host .eye-time-strip {
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+
+body[data-eye-skin='editorial'] .eye-time-host .eye-time-button {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-time-host .eye-time-button:disabled {
+  color: var(--ei-faint);
+}
+
+body[data-eye-skin='editorial'] .eye-telemetry {
+  bottom: calc(var(--eye-safe-bottom) + 26px + var(--eye-visual-bottom, 0px));
+}
+
+body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+  .eye-telemetry {
+  bottom: calc(var(--eye-safe-bottom) + 26px + var(--eye-visual-bottom, 0px));
+}
+
+/* La barra de nivel de altura era adorno sin escala declarada. */
+body[data-eye-skin='editorial'] .eye-telemetry > div::after {
+  content: none;
+}
+
+/* ≤ 1100 px: solo coordenadas y altura (§6.8). */
+@media (max-width: 1100px) {
+  body[data-eye-skin='editorial'] .eye-telemetry > [data-eye-reading='heading'],
+  body[data-eye-skin='editorial'] .eye-telemetry > [data-eye-reading='map'] {
+    display: none;
+  }
+}
+
+/* ── Panel contextual único §6.4: a la derecha, sobre el pie ── */
+body[data-eye-skin='editorial'] .eye-mission-dock {
+  top: auto;
+  right: calc(var(--eye-safe-right) + 64px + var(--eye-visual-right, 0px));
+  bottom: calc(128px + var(--eye-visual-bottom, 0px));
+  left: auto;
+  display: flex;
+  width: 380px;
+  max-width: calc(100% - 2 * var(--ei-gutter) - 64px);
+  max-height: calc(var(--eye-viewport-height, 100dvh) - 128px - 96px);
+  flex-flow: row wrap;
+  align-content: flex-start;
+  padding: 0 16px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock > .eye-dock-rail {
+  display: contents;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock > .eye-dock-header {
+  order: 0;
+  flex: 1 1 100%;
+  padding: 12px 0 0;
+  border: 0;
+}
+
+body[data-eye-skin='editorial']
+  .eye-mission-dock
+  > .eye-dock-header:not(:has(.eye-moon-actions:not([hidden]))) {
+  display: none;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-identity {
+  order: 1;
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 18px 8px 0;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-close {
+  order: 1;
+  align-self: flex-start;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  margin-top: 10px;
+  font-size: 22px;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-title {
+  margin: 6px 0 6px;
+  overflow: visible;
+  font-size: 34px;
+  line-height: 1;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-status {
+  margin: 0;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock > .eye-dock-tabs {
+  order: 2;
+  flex: 1 1 100%;
+  margin: 14px 0 0;
+  padding: 0;
+  border-top: 0;
+  border-bottom: 1px solid var(--ei-hairline);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-tab {
+  min-height: 44px;
+}
+
+/* Campos en 2 columnas: etiqueta en Grotesk, cifra en Plex Mono. */
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalues {
+  display: grid;
+  order: 3;
+  flex: 1 1 100%;
+  margin: 16px 8px 0;
+  gap: 16px 20px;
+  grid-template-columns: 1fr 1fr;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalue {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dt {
+  margin-bottom: 4px;
+}
+
+/* Un valor recortado es un dato oculto: se parte, nunca se elide
+ * («luna llena · 99 %», «381 012 km»). */
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dt,
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dd {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dd {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+/* Bloque cámara: brújula (que ejecuta Norte) + estado, solo si hay algo
+ * que seguir (el modelo lo decide: camera.visible). */
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-compass {
+  order: 4;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  margin: 16px 0 0 8px;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-camera {
+  order: 4;
+  max-width: none;
+  flex: 1 1 0;
+  margin: 16px 0 0;
+  padding: 0 8px;
+  border: 0;
+}
+
+body[data-eye-skin='editorial']
+  .eye-mission-dock:not([data-camera-visible='true'])
+  .eye-dock-camera {
+  display: none;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-actions {
+  display: flex;
+  order: 5;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  margin: 16px 0 0;
+  gap: 6px;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-action {
+  min-width: 76px;
+  min-height: 44px;
+  flex: 1 1 0;
+  padding: 0 8px;
+}
+
+/* Inspeccionar es la acción primaria §6.4: fila propia, 48 px. */
+body[data-eye-skin='editorial']
+  .eye-mission-dock
+  .eye-dock-action[data-eye-dock-action='inspect'] {
+  min-height: 48px;
+  order: 9;
+  flex: 1 1 100%;
+  border-radius: var(--ei-r-m);
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-action-reason {
+  order: 6;
+  flex: 1 1 100%;
+  margin: 8px 8px 0;
+}
+
+body[data-eye-skin='editorial'] .eye-mission-dock > .eye-dock-body {
+  order: 7;
+  flex: 1 1 100%;
+  max-height: none;
+  margin-top: 12px;
+  overflow: visible;
+}
+
+body[data-eye-skin='editorial']
+  .eye-mission-dock[data-expanded='true']
+  .eye-dossier-title,
+body[data-eye-skin='editorial']
+  .eye-mission-dock[data-expanded='true']
+  .eye-dossier-status {
+  /* La identidad ya está arriba (título serif): no se duplica [S-13]. */
+  display: none;
+}
+
+/* El espacio de trabajo termina POR ENCIMA del pie (reloj y telemetría) y de
+ * los créditos, esté o no el panel contextual: el panel ya no es una franja
+ * inferior (eyeinsky.css:3037 lo apoyaba sobre --eye-dock-band). */
+body[data-eye-skin='editorial'] .eye-workspace,
+body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+  .eye-workspace {
+  bottom: calc(var(--eye-safe-bottom) + 92px + var(--eye-visual-bottom, 0px));
+}
+
+/* ── Capas en línea §6.5 ── */
+body[data-eye-skin='editorial'] .eye-active-layers header {
+  justify-content: space-between;
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers #eye-active-title {
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers #eye-active-title b {
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers li {
+  min-height: 48px;
+  gap: 8px;
+}
+
+body[data-eye-skin='editorial'] .eye-active-identity {
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 12px;
+}
+
+body[data-eye-skin='editorial'] button.eye-active-identity {
+  min-height: 44px;
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+body[data-eye-skin='editorial'] .eye-active-swatch {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--ei-live);
+}
+
+body[data-eye-skin='editorial'] .eye-active-swatch[data-swatch='amber'] {
+  background: var(--ei-amber);
+}
+
+body[data-eye-skin='editorial'] .eye-active-swatch[data-swatch='paper'] {
+  background: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial'] .eye-active-count {
+  color: var(--ei-faint);
+  font: 400 var(--ei-fs-label) / 1 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-active-source {
+  color: var(--ei-faint);
+  font: 400 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  white-space: nowrap;
+}
+
+/* Sin capas en reposo solo queda su cabecera en línea («Capas en escena · 0
+ * · + Agregar», sin caja): el aviso de vacío no se pinta (T3) y «+ Agregar»
+ * sigue siendo el destino de foco y la entrada al catálogo (p012). */
+body[data-eye-skin='editorial'] .eye-active-layers[data-empty='true'] header {
+  border-bottom-color: transparent;
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers [data-eye-active-empty] {
+  display: none;
+}
+
+/* Acciones de la Luna en su fila de capa (D1-A). */
+body[data-eye-skin='editorial'] .eye-active-moon {
+  padding: 8px 0 4px 20px;
+  border-bottom: 1px solid var(--ei-hairline);
+}
+
+body[data-eye-skin='editorial'] .eye-active-moon .eye-moon-buttons {
+  gap: 4px;
+}
+
+/* ── Buscador §6.2: lupa, ⌘K mono, placeholder sin cursiva ── */
+body[data-eye-skin='editorial'] .eye-search-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--ei-faint);
+}
+
+body[data-eye-skin='editorial'] .eye-search #eye-command-open {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial'] .eye-search #eye-command-open kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--ei-hairline-strong);
+  border-radius: 6px;
+  color: var(--ei-muted);
+  font: 500 12px/1.2 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] #location-search::placeholder {
+  color: var(--ei-faint);
+  font-style: normal;
+}
+
+/* ── HUD avanzado (D2): oculto en reposo; pedido desde Instrumentos queda
+ * accesible aunque se pliegue con su summary. En cabina, siempre. ── */
+body[data-eye-skin='editorial']:not(.cockpit-mode):not(
+    [data-eye-advanced='shown']
+  )
+  .eye-hud-details {
+  display: none;
+}

@@ -50,9 +50,8 @@ export function mountCameraTelemetry({
     );
     set(
       'eye-camera-heading',
-      `${degrees(camera.heading).toFixed(1)}° / ${degrees(camera.pitch).toFixed(1)}°`,
+      `${(((degrees(camera.heading) % 360) + 360) % 360).toFixed(1)}°`,
     );
-    setProp('--eye-heading-turn', `${-degrees(camera.heading).toFixed(2)}deg`);
     const level = Math.max(
       0,
       Math.min(1, Math.log10(Math.max(1_000, position.height) / 1_000) / 5),
@@ -71,7 +70,6 @@ export function mountCameraTelemetry({
     destroy() {
       removeMoveEnd?.();
       removeFrame?.();
-      style.removeProperty('--eye-heading-turn');
       style.removeProperty('--eye-altitude-level');
     },
   };

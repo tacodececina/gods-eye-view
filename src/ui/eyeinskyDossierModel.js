@@ -208,6 +208,8 @@ export function createViewContext({
     layerId: null,
     stableId: 'view',
     title,
+    // Lectura de la cámara de este instante, no observación de una fuente.
+    status: 'camera',
     position,
     fields,
     assetIds,

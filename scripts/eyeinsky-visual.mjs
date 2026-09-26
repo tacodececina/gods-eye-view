@@ -24,6 +24,23 @@ import {
 } from './lib/eyeinsky-p4-run.mjs';
 import { openApp, trackById } from './lib/eyeinsky-p4-page.mjs';
 import { readGlobeFlags } from '../src/ui/eyeinskyGlobeFlags.js';
+import { measureMarkers, measurePhone } from './lib/eyeinsky-visual-t4t5.mjs';
+import {
+  checkCloseReleases,
+  checkMoonValues,
+  checkSimulationFoot,
+  exploreRevealed,
+  readRevealRegions,
+  REST_ALLOWED,
+  restRegionViolations,
+} from './lib/eyeinsky-visual-reveal.mjs';
+import {
+  readRestState,
+  readSatelliteState,
+  readSkinState,
+  readStory,
+  readTargetPanel,
+} from './lib/eyeinsky-visual-probes.mjs';
 import {
   compositeOver,
   creditOverflow,
@@ -115,384 +132,6 @@ async function waitForRest(page) {
   await sleep(1500);
 }
 
-/** Todo lo que se mide del DOM y de la escena en reposo, en un solo frame. */
-function readRestState() {
-  const ZONES = [
-    [
-      'topbar',
-      '.eye-orbit-brand,.eye-function-dock,.eye-utility-cluster,.eye-topbar',
-    ],
-    ['search', '.eye-search'],
-    ['telemetry', '.eye-telemetry'],
-    ['camera', '.eye-instruments,#eye-clean-exit'],
-    ['attribution', '#cesium-credits,.cesium-widget-credits'],
-  ];
-  const NAMED = [
-    '.eye-orbit-brand',
-    '.eye-search',
-    '.eye-function-dock',
-    '.eye-utility-cluster',
-    '.eye-instruments',
-    '.eye-telemetry',
-    '#eye-active-layers',
-    '.eye-signal-glance',
-    '.eye-hud-details',
-    '#eye-mission-dock',
-    '#eye-workspace',
-    '#eye-notice',
-    '#cesium-credits',
-    '.eye-story',
-    '[data-eye-time-host]',
-  ];
-  const opacityChain = (element) => {
-    let value = 1;
-    for (let node = element; node && node !== document; node = node.parentNode)
-      if (node.nodeType === 1)
-        value *= Number(getComputedStyle(node).opacity || 1);
-    return value;
-  };
-  const visible = (element) => {
-    if (!element?.isConnected) return false;
-    const style = getComputedStyle(element);
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
-    const r = element.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return false;
-    if (r.right <= 0 || r.bottom <= 0) return false;
-    if (r.left >= innerWidth || r.top >= innerHeight) return false;
-    return opacityChain(element) > 0.05;
-  };
-  const rectOf = (element) => {
-    const r = element.getBoundingClientRect();
-    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
-  };
-  const keyOf = (element) =>
-    element.id
-      ? `#${element.id}`
-      : `${element.tagName.toLowerCase()}${[...element.classList]
-          .slice(0, 2)
-          .map((c) => `.${c}`)
-          .join('')}`;
-  const alpha = (color) => {
-    const m = /rgba?\(([^)]+)\)/.exec(color || '');
-    if (!m) return 0;
-    const parts = m[1]
-      .split(/[\s,/]+/)
-      .filter(Boolean)
-      .map(Number);
-    return parts.length > 3 ? parts[3] : 1;
-  };
-  const boxed = (element) => {
-    const s = getComputedStyle(element);
-    if (alpha(s.backgroundColor) >= 0.08) return true;
-    if (s.backdropFilter && s.backdropFilter !== 'none') return true;
-    if (s.backgroundImage && s.backgroundImage !== 'none') return true;
-    const sides = ['Top', 'Right', 'Bottom', 'Left'].filter(
-      (side) =>
-        Number.parseFloat(s[`border${side}Width`]) > 0.5 &&
-        alpha(s[`border${side}Color`]) >= 0.12,
-    );
-    return sides.length >= 3;
-  };
-  const cesium = document.querySelector('.cesium-widget');
-  const boxes = [];
-  const boxedSet = new Set();
-  for (const element of document.body.querySelectorAll('*')) {
-    if (cesium?.contains(element) || element.tagName === 'CANVAS') continue;
-    if (element.closest('#loading-screen')) continue;
-    if (!visible(element) || !boxed(element)) continue;
-    const r = element.getBoundingClientRect();
-    if (r.width < 24 || r.height < 24) continue;
-    boxedSet.add(element);
-    let parent = null;
-    for (let n = element.parentElement; n; n = n.parentElement)
-      if (boxedSet.has(n)) {
-        parent = keyOf(n);
-        break;
-      }
-    const zone =
-      ZONES.find(([, selector]) => element.closest(selector))?.[0] ?? null;
-    boxes.push({ key: keyOf(element), zone, parent, rect: rectOf(element) });
-  }
-  const named = NAMED.map((selector) => ({
-    selector,
-    element: document.querySelector(selector),
-  }))
-    .filter(({ element }) => visible(element))
-    .map(({ selector, element }) => ({ key: selector, ...rectOf(element) }));
-
-  const texts = [];
-  for (const element of document.body.querySelectorAll('*')) {
-    if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') continue;
-    if (element.closest('[aria-hidden="true"]')) continue;
-    const own = [...element.childNodes]
-      .filter((n) => n.nodeType === 3)
-      .map((n) => n.textContent)
-      .join('')
-      .trim();
-    const isField =
-      (element.tagName === 'INPUT' && element.type !== 'hidden') ||
-      element.tagName === 'SELECT';
-    if (!own && !isField) continue;
-    if (!visible(element)) continue;
-    const r = element.getBoundingClientRect();
-    if (r.width * r.height < 16) continue;
-    const s = getComputedStyle(element);
-    texts.push({
-      text: (own || element.value || element.placeholder || '').slice(0, 60),
-      key: keyOf(element),
-      size: Number.parseFloat(s.fontSize),
-      weight: Number.parseFloat(s.fontWeight) || 400,
-      color: s.color,
-      opacity: opacityChain(element),
-      attribution: Boolean(
-        element.closest('#cesium-credits,.cesium-widget-credits'),
-      ),
-      // WCAG 1.4.3: el texto de un control inactivo no tiene requisito.
-      disabled: Boolean(
-        element.closest('button:disabled,[aria-disabled="true"]'),
-      ),
-      rect: rectOf(element),
-    });
-  }
-
-  const credits = [...document.querySelectorAll('#cesium-credits *')].flatMap(
-    (element) => {
-      if (!visible(element)) return [];
-      const r = element.getBoundingClientRect();
-      return [
-        {
-          key: `${keyOf(element)} ${element.textContent.trim().slice(0, 30)}`,
-          left: r.left,
-          right: r.right,
-          width: r.width,
-        },
-      ];
-    },
-  );
-  const dock = document.getElementById('eye-mission-dock');
-  const story = document.querySelector('.eye-story');
-  const C = window.__CESIUM__;
-  const viewer = window.__godsEyeView.viewer;
-  const scene = viewer.scene;
-  const camera = viewer.camera;
-  const canvas = scene.canvas;
-  const scale = canvas.width / canvas.clientWidth;
-  const center = C.SceneTransforms.worldToWindowCoordinates(
-    scene,
-    C.Cartesian3.ZERO,
-  );
-  const range = C.Cartesian3.magnitude(camera.positionWC);
-  const angular = Math.asin(Math.min(1, 6_378_137 / range));
-  const radiusCss =
-    ((canvas.clientHeight / 2) * Math.tan(angular)) /
-    Math.tan(camera.frustum.fovy / 2);
-  const sun = scene.context.uniformState.sunPositionWC;
-  const sunDir = C.Cartesian3.normalize(sun, new C.Cartesian3());
-  const sx = C.Cartesian3.dot(sunDir, camera.rightWC);
-  const sy = C.Cartesian3.dot(sunDir, camera.upWC);
-  const layers = [];
-  for (let i = 0; i < viewer.imageryLayers.length; i += 1) {
-    const layer = viewer.imageryLayers.get(i);
-    layers.push({
-      show: layer.show,
-      alpha: layer.alpha,
-      dayAlpha: layer.dayAlpha,
-      nightAlpha: layer.nightAlpha,
-      brightness: layer.brightness,
-    });
-  }
-  let graticule = null;
-  for (let i = 0; i < viewer.dataSources.length; i += 1) {
-    const source = viewer.dataSources.get(i);
-    if (source.name === 'eyeinsky-graticule')
-      graticule = {
-        show: source.show,
-        entities: source.entities.values.length,
-      };
-  }
-  return {
-    viewport: { width: innerWidth, height: innerHeight },
-    boxes,
-    named,
-    texts,
-    credits,
-    overflowX:
-      Math.max(
-        document.documentElement.scrollWidth,
-        document.body.scrollWidth,
-      ) - innerWidth,
-    dock: {
-      visible: visible(dock),
-      contextKind: dock?.dataset.contextKind ?? null,
-      contextKey: dock?.dataset.contextKey ?? null,
-    },
-    glanceVisible: visible(document.querySelector('.eye-signal-glance')),
-    advancedVisible: visible(document.querySelector('.eye-hud-details')),
-    storyVisible: visible(story),
-    camera: {
-      pitch: C.Math.toDegrees(camera.pitch),
-      heading: C.Math.toDegrees(camera.heading),
-      height: camera.positionCartographic.height,
-      flying: Boolean(camera._currentFlight),
-    },
-    homePose: document.body.dataset.eyeHomePose ?? null,
-    intro: document.body.dataset.eyeIntro ?? null,
-    skin: document.body.dataset.eyeSkin ?? null,
-    disk: center
-      ? { cx: center.x * scale, cy: center.y * scale, r: radiusCss * scale }
-      : null,
-    diskCss: center ? { cx: center.x, cy: center.y, r: radiusCss } : null,
-    sun: { sx, sy, terminatorDeg: null },
-    scene: {
-      skyBoxShow: scene.skyBox?.show ?? null,
-      skyBoxSources: scene.skyBox?.sources
-        ? Object.values(scene.skyBox.sources).map(String)
-        : null,
-      background: scene.backgroundColor.toCssColorString(),
-      globeShow: scene.globe.show,
-      enableLighting: scene.globe.enableLighting,
-      showGroundAtmosphere: scene.globe.showGroundAtmosphere,
-      skyAtmosphere: scene.skyAtmosphere
-        ? {
-            show: scene.skyAtmosphere.show,
-            lightIntensity: scene.skyAtmosphere.atmosphereLightIntensity,
-            brightnessShift: scene.skyAtmosphere.brightnessShift,
-          }
-        : null,
-      layers,
-    },
-    grid: {
-      pressed: document
-        .getElementById('eye-grid')
-        ?.getAttribute('aria-pressed'),
-      graticule,
-    },
-  };
-}
-
-/**
- * Piel Editorial (T1): tokens, tipografía por rol, barra sin caja, sin
- * colores neón y mono solo para números, sobre nodos visibles.
- */
-function readSkinState() {
-  const NEON = [
-    [0, 212, 255],
-    [0, 255, 80],
-    [54, 220, 255],
-    [143, 224, 176],
-    [255, 68, 68],
-  ];
-  const rgb = (color) => {
-    const m = /rgba?\(([^)]+)\)/.exec(color || '');
-    if (!m) return null;
-    const p = m[1]
-      .split(/[\s,/]+/)
-      .filter(Boolean)
-      .map(Number);
-    return { c: p.slice(0, 3), a: p.length > 3 ? p[3] : 1 };
-  };
-  const isNeon = (color) => {
-    const v = rgb(color);
-    return Boolean(
-      v &&
-      v.a > 0.05 &&
-      NEON.some((n) => n.every((x, i) => Math.abs(x - v.c[i]) <= 2)),
-    );
-  };
-  const chain = (el) => {
-    let value = 1;
-    for (let n = el; n && n.nodeType === 1; n = n.parentElement)
-      value *= Number(getComputedStyle(n).opacity || 1);
-    return value;
-  };
-  const visible = (el) => {
-    const st = getComputedStyle(el);
-    const r = el.getBoundingClientRect();
-    return (
-      st.display !== 'none' &&
-      st.visibility !== 'hidden' &&
-      chain(el) > 0.05 &&
-      r.width > 1 &&
-      r.height > 1 &&
-      r.bottom > 0 &&
-      r.right > 0 &&
-      r.top < innerHeight &&
-      r.left < innerWidth
-    );
-  };
-  const family = (el) => (el ? getComputedStyle(el).fontFamily : null);
-  const neon = [];
-  const monoText = [];
-  const cesium = document.querySelector('.cesium-widget');
-  for (const el of document.body.querySelectorAll('*')) {
-    if (cesium?.contains(el) || !visible(el)) continue;
-    const st = getComputedStyle(el);
-    const painted = [
-      ['color', st.color],
-      ['backgroundColor', st.backgroundColor],
-      ...['Top', 'Right', 'Bottom', 'Left']
-        .filter((side) => Number.parseFloat(st[`border${side}Width`]) > 0)
-        .map((side) => [`border${side}Color`, st[`border${side}Color`]]),
-    ];
-    for (const [prop, value] of painted)
-      if (isNeon(value))
-        neon.push({
-          key: el.id || String(el.className).slice(0, 40) || el.tagName,
-          prop,
-          value,
-        });
-    const own = [...el.childNodes]
-      .filter((n) => n.nodeType === 3)
-      .map((n) => n.textContent)
-      .join('')
-      .trim();
-    if (own && /mono/i.test(st.fontFamily) && !/\d/.test(own) && own.length > 3)
-      monoText.push({ text: own.slice(0, 40), key: el.id || el.tagName });
-  }
-  const dock = document.querySelector('.eye-function-dock');
-  const dockStyle = dock ? getComputedStyle(dock) : null;
-  const labels = [
-    ...document.querySelectorAll(
-      '.eye-kicker,.eye-dock-kicker,.eye-dock-keyvalue dt,.eye-dock-tab,.eye-telemetry span',
-    ),
-  ]
-    .filter(visible)
-    .map((el) => ({
-      text: el.textContent.trim().slice(0, 30),
-      family: family(el),
-    }))
-    .filter(({ family: f }) => !/^"?Space Grotesk/.test(f));
-  const titles = [
-    '#eye-mission-dock-title',
-    '.eye-dock-title',
-    '#eye-panel-title',
-  ]
-    .map((sel) => ({ sel, family: family(document.querySelector(sel)) }))
-    .filter(({ family: f }) => f !== null && !/^"?Instrument Serif/.test(f));
-  return {
-    skin: document.body.dataset.eyeSkin ?? null,
-    paper: getComputedStyle(document.documentElement)
-      .getPropertyValue('--ei-paper')
-      .trim(),
-    functionDock: dockStyle
-      ? {
-          backgroundImage: dockStyle.backgroundImage,
-          backgroundAlpha: rgb(dockStyle.backgroundColor)?.a ?? 0,
-          borderAlpha:
-            Number.parseFloat(dockStyle.borderTopWidth) > 0
-              ? (rgb(dockStyle.borderTopColor)?.a ?? 0)
-              : 0,
-        }
-      : null,
-    labels,
-    titles,
-    neon: neon.slice(0, 20),
-    neonTotal: neon.length,
-    monoText: monoText.slice(0, 20),
-    monoTotal: monoText.length,
-  };
-}
-
 /** Lienzo de Cesium recién pintado, como PNG. */
 const canvasPng = async (page) =>
   Buffer.from(
@@ -559,20 +198,17 @@ async function measureViewport(browser, viewport) {
   });
   const readyAt = Date.now();
   let storySeenAt = null;
+  let storySeen = null;
   while (Date.now() - readyAt < HEADLINE_WINDOW_MS && storySeenAt === null) {
-    const seen = await page.evaluate(() => {
-      const story = document.querySelector('.eye-story');
-      if (!story) return false;
-      const s = getComputedStyle(story);
-      return (
-        s.display !== 'none' && s.visibility !== 'hidden' && s.opacity > 0.5
-      );
-    });
-    if (seen) storySeenAt = Date.now() - readyAt;
-    else await sleep(150);
+    const seen = await page.evaluate(readStory);
+    if (seen?.shown) {
+      storySeenAt = Date.now() - readyAt;
+      storySeen = seen;
+    } else await sleep(150);
   }
   await waitForRest(page);
   const state = await page.evaluate(readRestState);
+  const regionsRest = await readRevealRegions(page);
   const shot = await page.screenshot({
     path: path.join(out, `rest-${suffix}.png`),
   });
@@ -596,15 +232,46 @@ async function measureViewport(browser, viewport) {
     bottom: bottom + 2,
   }));
 
-  // 1 · Una sola superficie de reposo fuera de las zonas permitidas.
+  // 1 · V-01: en reposo solo la barra superior, el titular y la tira del
+  // pie (más los créditos, obligación de licencia); ninguna caja fuera de
+  // esas zonas. Antes (T3) se permitían telemetría, carril de cámara y una
+  // superficie suelta: era más laxo que V-01 (reparación T5, RED guardado).
   const rest = restSurfaceCount(state.boxes);
-  check(`vis-01-rest-surfaces-${suffix}`, rest.count <= 1, {
-    allowedOutsideZones: 1,
-    ...rest,
-    boxes: state.boxes,
-  });
-  // 2 · Sin objetivo no hay Mission Dock (D1-A).
-  check(`vis-02-no-dock-at-rest-${suffix}`, !state.dock.visible, state.dock);
+  const extraRegions = restRegionViolations(regionsRest.regions);
+  check(
+    `vis-01-rest-surfaces-${suffix}`,
+    regionsRest.reveal === 'rest' &&
+      extraRegions.length === 0 &&
+      rest.count === 0,
+    {
+      allowed: REST_ALLOWED,
+      extraRegions,
+      reveal: regionsRest.reveal,
+      regions: regionsRest.regions,
+      ...rest,
+      boxes: state.boxes,
+    },
+  );
+  // 2 · Sin objetivo no hay Mission Dock (D1-A, T3): el nodo existe pero nace
+  // oculto, el estado de revelación dice «reposo» y ninguna lectura de
+  // cámara se repite (una sola ALTURA, un solo RUMBO, un MAPA).
+  check(
+    `vis-02-no-dock-at-rest-${suffix}`,
+    state.dock.present &&
+      state.dock.hidden &&
+      state.dock.dataVisible === 'false' &&
+      !state.dock.visible &&
+      state.reveal === 'rest' &&
+      // Nunca repetidas. «A la vista en escritorio» se exige al explorar
+      // (vis-02b): en reposo la telemetría espera a la primera interacción.
+      [
+        state.readings.altitude,
+        state.readings.heading,
+        state.readings.map,
+      ].every((n) => n <= 1) &&
+      !state.readings.sectorStatic,
+    { dock: state.dock, reveal: state.reveal, readings: state.readings },
+  );
   // 3 · USGS bajo demanda (D3).
   check(`vis-03-usgs-hidden-${suffix}`, !state.glanceVisible, {
     glanceVisible: state.glanceVisible,
@@ -801,30 +468,54 @@ async function measureViewport(browser, viewport) {
     missing,
     faces: fonts,
   });
-  // 13 · Titular ≤3 s y desvanecido tras la primera interacción (T3).
+  // 13 · Titular (T3, §6.3): visible ≤ 3 s tras la entrada, con su texto
+  // honesto (kicker de luz solar solo si hay luz solar; «ahora» solo con el
+  // reloj en vivo; la línea de día/noche y VIIRS con su año y «no en vivo»
+  // cuando la capa nocturna está) y retirado en la PRIMERA interacción.
+  const flagsHere = readGlobeFlags(new URL(baseUrl).search);
   await page.mouse.move(viewport.width / 2, viewport.height / 2);
   await page.mouse.wheel({ deltaY: 40 });
   await sleep(900);
-  const storyAfter = await page.evaluate(() => {
-    const story = document.querySelector('.eye-story');
-    if (!story) return null;
-    const s = getComputedStyle(story);
-    return {
-      opacity: Number(s.opacity),
-      visibility: s.visibility,
-      display: s.display,
-    };
+  const storyAfter = await page.evaluate(readStory);
+  // 2b · V-02: la primera interacción revela cámara, telemetría y capas.
+  const explore = await readRevealRegions(page);
+  await page.screenshot({ path: path.join(out, `explore-${suffix}.png`) });
+  result.screenshots.push(`explore-${suffix}.png`);
+  const revealed = exploreRevealed(explore, { mobile });
+  check(`vis-02b-explore-reveals-${suffix}`, revealed.ok, {
+    ...revealed,
+    reveal: explore.reveal,
+    readings: explore.readings,
   });
-  const faded =
-    storyAfter &&
-    (storyAfter.display === 'none' ||
-      storyAfter.visibility === 'hidden' ||
-      storyAfter.opacity < 0.05);
-  check(`vis-13-headline-${suffix}`, storySeenAt !== null && faded, {
-    storySeenAtMs: storySeenAt,
-    windowMs: HEADLINE_WINDOW_MS,
-    storyAfter,
-  });
+  const text = storySeen?.text ?? '';
+  const honest =
+    storySeen?.clockLive === true
+      ? /el planeta,\s*ahora\./i.test(text)
+      : !/ahora|este instante/i.test(text);
+  const lighting = flagsHere.lighting === '1';
+  const lede =
+    (!lighting || /luz solar de este instante|luz solar del/i.test(text)) &&
+    (flagsHere.nightLights !== '1' ||
+      /VIIRS 2012.*no en vivo/i.test(storySeen?.lede ?? '')) &&
+    (lighting || !/VIIRS|luz solar/i.test(text));
+  check(
+    `vis-13-headline-${suffix}`,
+    storySeenAt !== null &&
+      storySeen.ariaLive === 'polite' &&
+      storySeen.serif &&
+      honest &&
+      lede &&
+      storyAfter?.faded === true &&
+      storyAfter.state === 'hidden',
+    {
+      storySeenAtMs: storySeenAt,
+      windowMs: HEADLINE_WINDOW_MS,
+      storySeen,
+      storyAfter,
+      honest,
+      lede,
+    },
+  );
   result.snapshots[suffix] = {
     skin: state.skin,
     intro: state.intro,
@@ -835,41 +526,6 @@ async function measureViewport(browser, viewport) {
   await page.close();
 }
 
-/** Estado de satélites y del pie en un solo frame (vis-17 y vis-18). */
-function readSatelliteState() {
-  const { viewer, dataManager } = window.__godsEyeView;
-  const module = dataManager.layers.get('satellites')?.module;
-  const camera = viewer.camera;
-  const deg = (v) => (v * 180) / Math.PI;
-  const tracked = viewer.trackedEntity;
-  const model = tracked?.gevLabelModel ?? null;
-  const color = tracked?.point?.color?.getValue?.(viewer.clock.currentTime);
-  const overlay = window.__gevWorldOverlay?.getDiagnostics?.() ?? null;
-  return {
-    footer: {
-      altitude: document.getElementById('eye-camera-altitude')?.textContent,
-      heading: document.getElementById('eye-camera-heading')?.textContent,
-      position: document.getElementById('eye-camera-position')?.textContent,
-    },
-    camera: {
-      heightM: camera.positionCartographic.height,
-      headingDeg: deg(camera.heading),
-      pitchDeg: deg(camera.pitch),
-    },
-    tracked: Boolean(tracked),
-    detectable: module?.getDetectableObjects?.().length ?? null,
-    paintedBySource: overlay?.paintedBySource ?? null,
-    trackedPointCss: color?.toCssHexString?.() ?? null,
-    card: model
-      ? {
-          accent: model.accent,
-          typeface: model.typeface ?? null,
-          details: model.details,
-        }
-      : null,
-  };
-}
-
 /**
  * 17 · Telemetría con objetivo fijado (V-04/V-05): el pie sigue a la cámara
  * real mientras la gobierna el EntityView. 18 · Satélites Editorial (solo con
@@ -877,20 +533,28 @@ function readSatelliteState() {
  * ficha fijados en ámbar y Grotesk, sin jerga en mayúsculas.
  */
 async function measureTrackedTelemetry(browser) {
-  const viewport = VIEWPORTS[0];
   const flags = readGlobeFlags(new URL(baseUrl).search);
-  const page = await openApp(browser, result, baseUrl, pageViewport(viewport), {
-    enableSatellites: true,
-    requireNorad: 25544,
-  });
+  const page = await openApp(
+    browser,
+    result,
+    baseUrl,
+    pageViewport(VIEWPORTS[0]),
+    {
+      enableSatellites: true,
+      requireNorad: 25544,
+    },
+  );
   await waitForRest(page);
   await sleep(2000);
   const global = await page.evaluate(readSatelliteState);
+  // 07b · Pie en Simulación ×3600 con la nota SGP4, ya revelado.
+  await checkSimulationFoot({ page, check, out, result });
   await trackById(page, 25544);
   await sleep(TRACK_SETTLE_MS);
   const iss = await page.evaluate(readSatelliteState);
   await page.screenshot({ path: path.join(out, 'tracked-iss-1600x900.png') });
   result.screenshots.push('tracked-iss-1600x900.png');
+  await checkTargetPanel(page);
   const shownKm = telemetryAltitudeKm(iss.footer.altitude);
   const realKm = iss.camera.heightM / 1000;
   const headingShown = Number.parseFloat(iss.footer.heading);
@@ -909,22 +573,85 @@ async function measureTrackedTelemetry(browser) {
       headingDelta <= 1,
     { shownKm, realKm, headingShown, headingDelta, global: global.footer, iss },
   );
-  if (flags.satStyle === 'editorial') {
-    const shouting = (iss.card?.details ?? []).filter((line) =>
-      /^(STATION|NAV|GEO|CUBESAT|VISUAL|COMMS|DOCKED)/.test(line),
-    );
-    check(
-      'vis-18-satellites-editorial',
-      global.detectable === 0 &&
-        (global.paintedBySource?.['satellites-iss'] ?? 0) === 0 &&
-        iss.trackedPointCss === '#e6b46d' &&
-        iss.card?.accent === '#e6b46d' &&
-        iss.card?.typeface === 'editorial' &&
-        shouting.length === 0,
-      { flags, global, iss, shouting },
-    );
-  }
+  if (flags.satStyle === 'editorial')
+    checkEditorialSatellites({ flags, global, iss });
+  const where = { page, check, out, result, suffix: '1600x900' };
+  await checkCloseReleases(where);
+  await checkMoonValues(where);
   await page.close();
+}
+
+/** 18 · Satélites Editorial: sin rótulos en Global, ámbar y Grotesk al fijar. */
+function checkEditorialSatellites({ flags, global, iss }) {
+  const shouting = (iss.card?.details ?? []).filter((line) =>
+    /^(STATION|NAV|GEO|CUBESAT|VISUAL|COMMS|DOCKED)/.test(line),
+  );
+  check(
+    'vis-18-satellites-editorial',
+    global.detectable === 0 &&
+      (global.paintedBySource?.['satellites-iss'] ?? 0) === 0 &&
+      iss.trackedPointCss === '#e6b46d' &&
+      iss.card?.accent === '#e6b46d' &&
+      iss.card?.typeface === 'editorial' &&
+      shouting.length === 0,
+    { flags, global, iss, shouting },
+  );
+}
+
+/**
+ * 20 · Panel contextual único al fijar (T3, §6.4): a la derecha sobre el
+ * pie, título serif con kicker, pestañas, campos en 2 columnas, acciones e
+ * Inspeccionar como primaria; el titular pasa a ser el objetivo.
+ */
+async function checkTargetPanel(page) {
+  const panel = await page.evaluate(readTargetPanel);
+  check(
+    'vis-20-target-panel-anatomy',
+    panel.visible &&
+      panel.reveal === 'target' &&
+      panel.story === 'target' &&
+      panel.storyText.includes(panel.title) &&
+      panel.gapRight >= 0 &&
+      panel.gapRight <= 32 + 64 + 8 &&
+      panel.gapBottom >= 0 &&
+      panel.gapBottom <= 136 &&
+      /Instrument Serif/.test(panel.titleFont) &&
+      Boolean(panel.kicker) &&
+      panel.tabs.length >= 2 &&
+      panel.factColumns === 2 &&
+      panel.actions.every((a) => a.width >= 44 && a.height >= 44) &&
+      (!panel.inspect || (panel.inspect.primary && panel.inspect.fullRow)),
+    panel,
+  );
+}
+
+/**
+ * 13b · Titular con movimiento reducido: se muestra sin animación y se
+ * retira igual en la primera interacción (tecla), sin fundido.
+ */
+async function checkReducedHeadline(page) {
+  const storyBefore = await page.evaluate(readStory);
+  await page.keyboard.press('Tab');
+  await sleep(60);
+  const storyAfterKey = await page.evaluate(readStory);
+  const explore = await readRevealRegions(page);
+  const revealed = exploreRevealed(explore, { reduced: true });
+  check('vis-02c-reveal-reduced-motion', revealed.ok, {
+    ...revealed,
+    reveal: explore.reveal,
+  });
+  check(
+    'vis-13b-headline-reduced-motion',
+    storyBefore?.shown === true &&
+      // «Sin animación»: ninguna transición ≥ 10 ms (el reset global de
+      // movimiento reducido deja 0.001s).
+      storyBefore.transition
+        .split(',')
+        .every((value) => Number.parseFloat(value) <= 0.01) &&
+      storyAfterKey?.faded === true &&
+      storyAfterKey.state === 'hidden',
+    { storyBefore, storyAfterKey },
+  );
 }
 
 /** 15 · Movimiento reducido: sin vuelo de entrada, pose final directa. */
@@ -959,6 +686,7 @@ async function measureReducedMotion(browser) {
       later.height >= 17_000_000,
     { first, later, drift },
   );
+  await checkReducedHeadline(page);
   await page.close();
 }
 
@@ -967,6 +695,12 @@ try {
   for (const viewport of VIEWPORTS) await measureViewport(browser, viewport);
   await measureReducedMotion(browser);
   await measureTrackedTelemetry(browser);
+  const context = { browser, result, check, baseUrl, out };
+  // T4: marcadores Editorial (solo con satStyle=editorial, como vis-18).
+  if (readGlobeFlags(new URL(baseUrl).search).satStyle === 'editorial')
+    await measureMarkers(context);
+  // T5: el móvil se diseña.
+  await measurePhone(context);
 } catch (error) {
   result.fatal = String(error?.stack || error);
   console.error(result.fatal);

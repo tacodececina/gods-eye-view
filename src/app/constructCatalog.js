@@ -108,7 +108,11 @@ export function createApplicationCatalog({
         createBhoteKoshiEventLayer(),
         flights,
         military,
-        createApplicationEarthquakes({ source: sources.earthquakes }),
+        // Fase visual T4: la misma piel de marcadores que los satélites.
+        createApplicationEarthquakes({
+          source: sources.earthquakes,
+          presentation: satellitePresentation,
+        }),
         createApplicationAlpr({ surface, source: sources.alpr }),
         satellites,
         createApplicationLaunches({ source: sources.launches, satellites }),

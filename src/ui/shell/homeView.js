@@ -89,18 +89,17 @@ export function setHomeView(viewer, pose) {
  * @returns {void}
  */
 export function mountIntro(shell) {
-  const { viewer, flags, styleManager, reduced, defer } = shell;
-  const { dataset } = document.body;
-  defer(() => delete dataset.eyeIntro);
+  const { viewer, flags, styleManager, reduced, reveal } = shell;
+  // `data-eye-intro` lo publica el estado de revelación (shell/reveal.js).
   const shared =
     styleManager.hasShareState || location.hash.startsWith('#eye=');
   if (flags.intro !== '1' || reduced() || shared) {
-    dataset.eyeIntro = 'done';
+    reveal.setIntro('done');
     return;
   }
   const pose = resolveHomePose(viewer, flags);
   setHomeView(viewer, { ...pose, alt: INTRO_START_ALT_M });
-  dataset.eyeIntro = 'running';
+  reveal.setIntro('running');
   const flight = styleManager._navigation.runCameraPlan('vista', [
     {
       ...pose,
@@ -110,7 +109,7 @@ export function mountIntro(shell) {
     },
   ]);
   const finish = () => {
-    if (dataset.eyeIntro === 'running') dataset.eyeIntro = 'done';
+    if (reveal.getState()?.intro === 'running') reveal.setIntro('done');
   };
   if (!flight) {
     setHomeView(viewer, pose);

@@ -13,6 +13,8 @@ const root = new URL('../../', import.meta.url);
 const SHEETS = [
   'eyeinsky-editorial.css',
   'eyeinsky-editorial-panel.css',
+  // Fase visual T3: jerarquía y revelación (titular, pie, panel, capas).
+  'eyeinsky-editorial-reveal.css',
   'eyeinsky-editorial-mobile.css',
 ];
 const readSheet = (name) => {
@@ -49,7 +51,7 @@ test('las hojas existen (< 800 líneas) y se enlazan las últimas, en orden', ()
     ...html.matchAll(/<link\s+rel="stylesheet"\s+href="([^"]+)"/g),
   ].map((m) => m[1]);
   assert.deepEqual(
-    links.slice(-3),
+    links.slice(-SHEETS.length),
     SHEETS.map((name) => `/src/ui/styles/${name}`),
   );
 });

@@ -12,11 +12,6 @@ const SECTORS = {
   pacific: { lat: 10, lon: -155, alt: 13000000 },
   europe: { lat: 48, lon: 15, alt: 4500000 },
 };
-const SECTOR_NAMES = {
-  mexico: 'MÉXICO',
-  pacific: 'PACÍFICO',
-  europe: 'EUROPA',
-};
 const MOBILE_GLOBAL_WIDTH = 650;
 const MOBILE_GLOBAL_ALT = 26000000;
 const FINAL_STAGE_SECONDS = 0.62;
@@ -74,9 +69,9 @@ export function createCamera(shell) {
                 ? MOBILE_GLOBAL_ALT
                 : pose.alt,
           };
+    // Sin «CAMPO»: el nombre del sector era una lectura estática que dejaba
+    // de ser cierta al primer gesto (fase visual T3, V-05).
     camera(target, { targetId: `sector:${id}` });
-    $('eye-sector-name').textContent =
-      id === 'global' ? 'GLOBAL' : SECTOR_NAMES[id];
   }
   return { camera, sector };
 }
@@ -85,6 +80,8 @@ function returnHome(shell, trigger) {
   // Home vuelve a la vista del globo. No apaga capas ni suelta el
   // seguimiento: sólo deja de inspeccionar un objetivo concreto.
   shell.state.selection = null;
+  // Home no reabre la ficha de la vista: sin objetivo no hay dock (D1-A).
+  shell.state.viewRequested = false;
   shell.publishDossier({
     type: 'select',
     context: shell.currentViewContext(),
@@ -114,6 +111,14 @@ export function mountCameraInstruments(shell) {
     },
   );
   lifetime.listen($('eye-north'), 'click', () => shell.runNorth());
+  // T5: con el carril compacto (zoom 200 % en el teléfono) Norte, Retícula y
+  // Limpia viven en «Más»; su botón pulsa EL MISMO control del carril.
+  lifetime.listen(document, 'click', (event) => {
+    const proxy = event.target.closest?.('[data-eye-instrument-proxy]');
+    if (!proxy) return;
+    shell.closePanel();
+    $(proxy.dataset.eyeInstrumentProxy)?.click();
+  });
   for (const [id, factor] of ZOOM_FACTORS)
     lifetime.listen($(id), 'click', () => {
       const p = styleManager.getCameraState();

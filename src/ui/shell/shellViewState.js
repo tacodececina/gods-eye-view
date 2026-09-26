@@ -57,7 +57,6 @@ export function createViewState(shell) {
       signal,
       state.restoreController.signal,
     ]);
-    shell.camera(view.camera);
     state.filters = { ...view.filters };
     state.selection = view.selection;
     shell.syncFilters();
@@ -68,6 +67,10 @@ export function createViewState(shell) {
       const enabled = view.layers.includes(entry.id);
       await dataManager.setEnabled(entry.id, enabled, { origin: 'user' });
     }
+    // DESPUÉS de las capas: encender o apagar una pasa por el director
+    // (stopScene), que cancela cualquier vuelo en curso. Pedida antes, la
+    // cámara restaurada se cancelaba a los pocos milisegundos.
+    shell.camera(view.camera);
     if (view.layers.includes('earthquakes'))
       await dataManager.refreshLayer('earthquakes', { signal: requestSignal });
     if (own !== state.generation || requestSignal.aborted)

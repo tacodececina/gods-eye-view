@@ -83,7 +83,8 @@ test('con un objetivo fijado, postRender actualiza la telemetría sin moveEnd', 
   clock = 1_000;
   viewer.scene.postRender.raise();
   assert.match(nodes.get('eye-camera-altitude').textContent, /^815 km$/);
-  assert.equal(nodes.get('eye-camera-heading').textContent, '49.8° / -33.9°');
+  // Fase visual T3 (V-04): RUMBO es solo el rumbo; la inclinación no es rumbo.
+  assert.equal(nodes.get('eye-camera-heading').textContent, '49.8°');
   assert.equal(nodes.get('eye-camera-position').textContent, '12.30° / 45.60°');
   telemetry.destroy();
 });
@@ -110,9 +111,16 @@ test('destroy retira los oyentes y las propiedades del cuerpo', () => {
   const telemetry = mountCameraTelemetry({ viewer, doc, now: () => 0 });
   assert.equal(viewer.scene.postRender.size, 1);
   assert.equal(viewer.camera.moveEnd.size, 1);
-  assert.ok(props.has('--eye-heading-turn'));
+  assert.ok(props.has('--eye-altitude-level'));
   telemetry.destroy();
   assert.equal(viewer.scene.postRender.size, 0);
   assert.equal(viewer.camera.moveEnd.size, 0);
+  assert.ok(!props.has('--eye-altitude-level'));
+});
+
+test('T3: #eye-north no gira con el rumbo (sin --eye-heading-turn)', () => {
+  const { doc, viewer, props } = stubWorld();
+  const telemetry = mountCameraTelemetry({ viewer, doc, now: () => 0 });
   assert.ok(!props.has('--eye-heading-turn'));
+  telemetry.destroy();
 });

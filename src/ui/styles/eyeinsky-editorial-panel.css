@@ -266,14 +266,14 @@ body[data-eye-skin='editorial'] .eye-time-chip {
 }
 
 body[data-eye-skin='editorial']
-  .eye-dock-header[data-compact='true']
+  :is(.eye-dock-header, .eye-time-host)[data-compact='true']
   .eye-time-chip {
   border-color: var(--ei-hairline-strong);
   color: var(--ei-paper);
 }
 
 body[data-eye-skin='editorial']
-  .eye-dock-header[data-compact='true']
+  :is(.eye-dock-header, .eye-time-host)[data-compact='true']
   .eye-time-chip[data-tone='sim'] {
   color: var(--ei-amber);
 }
@@ -346,4 +346,38 @@ body[data-eye-skin='editorial'] #toast {
 
 body[data-eye-skin='editorial'] #global-loading-status {
   font: 400 var(--ei-fs-label) / 1.4 var(--ei-f-ui);
+}
+
+/* ── Mira de la Luna y rótulo TIERRA (fase visual T4 paso 6): hairline paper,
+ * leyenda en Grotesk; el ámbar queda para el foco (§2). ── */
+body[data-eye-skin='editorial'] .eye-moon-reticle-ring {
+  border: 1px solid rgba(238, 241, 233, 0.52);
+  box-shadow: none;
+}
+
+body[data-eye-skin='editorial'] .eye-moon-reticle-arrow {
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial'] .eye-moon-reticle-legend {
+  background: rgba(7, 17, 16, 0.8);
+  color: var(--ei-paper);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.08em;
+}
+
+/* Mono solo en números (T3): en la tira y su chip, las palabras en Grotesk. */
+body[data-eye-skin='editorial'] .eye-time-strip [data-eye-value='text'] {
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-time-strip [data-eye-value='number'] {
+  font-family: var(--ei-f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* El chip es inline-flex: el espacio entre tramos (palabra · cifra) lo da el
+ * hueco, no un nodo de texto que el flex colapsa. */
+body[data-eye-skin='editorial'] .eye-time-chip {
+  gap: 0.4em;
 }
