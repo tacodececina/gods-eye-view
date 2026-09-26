@@ -337,3 +337,25 @@ P5-16 (comparabilidad con P4):
 
 Límites: n = 3 sin intervalo de confianza formal; escenas en frío; solo CPU del
 hilo principal, sin GPU; no se midió en teléfono.
+
+## Fase visual Editorial (2026-09-26, GPD Win 4)
+
+Método de `output/eyeinsky-p4/t7/perf-repeat` (Chrome headless con GPU real
+ANGLE/D3D11, 1366×768 DPR 1, 45 s por escena, rondas intercaladas, compuerta
+térmica ≤ 78 °C, modo `windows`, sin juegos). Celdas: `legacy` =
+`?skin=legacy&globe=legacy`; `editorial` = valores por defecto (piel Editorial,
+iluminación, luces VIIRS, cielo Yale, pose auto con deriva). Evidencia en
+`output/eyeinsky-vis/perf/skin/` (no versionada). La tercera ronda de la
+escena B abortó por el navegador, así que B tiene n = 2.
+
+| Escena | Celda | n | CPU del frame de Cesium p50 / p95 (ms) | commandList p50 | Long tasks |
+| --- | --- | --- | --- | --- | --- |
+| A · satélites core, sin selección | legacy | 3 | 1,9 / 3,4 | 19 | 0 |
+| A | editorial | 3 | 1,1 / 1,6 | 19 | 0 |
+| B · ISS seguida | legacy | 2 | 2,4 / 6,5 | 45–50 | 0 |
+| B | editorial | 2 | 2,25 / 6,1 | 48–51 | 0 |
+
+Veredicto: editorial − legacy Δp95 = −1,8 ms en A y −0,4 ms en B; ambos
+cumplen los criterios V-22 (≤ +1 ms y ≤ +2 ms). No se afirman FPS ni coste
+de GPU; la piel legacy comparte ya la nueva jerarquía, así que no es idéntica
+a la línea base de T0.
