@@ -6,12 +6,14 @@
  */
 import * as Cesium from 'cesium';
 import { celestialFor } from '../../layers/moon/celestialService.js';
-import { solarHomePose } from '../eyeinskyHomePose.js';
+import { homePoseModeFor, solarHomePose } from '../eyeinskyHomePose.js';
 
 /** La entrada parte de ~95 000 km (DESIGN-SYSTEM-EDITORIAL §5). */
 export const INTRO_START_ALT_M = 95_000_000;
 /** 2,6 s, termina antes de 3 s (V-16). */
 export const INTRO_SECONDS = 2.6;
+/** Movimiento sutil en reposo: de la pose inclinada a la centrada (s). */
+export const AMBIENT_SECONDS = 45;
 
 /**
  * @param {object} viewer Cesium viewer.
@@ -36,7 +38,7 @@ export function resolveHomePose(
     sunEcef,
     viewport,
     fovy: viewer.camera.frustum.fovy,
-    mode: flags?.homePose ?? 'legacy',
+    mode: homePoseModeFor(flags?.homePose ?? 'legacy', viewport.width),
   });
   return pose.frame === 'orbit' ? orbitToCamera(viewer, pose) : pose;
 }
@@ -110,6 +112,7 @@ export function mountIntro(shell) {
   ]);
   const finish = () => {
     if (reveal.getState()?.intro === 'running') reveal.setIntro('done');
+    startAmbientGlide(shell, viewer, flags);
   };
   if (!flight) {
     setHomeView(viewer, pose);
@@ -117,4 +120,92 @@ export function mountIntro(shell) {
     return;
   }
   Promise.resolve(flight).then(finish, finish);
+}
+
+/**
+ * Movimiento sutil en reposo (decisión de Alex 2026-09-26): tras la entrada
+ * inclinada, la cámara se centra muy despacio (AMBIENT_SECONDS) interpolando
+ * la pose directamente en preUpdate, sin pasar por la autoridad de navegación
+ * (así no cancela selecciones ni compite con los arneses). Se detiene con
+ * cualquier gesto, al fijar un objetivo, al salir del reposo o al terminar.
+ * Con movimiento reducido o pose solar (teléfono) no hay deriva.
+ */
+function startAmbientGlide(shell, viewer, flags) {
+  if (homePoseModeFor(flags?.homePose ?? 'legacy', innerWidth) !== 'tilt')
+    return;
+  if (shell.reduced()) return;
+  const to = resolveHomePose(viewer, { ...flags, homePose: 'solar' });
+  const c = viewer.camera.positionCartographic;
+  const from = {
+    lon: Cesium.Math.toDegrees(c.longitude),
+    lat: Cesium.Math.toDegrees(c.latitude),
+    alt: c.height,
+    heading: Cesium.Math.toDegrees(viewer.camera.heading),
+    pitch: Cesium.Math.toDegrees(viewer.camera.pitch),
+  };
+  const start = performance.now();
+  const stops = [];
+  const stop = () => {
+    while (stops.length) stops.pop()?.();
+  };
+  const lerpDeg = (a, b, t) => a + shortestDelta(a, b) * t;
+  const applied = new Cesium.Cartesian3();
+  let hasApplied = false;
+  const tick = () => {
+    if (viewer.trackedEntity || shell.reveal.getState()?.reveal !== 'rest')
+      return stop();
+    // Si otro actor movió la cámara desde la última aplicación (API directa,
+    // arneses, restauración), la deriva cede y se apaga.
+    if (
+      hasApplied &&
+      Cesium.Cartesian3.distance(viewer.camera.position, applied) > 1
+    )
+      return stop();
+    const t = Math.min(
+      1,
+      (performance.now() - start) / (AMBIENT_SECONDS * 1000),
+    );
+    const k = 0.5 - Math.cos(Math.PI * t) / 2;
+    viewer.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(
+        lerpDeg(from.lon, to.lon, k),
+        from.lat + (to.lat - from.lat) * k,
+        from.alt + (to.alt - from.alt) * k,
+      ),
+      orientation: {
+        heading: Cesium.Math.toRadians(lerpDeg(from.heading, to.heading, k)),
+        pitch: Cesium.Math.toRadians(from.pitch + (to.pitch - from.pitch) * k),
+        roll: 0,
+      },
+    });
+    Cesium.Cartesian3.clone(viewer.camera.position, applied);
+    hasApplied = true;
+    viewer.scene.requestRender();
+    if (t >= 1) stop();
+  };
+  stops.push(viewer.scene.preUpdate.addEventListener(tick));
+  // Cualquier navegación explícita (APUNTAR, sector, Centrar, seguir un
+  // objetivo) también corta la deriva, aunque no venga de un gesto.
+  const nav = shell.styleManager._navigation;
+  for (const name of ['runCameraPlan', 'interruptCameraMotion']) {
+    const original = nav[name];
+    if (typeof original !== 'function') continue;
+    nav[name] = function stopAmbientThen(...args) {
+      stop();
+      return original.apply(this, args);
+    };
+    stops.push(() => {
+      if (nav[name]?.name === 'stopAmbientThen') nav[name] = original;
+    });
+  }
+  for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart']) {
+    document.addEventListener(type, stop, { capture: true, passive: true });
+    stops.push(() =>
+      document.removeEventListener(type, stop, { capture: true }),
+    );
+  }
+}
+
+function shortestDelta(a, b) {
+  return ((((b - a) % 360) + 540) % 360) - 180;
 }

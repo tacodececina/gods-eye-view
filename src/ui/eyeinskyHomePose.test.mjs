@@ -7,7 +7,11 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fitHeight, solarHomePose } from './eyeinskyHomePose.js';
+import {
+  fitHeight,
+  solarHomePose,
+  homePoseModeFor,
+} from './eyeinskyHomePose.js';
 
 const rad = Math.PI / 180;
 const unit = (latDeg, lonDeg) => [
@@ -129,4 +133,12 @@ test('sin Sol (marco no disponible) cae a legacy y nunca lanza', () => {
     heading: 0,
     pitch: -90,
   });
+});
+
+test('auto: inclinada en escritorio y cenital en teléfono (decisión 2026-09-26)', () => {
+  assert.equal(homePoseModeFor('auto', 1600), 'tilt');
+  assert.equal(homePoseModeFor('auto', 390), 'solar');
+  assert.equal(homePoseModeFor('solar', 1600), 'solar');
+  assert.equal(homePoseModeFor('legacy', 390), 'legacy');
+  assert.equal(homePoseModeFor('basura', 1600), 'solar');
 });

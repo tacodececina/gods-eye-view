@@ -68,6 +68,18 @@ function sunAzimuthDeg(sun, latDeg, lonDeg) {
  *   pitch: number, frame?: 'camera'|'orbit'}} Grados y metros; con
  *   `orbit`, rumbo, inclinación y `alt` (distancia) son respecto al punto.
  */
+/**
+ * Resuelve `auto`: inclinada (tilt) en escritorio, cenital (solar) en
+ * teléfono, donde la inclinación no se aprecia y recorta el disco.
+ * @param {string} homePose Valor del flag.
+ * @param {number} width Ancho del viewport en px.
+ * @returns {'solar'|'tilt'|'legacy'}
+ */
+export function homePoseModeFor(homePose, width) {
+  if (homePose === 'auto') return width >= MOBILE_WIDTH ? 'tilt' : 'solar';
+  return homePose === 'tilt' || homePose === 'legacy' ? homePose : 'solar';
+}
+
 export function solarHomePose({ sunEcef, viewport, fovy, mode = 'solar' }) {
   const sun = Array.isArray(sunEcef)
     ? sunEcef
@@ -79,7 +91,10 @@ export function solarHomePose({ sunEcef, viewport, fovy, mode = 'solar' }) {
   const unit = sun.map((v) => v / norm);
   const lon = wrap180(Math.atan2(unit[1], unit[0]) / RAD + CENTER_OFFSET_DEG);
   const lat = CENTER_LAT_DEG;
-  const fill = viewport.width < MOBILE_WIDTH ? 0.9 : 0.74;
+  // La pose inclinada extiende el disco: se encuadra algo más lejos para que
+  // el anillo celeste conserve su holgura desde el inicio (P5 ring check).
+  const fill =
+    viewport.width < MOBILE_WIDTH ? 0.9 : mode === 'tilt' ? 0.64 : 0.74;
   const floor = viewport.width >= DESKTOP_MIN_WIDTH ? GLOBAL_MIN_ALT_M : 0;
   const alt = Math.max(fitHeight({ viewport, fovy, fill }), floor);
   if (mode === 'tilt')

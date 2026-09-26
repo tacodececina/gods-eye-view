@@ -91,11 +91,22 @@ export function createDockTargets(shell) {
     shell.applyDossier();
   }
   function centerOnTarget() {
-    if (!state.dossierState.context.position) return;
+    const context = state.dossierState.context;
+    // Objetivos en movimiento (satélites, vuelos, militar): centrar es volver
+    // a engancharles la cámara, no volar a una posición ya obsoleta.
+    const module = dataManager.layers.get(context.layerId || '')?.module;
+    if (
+      context.stableId &&
+      module?.refocusTrackedById?.(context.stableId, { origin: 'user' })
+    ) {
+      shell.applyDossier();
+      return;
+    }
+    if (!context.position) return;
     shell.camera({
       ...shell.styleManager.getCameraState(),
-      lat: state.dossierState.context.position.lat,
-      lon: state.dossierState.context.position.lon,
+      lat: context.position.lat,
+      lon: context.position.lon,
     });
   }
   return {

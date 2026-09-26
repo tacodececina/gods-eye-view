@@ -318,17 +318,24 @@ async function measureViewport(browser, viewport) {
   // 8 · Pose inicial: pitch esperado y terminador visible (día y noche).
   const dayNight = state.disk ? diskDayNight(globe, state.disk) : null;
   const terminatorDeg = terminatorAngleFromSun(state.sun.sx, state.sun.sy);
-  const expectedPitch = state.homePose === 'tilt' ? -70 : -90;
+  // auto (decisión 2026-09-26): inclinada en escritorio, cenital en teléfono.
+  // La pose inclinada se expresa en órbita alrededor del punto y llega a la
+  // cámara como pitch ≈ −85 que deriva despacio hacia −90 (movimiento sutil),
+  // así que se exige un rango, no un valor.
+  const tilted =
+    state.homePose === 'tilt' ||
+    (state.homePose === 'auto' && viewport.width >= 650);
+  const expectedPitch = tilted ? '[-90, -60]' : -90;
+  const pitchOk = tilted
+    ? state.camera.pitch <= -60 && state.camera.pitch >= -90.5
+    : Math.abs(state.camera.pitch + 90) <= 2;
   const angleOk =
-    state.homePose !== 'solar' ||
+    tilted ||
     (terminatorDeg >= TERMINATOR_RANGE[0] &&
       terminatorDeg <= TERMINATOR_RANGE[1]);
   check(
     `vis-08-camera-terminator-${suffix}`,
-    Math.abs(state.camera.pitch - expectedPitch) <= 2 &&
-      dayNight &&
-      dayNight.ratio < DAY_NIGHT_RATIO_MAX &&
-      angleOk,
+    pitchOk && dayNight && dayNight.ratio < DAY_NIGHT_RATIO_MAX && angleOk,
     {
       camera: state.camera,
       homePose: state.homePose,

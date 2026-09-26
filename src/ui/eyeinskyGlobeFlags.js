@@ -23,8 +23,9 @@ const PIECES = Object.freeze({
   nightLights: { values: ['0', '1'], editorial: '1', legacy: '0' },
   stars: { values: ['sober', 'tycho'], editorial: 'sober', legacy: 'tycho' },
   homePose: {
-    values: ['solar', 'tilt', 'legacy'],
-    editorial: 'solar',
+    // auto = tilt en escritorio, solar en teléfono (decisión de Alex 2026-09-26).
+    values: ['auto', 'solar', 'tilt', 'legacy'],
+    editorial: 'auto',
     legacy: 'legacy',
   },
   intro: { values: ['0', '1'], editorial: '1', legacy: '0' },

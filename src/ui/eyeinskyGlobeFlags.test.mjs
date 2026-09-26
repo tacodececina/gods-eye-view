@@ -17,7 +17,7 @@ test('sin parámetros: piel y globo editorial (T6), todo resuelto y congelado', 
   assert.equal(flags.lighting, '1');
   assert.equal(flags.nightLights, '1');
   assert.equal(flags.stars, 'sober');
-  assert.equal(flags.homePose, 'solar');
+  assert.equal(flags.homePose, 'auto');
   assert.equal(flags.intro, '1');
   assert.equal(flags.satStyle, 'editorial');
   assert.equal(flags.satLabels, 'intent');
@@ -45,7 +45,7 @@ test('?globe=editorial resuelve todas las piezas y una pieza explícita manda', 
       lighting: '1',
       nightLights: '1',
       stars: 'sober',
-      homePose: 'solar',
+      homePose: 'auto',
       intro: '1',
       satStyle: 'editorial',
       satLabels: 'intent',
@@ -66,7 +66,7 @@ test('valores basura o claves ajenas caen al defecto y nunca lanzan', () => {
   const flags = readGlobeFlags('?skin=neon&globe=%00&homePose=../x&foo=bar');
   assert.equal(flags.skin, 'editorial');
   assert.equal(flags.globe, 'editorial');
-  assert.equal(flags.homePose, 'solar');
+  assert.equal(flags.homePose, 'auto');
   assert.equal('foo' in flags, false);
   assert.doesNotThrow(() => readGlobeFlags(undefined));
   assert.doesNotThrow(() => readGlobeFlags('%E0%A4%A'));
@@ -78,7 +78,7 @@ test('los defectos inyectados permiten promover piezas sin tocar el parser', () 
     globe: 'editorial',
   });
   assert.equal(promoted.lighting, '1');
-  assert.equal(promoted.homePose, 'solar');
+  assert.equal(promoted.homePose, 'auto');
   const rollback = readGlobeFlags('?globe=legacy', {
     ...GLOBE_FLAG_DEFAULTS,
     globe: 'editorial',
