@@ -10,17 +10,17 @@ import {
   scopeAppearanceForSkin,
 } from './eyeinskyGlobeFlags.js';
 
-test('sin parámetros: piel editorial y globo legacy, todo resuelto y congelado', () => {
+test('sin parámetros: piel y globo editorial (T6), todo resuelto y congelado', () => {
   const flags = readGlobeFlags('');
   assert.equal(flags.skin, 'editorial');
-  assert.equal(flags.globe, 'legacy');
-  assert.equal(flags.lighting, '0');
-  assert.equal(flags.nightLights, '0');
-  assert.equal(flags.stars, 'tycho');
-  assert.equal(flags.homePose, 'legacy');
-  assert.equal(flags.intro, '0');
-  assert.equal(flags.satStyle, 'legacy');
-  assert.equal(flags.satLabels, 'legacy');
+  assert.equal(flags.globe, 'editorial');
+  assert.equal(flags.lighting, '1');
+  assert.equal(flags.nightLights, '1');
+  assert.equal(flags.stars, 'sober');
+  assert.equal(flags.homePose, 'solar');
+  assert.equal(flags.intro, '1');
+  assert.equal(flags.satStyle, 'editorial');
+  assert.equal(flags.satLabels, 'intent');
   assert.ok(Object.isFrozen(flags));
   assert.ok(Object.isFrozen(GLOBE_FLAG_DEFAULTS));
   assert.ok(
@@ -55,9 +55,9 @@ test('?globe=editorial resuelve todas las piezas y una pieza explícita manda', 
   assert.equal(tycho.stars, 'tycho');
   assert.equal(tycho.homePose, 'tilt');
   assert.equal(tycho.lighting, '1');
-  const piece = readGlobeFlags('lighting=1&skin=legacy');
+  const piece = readGlobeFlags('nightLights=0&skin=legacy&globe=legacy');
   assert.equal(piece.globe, 'legacy');
-  assert.equal(piece.lighting, '1');
+  assert.equal(piece.lighting, '0');
   assert.equal(piece.nightLights, '0');
   assert.equal(piece.skin, 'legacy');
 });
@@ -65,8 +65,8 @@ test('?globe=editorial resuelve todas las piezas y una pieza explícita manda', 
 test('valores basura o claves ajenas caen al defecto y nunca lanzan', () => {
   const flags = readGlobeFlags('?skin=neon&globe=%00&homePose=../x&foo=bar');
   assert.equal(flags.skin, 'editorial');
-  assert.equal(flags.globe, 'legacy');
-  assert.equal(flags.homePose, 'legacy');
+  assert.equal(flags.globe, 'editorial');
+  assert.equal(flags.homePose, 'solar');
   assert.equal('foo' in flags, false);
   assert.doesNotThrow(() => readGlobeFlags(undefined));
   assert.doesNotThrow(() => readGlobeFlags('%E0%A4%A'));

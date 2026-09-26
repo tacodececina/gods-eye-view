@@ -204,7 +204,13 @@ try {
   check(
     'reduced-motion home moves camera without a timed flight',
     await page.evaluate(
-      () => Math.abs(window.__eyeinsky.readView().camera.alt - 26000000) < 5,
+      // T6 (fase visual): la altura Global la declara la app para este
+      // viewport (pose solar), no un literal; sigue sin vuelo temporizado.
+      () =>
+        Math.abs(
+          window.__eyeinsky.readView().camera.alt -
+            window.__eyeinsky.homeAltitude(),
+        ) < 5,
     ),
   );
   const focus = [];

@@ -3,6 +3,7 @@
  * añaden, quitan ni renombran claves sin cambiar los arneses en RED.
  */
 import { isDetectionSuspended } from '../../data/detection.js';
+import { resolveHomePose } from './homeView.js';
 import {
   getSuppressedOverlaySources,
   getWorldOverlayDiagnostics,
@@ -26,6 +27,8 @@ export function mountDebugHandle(shell) {
       return state.rows;
     },
     earthMoon: shell.earthMoon.debug,
+    /** T6: altura de la pose Global declarada para este viewport (m). */
+    homeAltitude: () => resolveHomePose(shell.viewer, shell.flags).alt,
     /** Arnés P5: despeje de SISTEMA (callouts de detección y sismos). */
     systemDeclutter: () => {
       const overlay = getWorldOverlayDiagnostics();

@@ -7,7 +7,7 @@
 
 export const GLOBE_FLAG_DEFAULTS = Object.freeze({
   skin: 'editorial',
-  globe: 'legacy',
+  globe: 'editorial',
   lighting: null,
   nightLights: null,
   stars: null,
@@ -62,7 +62,7 @@ const pick = (params, key, values, fallback) => {
 export function readGlobeFlags(search = '', defaults = GLOBE_FLAG_DEFAULTS) {
   const params = parseSearch(search);
   const skin = pick(params, 'skin', SWITCHES, defaults.skin ?? 'editorial');
-  const globe = pick(params, 'globe', SWITCHES, defaults.globe ?? 'legacy');
+  const globe = pick(params, 'globe', SWITCHES, defaults.globe ?? 'editorial');
   const pieces = Object.fromEntries(
     Object.entries(PIECES).map(([key, piece]) => {
       const inherited = params.has('globe')
