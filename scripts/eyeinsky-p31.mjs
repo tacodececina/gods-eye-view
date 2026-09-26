@@ -80,6 +80,34 @@ async function ready(page) {
 }
 
 /**
+ * Fase visual T3 (D1-A): sin objetivo no hay dock en reposo. Para medirlo se
+ * abre por la ruta REAL que lo pide (Instrumentos → Panel de misión); si ya
+ * está abierto no se toca. Los criterios de geometría y alcance no cambian.
+ * @param {import('puppeteer').Page} page Página.
+ * @returns {Promise<void>} Panel visible.
+ */
+async function openMissionPanel(page) {
+  const open = await page.evaluate(
+    () =>
+      document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+  );
+  if (open) return;
+  await page.evaluate(() => {
+    document
+      .querySelector('.eye-function-dock [data-eye-view="instruments"]')
+      .click();
+  });
+  await page.waitForSelector('#eye-instrument-dossier', { visible: true });
+  await page.click('#eye-instrument-dossier');
+  await page.waitForFunction(
+    () =>
+      document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+    { timeout: 10_000 },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 600));
+}
+
+/**
  * Captura una prueba visual con nombre estable dentro del directorio de salida.
  * @param {import('puppeteer').Page} page Página.
  * @param {string} name Nombre del archivo, sin extensión.
@@ -104,36 +132,57 @@ try {
   await page.setViewport({ width: 1440, height: 900 });
   await ready(page);
 
-  // ─── P31-01 · El dock nace abajo, con la ficha de vista, sin robar foco ───
+  // ─── P31-01 · Sin dock en reposo; al pedirlo, panel a la derecha ───
+  // Fase visual T3 (§1.1, D1-A de Alex, 2026-09-25). Antes: el dock nacía
+  // abierto (earth:view) anclado abajo-izquierda (gapBottom/gapLeft ≤ 48). Ahora
+  // en reposo NO hay dock (el nodo existe, oculto) y el foco no se mueve; al
+  // abrirlo (ruta real Instrumentos → Panel de misión) es el panel contextual
+  // único anclado a la DERECHA sobre el pie (DESIGN-SYSTEM §6.4): gapRight ≤
+  // gutter (32) + carril (64) + 8, gapBottom ≤ 136, plegado.
+  const atRest = await page.evaluate(() => {
+    const dock = document.getElementById('eye-mission-dock');
+    const active = document.activeElement;
+    return {
+      present: Boolean(dock),
+      hidden: Boolean(dock?.hidden),
+      dataVisible: dock?.dataset.visible ?? null,
+      focusInside: Boolean(active && dock?.contains(active)),
+      activeTag: active?.tagName ?? null,
+      inspectingFlag: document.body.dataset.eyeInspecting ?? null,
+    };
+  });
+  await openMissionPanel(page);
   const initial = await page.evaluate(() => {
     const dock = document.getElementById('eye-mission-dock');
     const box = dock.getBoundingClientRect();
-    const active = document.activeElement;
     return {
       visible: !dock.hidden,
       contextKey: dock.dataset.contextKey ?? null,
       title:
         document.getElementById('eye-mission-dock-title')?.textContent ?? null,
-      // Ancla inferior real: el borde de abajo del dock queda cerca del borde
-      // de abajo de la ventana, no del derecho como el antiguo expediente.
       gapBottom: Math.round(window.innerHeight - box.bottom),
-      gapLeft: Math.round(box.left),
-      focusInside: Boolean(active && dock.contains(active)),
+      gapRight: Math.round(window.innerWidth - box.right),
       inspectingFlag: document.body.dataset.eyeInspecting ?? null,
       expanded: dock.dataset.expanded ?? null,
     };
   });
   check(
-    'p31-01-dock-anchored-bottom-without-focus-theft',
-    initial.visible &&
+    'p31-01-no-dock-at-rest-then-anchored-right',
+    atRest.present &&
+      atRest.hidden &&
+      atRest.dataVisible === 'false' &&
+      !atRest.focusInside &&
+      atRest.activeTag === 'BODY' &&
+      atRest.inspectingFlag !== 'true' &&
+      initial.visible &&
       initial.contextKey === 'earth:view' &&
       initial.gapBottom >= 0 &&
-      initial.gapBottom <= 48 &&
-      initial.gapLeft <= 48 &&
-      !initial.focusInside &&
+      initial.gapBottom <= 136 &&
+      initial.gapRight >= 0 &&
+      initial.gapRight <= 32 + 64 + 8 &&
       initial.inspectingFlag !== 'true' &&
       initial.expanded === 'false',
-    initial,
+    { atRest, initial },
   );
   await shot(page, 'p31-dock-1440x900');
 
@@ -345,8 +394,7 @@ try {
     if (!viewer || !layer) return { skipped: 'sin viewer o capa de vuelos' };
 
     if (
-      typeof layer.testing?._setTrackedFlightRefreshStateForTest !==
-      'function'
+      typeof layer.testing?._setTrackedFlightRefreshStateForTest !== 'function'
     )
       return { skipped: 'la capa activa no expone su fixture de tracking' };
 
@@ -444,6 +492,9 @@ try {
   // Se fija un estado conocido primero (panel OPS, desplegado) para que
   // «devuelto como estaba» sea una afirmación comprobable y no lo que quedara
   // de la comprobación anterior.
+  // D1-A (fase visual T3): P31-09 suelta su objetivo al limpiar y, sin
+  // objetivo, no hay dock; se pide de nuevo por la ruta real.
+  await openMissionPanel(page);
   await page.click('#eye-dock-tab-ops');
   await page.click('[data-eye-dock-action="more"]');
   const beforeClean = await page.evaluate(() => {
@@ -613,6 +664,8 @@ try {
     await page.waitForSelector('#eye-mission-dock .eye-dock-rail', {
       timeout: 30_000,
     });
+    // D1-A: tras recargar no hay dock en reposo; se pide por la ruta real.
+    await openMissionPanel(page);
     await new Promise((resolve) => setTimeout(resolve, 450));
     const measured = await page.evaluate(() => {
       const dock = document.getElementById('eye-mission-dock');
@@ -685,7 +738,9 @@ try {
         // Deja libre al menos un tercio de la altura para arrastrar el globo.
         globeHeadroom: Math.round(box.top),
         headroomRatio: Number((box.top / window.innerHeight).toFixed(2)),
-        smallestControl: Number.isFinite(smallest) ? Math.round(smallest) : null,
+        smallestControl: Number.isFinite(smallest)
+          ? Math.round(smallest)
+          : null,
         unreachable,
         hitsInstruments: intersects(dockRect, rect('.eye-instruments')),
         hitsAddLayer: intersects(dockRect, rect('[data-eye-active-add]')),
@@ -710,9 +765,8 @@ try {
 
   // ─── P31-13 · Desmontar y remontar deja un solo dueño de eventos ───
   const teardown = await page.evaluate(async () => {
-    const { mountEyeMissionDock } = await import(
-      '/src/ui/eyeinskyMissionDock.js'
-    );
+    const { mountEyeMissionDock } =
+      await import('/src/ui/eyeinskyMissionDock.js');
     const frame = document.createElement('iframe');
     frame.hidden = true;
     document.body.append(frame);
@@ -729,7 +783,7 @@ try {
       contextKind: 'view',
       generation: 1,
       title: 'Vista · Tierra',
-      kicker: 'VISTA / TIERRA',
+      kicker: 'Vista · Tierra',
       status: 'ready',
       observedAt: null,
       localUpdatedAt: null,
@@ -802,6 +856,8 @@ try {
   result.passed = result.checks.filter((entry) => entry.ok).length;
   result.failed = result.checks.length - result.passed;
   await fs.writeFile(resultPath, `${JSON.stringify(result, null, 2)}\n`);
-  console.log(`\n${result.passed} ok · ${result.failed} fallan → ${resultPath}`);
+  console.log(
+    `\n${result.passed} ok · ${result.failed} fallan → ${resultPath}`,
+  );
 }
 if (result.failed > 0) process.exitCode = 1;

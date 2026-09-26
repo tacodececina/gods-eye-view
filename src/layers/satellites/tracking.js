@@ -2,6 +2,12 @@ import * as Cesium from 'cesium';
 import { satelliteClassLabel } from '../../data/satelliteClass.js';
 import { ISS_NORAD, CONTEXT_REFRESH_INTERVAL_MS } from './policy.js';
 import { orbitViewFrom } from './framing.js';
+import {
+  editorialCardDetails,
+  orbitPathLook,
+  trackedCardLook,
+  trackedPointColor,
+} from './presentation.js';
 import { createTrackingFraming } from './trackingFraming.js';
 import {
   PROPAGATION_FAILED_STATUS,
@@ -504,6 +510,8 @@ export function createTracking({ state: layerState, services, parts, source }) {
         `DOCKED · ${companions[0]}${extra > 0 ? ` · +${extra}` : ''}`,
       );
     }
+    const look = trackedCardLook(layerState._presentation);
+    const shown = look.typeface ? editorialCardDetails(details) : details;
     const current = layerState._trackedEntity.gevLabelModel;
     // Over a drawn model the card clears its projected hull (P4 T7).
     const clearance = layerState._trackedCardClearance;
@@ -512,13 +520,13 @@ export function createTracking({ state: layerState, services, parts, source }) {
     const unchanged =
       current?.gapPx === clearance?.gapPx &&
       current?.title === title &&
-      current?.details?.length === details.length &&
-      details.every((line, index) => current.details[index] === line);
+      current?.details?.length === shown.length &&
+      shown.every((line, index) => current.details[index] === line);
     if (unchanged) return;
     layerState._trackedEntity.gevLabelModel = {
       title,
-      details,
-      accent: '#ffd84d',
+      details: shown,
+      ...look,
       ...clearance,
     };
     refreshTrackedReadout(layerState._trackedEntity);
@@ -558,7 +566,13 @@ export function createTracking({ state: layerState, services, parts, source }) {
     point.show = false;
 
     // Show orbital path
-    parts.rendering._showOrbitPath(noradId, Cesium.Color.YELLOW);
+    parts.rendering._showOrbitPath(
+      noradId,
+      orbitPathLook(layerState._presentation, {
+        iss: noradId === ISS_NORAD,
+        tracked: true,
+      }),
+    );
 
     // Tracked entity position propagates per evaluation through the per-frame
     // cache (WS-D2) — dot, host readout, and camera share one SGP4 epoch per frame.
@@ -585,7 +599,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
       viewFrom,
       point: {
         pixelSize: 14,
-        color: Cesium.Color.YELLOW,
+        color: trackedPointColor(layerState._presentation),
         outlineColor: Cesium.Color.WHITE,
         outlineWidth: 2,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,

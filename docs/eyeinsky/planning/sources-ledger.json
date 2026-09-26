@@ -138,6 +138,54 @@
       "url": "https://svs.gsfc.nasa.gov/help/",
       "title": "NASA SVS — FAQ «Can I use your visualizations?»: «All of our content is in the public domain (unless otherwise noted)»; la página 4720 no declara ninguna excepción",
       "accessed": "2026-09-25"
+    },
+    {
+      "id": 24,
+      "url": "https://github.com/google/fonts/tree/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/instrumentserif",
+      "title": "Google Fonts (repo google/fonts, revisión fijada 0b58fb37): Instrument Serif Regular e Italic, © 2022 The Instrument Serif Project Authors, SIL Open Font License 1.1 (OFL.txt copiado a public/identity/fonts/instrumentserif-OFL.txt); titulares de la piel Editorial",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 25,
+      "url": "https://github.com/google/fonts/tree/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/ibmplexmono",
+      "title": "Google Fonts (repo google/fonts, revisión fijada 0b58fb37): IBM Plex Mono Medium, © IBM Corp., SIL Open Font License 1.1 (mismo texto que public/identity/fonts/ibmplexmono-OFL.txt; el Regular del repo es byte-idéntico a esta revisión); números y datos",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 26,
+      "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml",
+      "title": "NASA GIBS WMTS GetCapabilities EPSG:3857 «best»: capa VIIRS_CityLights_2012 («Earth at Night (2012, VIIRS, Suomi NPP)»), image/jpeg, GoogleMapsCompatible_Level8, sin dimensión temporal; Fees none, AccessConstraints none. Alternativa descartada: VIIRS_Black_Marble (PNG, 2012/2016, ~7× más bytes por tesela)",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 27,
+      "url": "https://nasa-gibs.github.io/gibs-api-docs/",
+      "title": "NASA GIBS API docs: «NASA promotes full and open sharing of data» y agradecimiento pedido: «We acknowledge the use of imagery provided by services from NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS).»",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 28,
+      "url": "https://cdsarc.cds.unistra.fr/ftp/V/50/catalog.gz",
+      "title": "CDS V/50 — The Bright Star Catalogue, 5th Revised Ed. (Preliminary Version), Hoffleit D., Warren Jr W.H., Astronomical Data Center, NSSDC/ADC (1991); catalog.gz SHA-256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed (573 921 B, 9 110 filas). Sin texto de licencia en ReadMe; fuente del SkyBox sobrio (public/sky/)",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 29,
+      "url": "https://heasarc.gsfc.nasa.gov/W3Browse/star-catalog/bsc5p.html",
+      "title": "NASA HEASARC BSC5P: redistribución pública del BSC5 (tabla creada por HEASARC en 1995 desde ADC/CDS); sin declaración de licencia",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 30,
+      "url": "http://tdc-www.harvard.edu/catalogs/bsc5.html",
+      "title": "SAO TDC — Yale Bright Star Catalog (versión 5): distribución libre del catálogo; sin declaración de licencia",
+      "accessed": "2026-09-25"
+    },
+    {
+      "id": 31,
+      "url": "https://raw.githubusercontent.com/astronexus/HYG-Database/main/LICENSE",
+      "title": "HYG Database: CC BY-SA 4.0 — DESCARTADO para el SkyBox (la cláusula ShareAlike alcanzaría a las caras generadas)",
+      "accessed": "2026-09-25"
     }
   ]
 }

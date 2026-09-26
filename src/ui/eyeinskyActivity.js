@@ -35,12 +35,12 @@ export function activityAgeLabel(timestampMs, now = Date.now()) {
   if (!Number.isFinite(timestampMs)) return 'sin hora informada';
   const seconds = Math.round((now - timestampMs) / 1000);
   if (seconds < 0) return 'hora por delante del reloj local';
-  if (seconds < 60) return `hace ${seconds} s`;
+  if (seconds < 60) return `hace ${seconds} s`;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 60) return `hace ${minutes} min`;
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `hace ${hours} h`;
-  return `hace ${Math.round(hours / 24)} d`;
+  if (hours < 48) return `hace ${hours} h`;
+  return `hace ${Math.round(hours / 24)} d`;
 }
 
 /**

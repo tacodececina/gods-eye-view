@@ -88,6 +88,7 @@
     "modules": [
       "server/providers/space.js",
       "server/providers/space/celestrak.js",
+      "server/providers/space/gibs.js",
       "server/providers/space/launch-library.js",
       "server/providers/common/http.js",
       "src/data/spaceProviderRequests.js",
@@ -899,6 +900,8 @@
       "src/layers/satellites/contextFields.js",
       "src/layers/satellites/trackingFraming.js",
       "src/layers/satellites/trackingPropagation.js",
+      "src/layers/satellites/presentation.js",
+      "src/layers/satellites/hoverLabel.js",
       "src/data/inputOwnership.js"
     ],
     "external": ["cesium", "satellite.js"]
@@ -1580,6 +1583,8 @@
       "src/layers/satellites/contextFields.js",
       "src/layers/satellites/trackingFraming.js",
       "src/layers/satellites/trackingPropagation.js",
+      "src/layers/satellites/presentation.js",
+      "src/layers/satellites/hoverLabel.js",
       "src/layers/submarineCables/bundledSource.js",
       "src/layers/submarineCables/geometry.js",
       "src/layers/submarineCables/index.js",
@@ -1667,6 +1672,7 @@
       "src/sources/live/vessels.js",
       "src/splitFlap.js",
       "src/standalone/catalog.js",
+      "src/ui/eyeinskyGlobeFlags.js",
       "src/standalone/layerSources.js",
       "src/styles/anime.js",
       "src/styles/noir.js",
@@ -2190,6 +2196,8 @@
       "src/layers/satellites/contextFields.js",
       "src/layers/satellites/trackingFraming.js",
       "src/layers/satellites/trackingPropagation.js",
+      "src/layers/satellites/presentation.js",
+      "src/layers/satellites/hoverLabel.js",
       "src/layers/submarineCables/geometry.js",
       "src/layers/submarineCables/index.js",
       "src/layers/submarineCables/ingestion.js",

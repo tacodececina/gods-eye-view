@@ -225,7 +225,7 @@ test('el dock rotula el objetivo Luna y su estado «calculada», nunca «observa
     dossier: createDossierState(buildMoonContext(OK_MOON)),
     activity: { tasks: [], history: [] },
   });
-  assert.equal(view.kicker, 'OBJETIVO / LUNA');
+  assert.equal(view.kicker, 'Objetivo · Luna');
   assert.equal(view.status, 'computed');
   assert.deepEqual(
     view.keyValues.map((f) => f.label),

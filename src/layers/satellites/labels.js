@@ -5,6 +5,7 @@ import {
   ISS_OVERLAY_SOURCE_ID,
   ISS_OVERLAY_SOURCE_OPTIONS,
 } from './policy.js';
+import { issLabelLook } from './presentation.js';
 
 export function createLabels({ state: layerState, services, parts, source }) {
   /** Build the persistent ISS ambient label from the cached point position. */
@@ -15,7 +16,7 @@ export function createLabels({ state: layerState, services, parts, source }) {
       position,
       variant: 'label',
       title: 'ISS',
-      accent: '#ff4444',
+      ...issLabelLook(layerState._presentation),
       priority: 1000,
       collisionGroup: 'ambient-label',
       paintLane: 'ambient-label',

@@ -54,15 +54,37 @@ async function readyPage(context, viewport, reducedMotion = false) {
       { name: 'prefers-reduced-motion', value: 'reduce' },
     ]);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  // Fase visual T2: con entrada animada (?intro=1 / ?globe=editorial) se
+  // espera a que termine el vuelo; sin ella `data-eye-intro` nace en «done».
   await page.waitForFunction(
     () =>
       window.__godsEyeView?.viewer &&
       window.__eyeinsky &&
-      document.querySelector('#loading-screen')?.classList.contains('hidden'),
+      document.querySelector('#loading-screen')?.classList.contains('hidden') &&
+      document.body.dataset.eyeIntro === 'done',
     { timeout: 90_000 },
   );
   await new Promise((resolve) => setTimeout(resolve, 700));
+  await revealByIntent(page, viewport);
   return page;
+}
+
+/**
+ * Fase visual (V-01/V-02, reparación T5): en reposo el carril de cámara, la
+ * telemetría y «+ Agregar» esperan a la primera interacción (opacity 0 y
+ * visibility hidden: nadie puede pulsar lo que no ve). Se revela como lo haría
+ * la persona, con una rueda mínima lejos del centro, y se espera al fundido
+ * (--ei-t-reveal ≤ 600 ms). Los criterios de cada check no cambian.
+ */
+async function revealByIntent(page, viewport) {
+  await page.mouse.move(viewport.width * 0.3, viewport.height * 0.4);
+  await page.mouse.wheel({ deltaY: 1 });
+  await page
+    .waitForFunction(() => document.body.dataset.eyeReveal !== 'rest', {
+      timeout: 5_000,
+    })
+    .catch(() => {});
+  await new Promise((resolve) => setTimeout(resolve, 700));
 }
 
 try {

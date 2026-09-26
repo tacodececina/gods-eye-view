@@ -12,7 +12,7 @@ After=network.target
 Type=simple
 User=eyeinsky
 Group=eyeinsky
-WorkingDirectory=APP_ROOT/current
+WorkingDirectory=APP_ROOT/shared/runtime
 Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=RUNTIME_PORT

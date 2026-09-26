@@ -57,6 +57,7 @@ export function createApplicationCatalog({
   metadata = LAYER_STATE_REGISTRY,
   vesselOptions,
   resolveAsset,
+  satellitePresentation,
 }) {
   if (!signal?.addEventListener)
     throw new TypeError('An application lifetime signal is required');
@@ -100,13 +101,18 @@ export function createApplicationCatalog({
     });
     const satellites = createApplicationSatellites({
       source: sources.satellites,
+      presentation: satellitePresentation,
     });
     const catalog = createLayerCatalog(
       [
         createBhoteKoshiEventLayer(),
         flights,
         military,
-        createApplicationEarthquakes({ source: sources.earthquakes }),
+        // Fase visual T4: la misma piel de marcadores que los satélites.
+        createApplicationEarthquakes({
+          source: sources.earthquakes,
+          presentation: satellitePresentation,
+        }),
         createApplicationAlpr({ surface, source: sources.alpr }),
         satellites,
         createApplicationLaunches({ source: sources.launches, satellites }),

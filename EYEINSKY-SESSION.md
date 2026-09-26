@@ -1,5 +1,25 @@
 # EYEINSKY — punto de reanudación
 
+## Actualización 2026-09-26 — Fase visual Editorial: T0–T5 en rama, pendientes reparación y T6
+
+Rama `eyeinsky/visual-editorial` (worktree `C:/Users/Alex/orca/eyeinsky-vis`), HEAD `d2bcfe2`. Alex rechazó el aspecto (2026-09-25: «muy feo, no me atrapa») y eligió la maqueta **Editorial Clean** (`docs/design/eyeinsky/mockups/editorial-clean.html`; maquetas en `https://staging.eyeinsky.org/mockups/`). Plan: `docs/superpowers/plans/2026-09-25-eyeinsky-fase-visual-editorial.md` (decisiones D1–D5 resueltas en §0). Sistema: `docs/design/eyeinsky/DESIGN-SYSTEM-EDITORIAL.md`.
+
+Hecho: T0b (shell troceado en `src/ui/shell/`, DOM idéntico), T0 (arnés `scripts/eyeinsky-visual.mjs`), T1 (piel `eyeinsky-editorial*.css`, fuentes OFL locales, copy del reloj), T2 (halo, luz solar del reloj P5, luces VIIRS por proxy `/api/gibs/night`, cielo Yale BSC5, retícula off, poses `?homePose=solar|tilt`), T3–T5 (sin dock en reposo, titular de entrada, panel contextual, USGS y datos avanzados bajo demanda, marcadores sin rojo, móvil con hoja única). Todo detrás de `?skin=editorial&globe=editorial`; por defecto sigue legacy hasta T6. Contratos renegociados: `docs/eyeinsky/visual/CONTRATOS-T3-T5.md`.
+
+Evidencia (árbol d2bcfe2): suite 4.917 tests / 0 fail; visual 43/43 (editorial); p012 23/23 (ambos globos); p3 30/30; p31 15/15; p5 38/38; focus, journey, states, smoke; p4 42/42 y mobile 12/12 con globo legacy (con editorial: p4 40/42 por órbita discontinua en el contador del arnés, mobile por el literal de altura 26.000 km). Rendimiento T2 (n=3, GPD): escena A Δp95 −1,8 ms.
+
+**Pendiente antes de T6 (revisión T3–T5, sin reparar por el límite semanal de la cuenta):**
+
+- HIGH: fase «explore» de la revelación (en reposo ocultar carril, telemetría y capas vacías hasta la primera interacción; hoy solo se retira el titular).
+- HIGH: en Simulación ×3600 la tira TIEMPO se solapa con la telemetría a 1600×900.
+- HIGH: cerrar el panel (×) no suelta el objetivo (trackedEntity sigue; estado de revelación pasa a rest).
+- HIGH: valores de la Luna recortados con elipsis en el panel (dd nowrap).
+- HIGH: `#eye-share` queda enfocado bajo la máscara del carril de telemetría en móvil (llevar a Más).
+- HIGH: p3-06 mide sobre el dock oculto; reabrir la ficha por Instrumentos antes.
+- MEDIUM: anatomía del panel ISS (kicker natural, hechos útiles), panel Instrumentos con altura por contenido y sin decoder, carril móvil de 3 botones y telemetría de 2 lecturas, rótulos que chocan con la barra superior, encuadre nocturno del seguimiento, p31-01 con objetivo real y hoja en 390, piezas de la tira TIEMPO (nowrap por pieza), titular que se repinta en simulación, funciones >50 líneas en scripts/lib/eyeinsky-visual-t4t5.mjs.
+
+**T6 (2026-09-26, KRÓNOS a mano por el límite semanal):** los seis HIGH de la revisión ya no se reproducían en el árbol final (verificado con sondas: × suelta el objetivo, sin solape en simulación, fase «explore» activa, valores de la Luna legibles, Compartir fuera del carril móvil, p3 30/30). Promovidos `skin=editorial` y `globe=editorial` como valores por defecto (pose `solar` hasta que Alex elija), `__eyeinsky.homeAltitude()` expuesto y `mobile` lo usa en vez del literal de 26.000 km, el contador de órbitas de P4 acepta la órbita discontinua. Evidencia (árbol final): suite 4.930 tests / 0 fail; visual 53/53; p012 23/23; p31 15/15; mobile 12/12; p4 41/42 — el único fallo es `paso-anonimo-sin-excepcion` (P4-20 abre una segunda página al final del recorrido y agota 120 s con el globo Editorial; en aislamiento carga en 4 s con las mismas reglas; P4-20 sigue cubierto por unitarios y por la fase P4). Cerrado el 2026-09-26: Alex eligió pose TILT (escritorio) con deriva sutil y SOLAR (móvil); CENTRAR re-engancha objetivos móviles; mediums principales (kickers naturales, edades sin corte, carril móvil de 3, panel de trabajo a su contenido); medición limpia n=3 (A) / n=2 (B): editorial −1,8 ms y −0,4 ms de p95 frente a legacy (docs/PERFORMANCE.md). **En producción** desde `20260926T1503Z-visual-prod` con cabeceras beta/noindex. Pendientes menores: margen superior de las tarjetas de rótulo frente a la barra, encuadre nocturno del seguimiento, anatomía fina del panel ISS (hechos del TLE), titular que se repinta en simulación.
+
 ## Actualización 2026-09-25 — P5 (Tierra–Luna) aceptada por KRÓNOS con dos criterios de rendimiento no resolubles
 
 Rama `eyeinsky/p5-tierra-luna` (worktree `C:/Users/Alex/orca/eyeinsky-p5`), HEAD `1a929b1`, sin integrar aún en `main`. Commits: `a0b7ef9` propuesta aprobada por Alex, `51864e3` T0–T3 (tabla DE441, escalas de tiempo, marcos ICRF→fijo y respaldo), `5ee9868` T4–T7 (reloj único, estado celeste y fase, Luna a escala real, anillo y HUD unificados), `36824fa` T8–T9 (tira TIEMPO, acciones Tierra–Luna, suspensión de capas en vivo, enlaces y textura LROC), `1a929b1` pulido (atajos, enlaces según el rango de la tabla, aviso de pausa, motivo en el contexto de misión, rótulo TIERRA). Matriz P5-01..18 con estado al cierre en `docs/eyeinsky/p5/PROPUESTA-P5-2026-09-25.md` §9.

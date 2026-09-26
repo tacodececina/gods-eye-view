@@ -115,6 +115,22 @@ The [Bhote Koshi event pack](public/events/bhote-koshi-2026/README.md), under `p
 - **Phase/orientation fixture:** `src/data/fixtures/moon-horizons-phase.json` holds Horizons Illu%, angular diameter and MOON_ME sub-Earth points for the same 10 epochs (observer quantities 10, 13, 14), labelled as a FIXTURE.
 - **Moon texture:** NASA's Scientific Visualization Studio, "CGI Moon Kit" (ID 4720, https://svs.gsfc.nasa.gov/4720): `public/models/moon/lroc-color-1k-b246064f.jpg` (`lroc_color_poles_1k.jpg`, 139 068 B) and `lroc-color-2k-f7130a18.jpg` (`lroc_color_2k.jpg`, 457 942 B), byte-identical copies built from the LRO LROC WAC color mosaic (Arizona State University) with LOLA/LDAM at the poles. Public domain per the SVS FAQ ("All of our content is in the public domain (unless otherwise noted)"; the 4720 page notes no exception), credit "NASA's Scientific Visualization Studio", shown in the "Data attribution" popover while the texture is on screen. The 1k loads by default; the 2k only on desktop, without save-data and with the Moon above 300 px. If the texture cannot load, the generated grey placeholder (`public/models/moon/placeholder.png`, own work by `scripts/eyeinsky-moon-placeholder.mjs`) stays. Ledger: `docs/eyeinsky/p5/ASSET-LEDGER.md` §6.
 
+### Night lights (NASA GIBS `VIIRS_CityLights_2012`) — EYEINSKY visual phase
+
+- **What:** "Earth at Night (2012, VIIRS, Suomi NPP)", fetched at runtime through the local proxy `/api/gibs/night/{z}/{y}/{x}.jpg` (`server/providers/space/gibs.js`: one whitelisted layer and tile matrix set, z ≤ 8, per-process and on-disk cache). It is scene imagery, not a data layer: it is visible only on the night side when `?globe=editorial` (or `?nightLights=1`) is on.
+- **Honesty:** it is a **2012 composite, not tonight's lights**. The on-screen credit says "Luces nocturnas: NASA GIBS · VIIRS 2012 (compuesto, no en vivo)". If GIBS fails six times without a single tile, the layer is removed and the credit line says so; nothing replaces it.
+- **Terms:** GIBS capabilities declare `Fees none` and `AccessConstraints none`. NASA asks for this acknowledgment, which also appears in the "Data attribution" popover (`gibs-night`):
+
+> We acknowledge the use of imagery provided by services from NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS).
+
+- **Provenance:** [docs/eyeinsky/visual/ASSET-LEDGER.md](docs/eyeinsky/visual/ASSET-LEDGER.md) §3.
+
+### Star field (`public/sky/*.png`) — EYEINSKY visual phase
+
+- **What:** a sober SkyBox generated offline by `scripts/eyeinsky-skybox.mjs` from the **Yale Bright Star Catalogue, 5th revised ed.** (Hoffleit & Warren 1991, NSSDC/ADC; CDS V/50 `catalog.gz`, SHA-256 `3dc44b1e…7bed`): 1 630 stars to V 5.0, precessed to 2026.0, grey faces of 1 024 px (20 KB in total).
+- **Rights:** none of CDS, NASA HEASARC or SAO TDC states a license for BSC5. It is a compilation of factual positions and magnitudes prepared by NASA's NSSDC/ADC and freely redistributed. Public-domain status is **not asserted**; the attribution is always kept ("Star field: Yale Bright Star Catalogue…", `sky-bsc5` in the "Data attribution" popover). HYG was rejected because of its CC BY-SA 4.0 share-alike.
+- **Provenance:** hashes of every face in [docs/eyeinsky/visual/ASSET-LEDGER.md](docs/eyeinsky/visual/ASSET-LEDGER.md) §2.
+
 ### ⚠️ TeleGeography is bundled but NonCommercial
 
 The submarine-cable GeoJSON is **CC BY-NC-SA 3.0** (Attribution-**NonCommercial**-**ShareAlike**). It is bundled so the cables layer works out of the box, but it is **not covered by this project's MIT license**. CC BY-NC-SA permits redistribution with attribution and share-alike — which is exactly how it ships here — but the **NonCommercial** clause means:

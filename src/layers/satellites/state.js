@@ -82,6 +82,9 @@ export function createState({ services }) {
 
   state._clickHandler = null;
 
+  /** Rótulo por intención bajo el ratón (piel Editorial). */
+  state._hover = null;
+
   /** @type {Cesium.Event.RemoveCallback|null} trackedEntityChanged listener disposer (cross-layer untrack) */
 
   state._trackedEntityChangedRemove = null;

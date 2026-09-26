@@ -31,12 +31,12 @@ export const MISSION_DOCK_KEY_VALUE_LIMIT = 3;
 
 /** Rótulo del tipo de contexto, en la cabecera del dock. */
 const KIND_KICKERS = Object.freeze({
-  view: 'VISTA / TIERRA',
-  earthquake: 'INSPECCIONAR / USGS',
-  tracked: 'SEGUIMIENTO / CONTACTO',
-  camera: 'CÁMARA / CCTV',
-  entity: 'INSPECCIONAR / CAPA',
-  moon: 'OBJETIVO / LUNA',
+  view: 'Vista · Tierra',
+  earthquake: 'Sismo · USGS',
+  tracked: 'Objetivo · contacto',
+  camera: 'Cámara · CCTV',
+  entity: 'Objetivo · capa',
+  moon: 'Objetivo · Luna',
 });
 
 const PANE_LABELS = Object.freeze({
@@ -118,17 +118,22 @@ export function resolveMissionDockPanes({ context, activity } = {}) {
  */
 export function resolveCameraStatus({ context, following } = {}) {
   const hasTarget = Boolean(context) && context.kind !== 'view';
+  // Fase visual T3: el bloque de cámara solo se ve cuando hay algo que una
+  // capa pueda seguir; para un sismo o la vista, «CÁMARA / LIBRE» es ruido.
+  const visible = following === true || isFollowableContext(context);
   if (!hasTarget)
     return Object.freeze({
       id: 'free',
       label: 'CÁMARA / LIBRE',
       detail: 'Sin objetivo seleccionado.',
+      visible,
     });
   if (following === true)
     return Object.freeze({
       id: 'following',
       label: 'CÁMARA / SIGUIENDO',
       detail: `La cámara sigue a ${context.title}.`,
+      visible,
     });
   const selected = FEMININE_KINDS.has(context.kind)
     ? 'seleccionada'
@@ -137,6 +142,7 @@ export function resolveCameraStatus({ context, following } = {}) {
     id: 'selected-free',
     label: 'CÁMARA / LIBRE',
     detail: `${context.title} sigue ${selected}; la cámara es tuya.`,
+    visible,
   });
 }
 
@@ -230,7 +236,7 @@ export function resolveMissionDockActions({ context, following } = {}) {
         ]
       : []),
     center,
-    action('north', 'Norte', true, false, 'Orienta la vista al norte'),
+    // Norte lo ejecuta la brújula del dock (fase visual T3): no se repite.
     action('more', 'Más', true, false, 'Abre el detalle completo'),
   ]);
 }
@@ -293,6 +299,9 @@ function resolveActionReason(actions) {
  * @param {{tasks:Array, history:Array}} options.activity Estado de actividad (P3).
  * @param {Readonly<object>} options.dock Estado propio del dock.
  * @param {boolean} options.following Si una capa tiene la cámara sobre el objetivo.
+ * @param {boolean} [options.viewRequested] La persona pidió la ficha de la
+ *   vista (Instrumentos → Panel de misión). Sin objetivo y sin esa petición
+ *   no hay dock (fase visual T3, D1-A).
  * @returns {Readonly<object>} Vista del dock.
  */
 export function buildMissionDockView({
@@ -300,6 +309,7 @@ export function buildMissionDockView({
   activity,
   dock = createMissionDockState(),
   following = false,
+  viewRequested = false,
 } = {}) {
   const context = dossier?.context ?? null;
   const panes = resolveMissionDockPanes({ context, activity });
@@ -311,6 +321,7 @@ export function buildMissionDockView({
   return Object.freeze({
     visible:
       Boolean(context) &&
+      (context.kind !== 'view' || viewRequested === true) &&
       dossier?.suspended !== true &&
       dossier?.visibility !== 'closed',
     expanded: dock.expanded === true,
@@ -453,31 +464,41 @@ function suspensionNotice(
   });
 }
 
-/** Rótulo, detalle y anuncio de cada modo. */
+/**
+ * Deriva máxima para llamar «en vivo» al reloj (plan: `shouldAnimate &&
+ * multiplier === 1 && deriva < 5 s`). Más allá, el modo vivo se está
+ * resincronizando y se dice.
+ */
+export const LIVE_LABEL_MAX_DRIFT_MS = 5_000;
+
+/** Rótulo, detalle y anuncio de cada modo (D5: el rótulo describe el reloj). */
 function stripWording(clock) {
   const { date, minutes, seconds } = isoParts(clock?.currentIso);
   if (clock?.mode === 'simulated')
     return {
       tone: 'sim',
       icon: '◆',
-      label: 'SIMULACIÓN',
-      detail: `${date} ${minutes} UTC ×${clock.multiplier}`,
+      label: `Simulación ×${clock.multiplier}`,
+      detail: `${date} ${minutes} UTC`,
       announcement: `Simulación ×${clock.multiplier}`,
     };
   if (clock?.mode === 'paused')
     return {
       tone: 'paused',
       icon: '❚❚',
-      label: 'PAUSA',
+      label: 'En pausa',
       detail: `· ${clock.reason || `${date} ${seconds} UTC`}`,
-      announcement: clock.reason ? `Pausa: ${clock.reason}` : 'Pausa',
+      announcement: clock.reason ? `En pausa: ${clock.reason}` : 'En pausa',
     };
+  const inSync =
+    Math.abs(Number(clock?.driftMs) || 0) < LIVE_LABEL_MAX_DRIFT_MS;
+  const label = inSync ? 'Reloj en vivo' : 'Reloj resincronizando';
   return {
     tone: 'live',
     icon: '●',
-    label: 'EN VIVO',
+    label,
     detail: `${seconds} UTC`,
-    announcement: 'En vivo',
+    announcement: label,
   };
 }
 

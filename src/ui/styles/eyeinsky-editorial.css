@@ -1,0 +1,685 @@
+/*
+ * EYEINSKY · Piel «Editorial Clean» (fase visual T1).
+ *
+ * Fuente: docs/design/eyeinsky/DESIGN-SYSTEM-EDITORIAL.md (§2–§7, §10). Se
+ * carga la ÚLTIMA (index.html) y vive entera bajo
+ * body[data-eye-skin='editorial']: con ?skin=legacy no pinta nada. Gana a
+ * eyeinsky.css por especificidad (el prefijo suma un atributo y un elemento),
+ * no por «important»; las pocas excepciones vencen una regla ajena y la citan.
+ *
+ * Solo piel: no cambia ids, clases ni la lógica de revelación (T3). Las
+ * reglas que ocultan en reposo son las decididas por Alex (D2, D3) y la
+ * retícula fija (§0 por defecto); el marcado sigue en el DOM.
+ */
+
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/identity/fonts/InstrumentSerif-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/identity/fonts/InstrumentSerif-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/identity/fonts/IBMPlexMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Tokens §10 (nombres --ei-* nuevos: no alteran la piel legacy). */
+:root {
+  --ei-space: #020505;
+  --ei-bg: #071110;
+  --ei-glass: rgba(9, 18, 17, 0.62);
+  --ei-glass-strong: rgba(9, 18, 17, 0.82);
+  --ei-glass-rail: rgba(9, 18, 17, 0.4);
+  --ei-hairline: rgba(238, 241, 233, 0.09);
+  --ei-hairline-strong: rgba(238, 241, 233, 0.18);
+  --ei-hover: rgba(27, 37, 36, 0.92);
+  /* Rellenos de botón como tonos oscuros casi opacos (el mismo compuesto que
+   * paper al 4–10 % sobre vidrio oscuro): un fondo claro translúcido se lee
+   * como blanco en las mediciones que ignoran el alfa (p3-11). */
+  --ei-fill: rgba(21, 31, 30, 0.92);
+  --ei-fill-hover: rgba(32, 42, 41, 0.94);
+  --ei-fill-press: rgba(37, 47, 46, 0.95);
+  --ei-paper: #eef1e9;
+  --ei-ink: #0b1413;
+  --ei-muted: #b2c4b9;
+  --ei-faint: #8fa398;
+  --ei-live: #a6d7c2;
+  --ei-live-ink: #062019;
+  --ei-amber: #e6b46d;
+  --ei-focus: var(--ei-amber);
+  --ei-f-display: 'Instrument Serif', 'Times New Roman', serif;
+  --ei-f-ui: 'Space Grotesk', system-ui, sans-serif;
+  --ei-f-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --ei-gutter: 32px;
+  --ei-target: 44px;
+  --ei-r-chip: 4px;
+  --ei-r-tip: 8px;
+  --ei-r-act: 12px;
+  --ei-r-m: 14px;
+  --ei-r-sheet: 20px;
+  --ei-r-l: 22px;
+  --ei-r-pill: 999px;
+  --ei-blur-panel: blur(24px) saturate(140%);
+  --ei-blur-pop: blur(20px);
+  --ei-blur-strip: blur(18px);
+  --ei-blur-rail: blur(14px);
+  --ei-shadow-panel: 0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  --ei-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ei-t: 180ms;
+  --ei-t-swap: 220ms;
+  --ei-t-hide: 240ms;
+  --ei-t-reveal: 600ms;
+  --ei-fs-min: 12px;
+  --ei-fs-ui: 14px;
+  /* Etiquetas: 12 px en el sistema de diseño, 13 px en escritorio porque lo
+   * exigen p012 smallText y p3-11 (el contrato manda, plan §Restricciones). */
+  --ei-fs-label: 13px;
+  --ei-fs-data: 13px;
+  --ei-top: 20px;
+  --ei-nav-h: 0px;
+}
+@media (max-width: 820px), (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --ei-nav-h: 60px;
+  }
+}
+@media (max-width: 650px), (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --ei-gutter: 16px;
+    --ei-fs-min: 14px;
+    --ei-fs-label: 14px;
+    --ei-fs-data: 14px;
+    --ei-top: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ei-t: 0ms;
+    --ei-t-swap: 0ms;
+    --ei-t-hide: 0ms;
+    --ei-t-reveal: 0ms;
+  }
+}
+
+/* ── Base: alias hacia los nombres de eyeinsky.css, fondo y tipo ── */
+body[data-eye-skin='editorial'] {
+  --bg-dark: var(--ei-space);
+  --accent: var(--ei-live);
+  --accent-strong: var(--ei-paper);
+  --eye-amber: var(--ei-amber);
+  --text-primary: var(--ei-paper);
+  --text-secondary: var(--ei-muted);
+  --text-dim: var(--ei-faint);
+  --glass-bg: var(--ei-glass);
+  --glass-bg-solid: #0b1615;
+  --glass-border: var(--ei-hairline);
+  --glass-border-hover: var(--ei-hairline-strong);
+  --font-sans: var(--ei-f-ui);
+  --font-mono: var(--ei-f-mono);
+  --eye-radius: var(--ei-r-m);
+  --eye-radius-small: var(--ei-r-act);
+  --eye-ease-out: var(--ei-ease);
+  --eye-safe-top: max(var(--ei-top), env(safe-area-inset-top, 0px));
+  --eye-safe-right: max(var(--ei-gutter), env(safe-area-inset-right, 0px));
+  --eye-safe-left: max(var(--ei-gutter), env(safe-area-inset-left, 0px));
+  background: var(--ei-space);
+  color: var(--ei-paper);
+  font: 400 var(--ei-fs-ui) / 1.45 var(--ei-f-ui);
+}
+
+/* Viñeta §4: da contraste al texto sin cajas; nunca recibe eventos. */
+body[data-eye-skin='editorial']::before {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(2, 5, 5, 0.62) 0%,
+      rgba(2, 5, 5, 0.2) 22%,
+      rgba(2, 5, 5, 0) 40%
+    ),
+    linear-gradient(0deg, rgba(2, 5, 5, 0.85) 0%, rgba(2, 5, 5, 0) 22%),
+    linear-gradient(180deg, rgba(2, 5, 5, 0.6) 0%, rgba(2, 5, 5, 0) 14%);
+}
+
+body[data-eye-skin='editorial'] :focus-visible {
+  outline: 2px solid var(--ei-amber) !important; /* vence eyeinsky.css:128 */
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+body[data-eye-skin='editorial'] p,
+body[data-eye-skin='editorial'] label {
+  color: var(--ei-muted);
+}
+
+/* Solo color: los tamaños de `small` los fija cada componente (p012 exige
+ * 13 px en los del catálogo de escritorio). */
+body[data-eye-skin='editorial'] small {
+  color: var(--ei-faint);
+}
+
+body[data-eye-skin='editorial'] a {
+  color: var(--ei-paper);
+  text-decoration-color: var(--ei-hairline-strong);
+  text-underline-offset: 3px;
+}
+
+/* Vidrio §4: hairline de 1 px, sin brillo interior ni borde verde. */
+body[data-eye-skin='editorial'] .eye-glass-surface,
+body[data-eye-skin='editorial'] .eye-instruments {
+  border: 1px solid var(--ei-hairline);
+  background: var(--ei-glass);
+  box-shadow: none;
+  backdrop-filter: var(--ei-blur-strip);
+  -webkit-backdrop-filter: var(--ei-blur-strip);
+}
+
+/*
+ * eyeinsky.css:2449 tiñe todo el vidrio según la escena
+ * (`.eyeinsky[data-eye-scene] .eye-glass-surface`, 0,3,0). La piel lo
+ * neutraliza con un selector más específico y decide qué va sin caja.
+ */
+body[data-eye-skin='editorial'][data-eye-scene] .eye-glass-surface {
+  background: var(--ei-glass);
+}
+
+body[data-eye-skin='editorial'][data-eye-scene] .eye-instruments {
+  background: var(--ei-glass-rail);
+}
+
+body[data-eye-skin='editorial'][data-eye-scene] .eye-orbit-brand,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-function-dock,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-active-layers,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-telemetry,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-utility-cluster button {
+  background: transparent;
+}
+
+body[data-eye-skin='editorial'][data-eye-scene] .eye-search {
+  background: rgba(238, 241, 233, 0.05);
+}
+
+body[data-eye-skin='editorial'][data-eye-scene] .eye-mission-dock,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-workspace,
+body[data-eye-skin='editorial'][data-eye-scene] .eye-hud-details {
+  background: var(--ei-glass-strong);
+}
+
+/* Botones: sin caja dura; relleno tenue, radio 12, estados con texto. */
+body[data-eye-skin='editorial'] button,
+body[data-eye-skin='editorial'] input,
+body[data-eye-skin='editorial'] select,
+body[data-eye-skin='editorial'] textarea {
+  border: 1px solid transparent;
+  border-radius: var(--ei-r-act);
+  background: var(--ei-fill);
+  color: var(--ei-paper);
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] input,
+body[data-eye-skin='editorial'] select,
+body[data-eye-skin='editorial'] textarea {
+  border-color: var(--ei-hairline);
+  background: rgba(238, 241, 233, 0.05);
+}
+
+body[data-eye-skin='editorial'] button {
+  transition:
+    transform var(--ei-t) var(--ei-ease),
+    background-color var(--ei-t) var(--ei-ease),
+    color var(--ei-t) var(--ei-ease);
+}
+
+body[data-eye-skin='editorial'] button:active {
+  transform: scale(0.97);
+}
+
+body[data-eye-skin='editorial'] button:disabled {
+  color: var(--ei-faint);
+  cursor: default;
+  opacity: 0.55;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body[data-eye-skin='editorial'] button:hover:not(:disabled) {
+    border-color: transparent;
+    background-color: var(--ei-fill-hover);
+    color: var(--ei-paper);
+  }
+}
+
+body[data-eye-skin='editorial'] .eye-primary {
+  border-color: var(--ei-paper) !important; /* vence eyeinsky.css:1123 */
+  background: var(--ei-paper) !important; /* vence eyeinsky.css:1124 */
+  color: var(--ei-ink) !important; /* vence eyeinsky.css:1125 */
+  font-weight: 600 !important; /* vence eyeinsky.css:1126 */
+}
+
+body[data-eye-skin='editorial'] .eye-kicker {
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Barra superior sin caja §6.1 ── */
+body[data-eye-skin='editorial'] .eye-orbit-brand {
+  z-index: 42;
+  top: var(--eye-safe-top);
+  left: var(--eye-safe-left);
+  min-height: 44px;
+  padding: 0 8px 0 0;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial'] .eye-orbit-brand img {
+  width: 26px;
+  height: 26px;
+}
+
+body[data-eye-skin='editorial'] .eye-orbit-brand > span {
+  display: inline;
+  font: 600 13px/1 var(--ei-f-ui);
+  letter-spacing: 0.22em;
+}
+
+body[data-eye-skin='editorial'] .eye-orbit-brand small {
+  display: none;
+}
+
+body[data-eye-skin='editorial'] .eye-function-dock {
+  top: var(--eye-safe-top);
+  right: auto;
+  bottom: auto;
+  left: calc(var(--eye-safe-left) + 156px);
+  width: auto;
+  height: 44px;
+  padding: 0;
+  transform: none;
+  flex-direction: row;
+  gap: 4px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial'] .eye-function-dock button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-function-dock button > span,
+body[data-eye-skin='editorial'] .eye-function-dock button i {
+  display: none;
+}
+
+body[data-eye-skin='editorial'] .eye-function-dock button strong {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  overflow: visible;
+  font: 400 var(--ei-fs-ui) / 1 var(--ei-f-ui);
+  text-decoration: underline 1px transparent;
+  text-underline-offset: 8px;
+}
+
+body[data-eye-skin='editorial'] .eye-function-dock button[aria-pressed='true'],
+body[data-eye-skin='editorial'] .eye-function-dock button[data-active='true'] {
+  border: 0;
+  background: transparent;
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial']
+  .eye-function-dock
+  button[aria-pressed='true']
+  strong {
+  text-decoration-color: var(--ei-live);
+}
+
+/* Utilidades a la derecha: botones de icono de 44 px sin caja. */
+body[data-eye-skin='editorial'] .eye-utility-cluster {
+  top: var(--eye-safe-top);
+  right: var(--eye-safe-right);
+  left: auto;
+  gap: 4px;
+}
+
+body[data-eye-skin='editorial'] .eye-utility-cluster button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-utility-cluster button > span {
+  display: inline;
+  color: inherit;
+  font: 400 17px/1 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-utility-cluster button::after {
+  content: none;
+}
+
+/* Buscador §6.2: píldora de 44 px con hairline; foco = hairline fuerte. */
+body[data-eye-skin='editorial'] .eye-search {
+  top: var(--eye-safe-top);
+  right: calc(var(--eye-safe-right) + 156px);
+  left: auto;
+  width: min(340px, 30vw);
+  min-width: 220px;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px 0 16px;
+  gap: 8px;
+  border: 1px solid var(--ei-hairline);
+  border-radius: var(--ei-r-pill);
+  background: rgba(238, 241, 233, 0.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial'] .eye-search:focus-within {
+  border-color: var(--ei-hairline-strong);
+  background: rgba(238, 241, 233, 0.08);
+}
+
+body[data-eye-skin='editorial'] .eye-search-mark {
+  color: var(--ei-faint);
+  font: 400 16px/1 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-search kbd {
+  color: var(--ei-faint);
+  font: 500 12px/1 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-search #location-search {
+  height: 44px !important; /* vence eyeinsky.css:250 */
+  min-height: 44px !important; /* vence eyeinsky.css:251 */
+  color: var(--ei-paper);
+  font-family: var(--ei-f-ui);
+  font-size: 14px !important; /* vence eyeinsky.css:259 */
+}
+
+body[data-eye-skin='editorial'] #key-setup-chip {
+  top: var(--eye-safe-top);
+  right: calc(var(--eye-safe-right) + 100px);
+  bottom: auto;
+  left: auto;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] #key-setup-chip .material-symbols-outlined {
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] #key-setup-chip [data-key-setup-chip-label] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Controles de cámara §6.9: carril píldora, botones de icono ── */
+body[data-eye-skin='editorial'] .eye-instruments {
+  width: 52px;
+  padding: 4px;
+  gap: 2px;
+  border-radius: var(--ei-r-pill);
+  background: var(--ei-glass-rail);
+  backdrop-filter: var(--ei-blur-rail);
+  -webkit-backdrop-filter: var(--ei-blur-rail);
+}
+
+body[data-eye-skin='editorial'] .eye-instruments button {
+  position: relative;
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  place-items: center;
+  grid-template-columns: 1fr;
+  border: 0;
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-instruments button > span {
+  font: 400 17px/1 var(--ei-f-ui);
+}
+
+/* El rótulo es el tooltip: a la izquierda, solo con hover o foco. */
+body[data-eye-skin='editorial'] .eye-instruments button > strong {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 10px);
+  width: auto;
+  padding: 6px 10px;
+  transform: translateY(-50%);
+  border-radius: var(--ei-r-tip);
+  background: var(--ei-glass-strong);
+  color: var(--ei-paper);
+  font: 400 13px/1.2 var(--ei-f-ui);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ei-t) var(--ei-ease);
+  white-space: nowrap;
+}
+
+body[data-eye-skin='editorial'] .eye-instruments button:hover > strong,
+body[data-eye-skin='editorial'] .eye-instruments button:focus-visible > strong {
+  opacity: 1;
+}
+
+body[data-eye-skin='editorial'] .eye-instruments button[aria-pressed='true'] {
+  border: 0;
+  background: var(--ei-fill-hover);
+  color: var(--ei-live);
+}
+
+body[data-eye-skin='editorial'] #eye-north > span {
+  border: 0;
+  transform: none;
+}
+
+/* ── Telemetría discreta §6.8: dl en línea, sin caja ── */
+body[data-eye-skin='editorial'] .eye-telemetry {
+  right: calc(var(--eye-safe-right) + 68px + var(--eye-visual-right));
+  bottom: calc(var(--eye-safe-bottom) + 20px + var(--eye-visual-bottom));
+  left: auto;
+  max-width: calc(100vw - 2 * var(--ei-gutter) - 68px);
+  min-height: 0;
+  padding: 0;
+  transform: none;
+  gap: 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+  .eye-telemetry {
+  bottom: calc(var(--eye-dock-band, 0px) + 16px);
+}
+
+/* Con ≥ 1500 px el dock (≤ 760 px a la izquierda) no alcanza la telemetría. */
+@media (min-width: 1500px) {
+  body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+    .eye-telemetry {
+    bottom: calc(var(--eye-safe-bottom) + 20px + var(--eye-visual-bottom));
+  }
+}
+
+body[data-eye-skin='editorial'] .eye-telemetry > div {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+body[data-eye-skin='editorial'] .eye-telemetry span {
+  margin-bottom: 4px;
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-label) / 1.2 var(--ei-f-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial'] .eye-telemetry strong {
+  color: var(--ei-paper);
+  font: 400 var(--ei-fs-data) / 1.2 var(--ei-f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-eye-skin='editorial'] #eye-map-label {
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-telemetry button {
+  min-height: 44px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--ei-muted);
+  font-size: var(--ei-fs-ui);
+}
+
+/* ── Reposo: D2 (HUD avanzado). D3: el panel USGS de reposo ya no existe. ── */
+
+/* D2: la regla de reposo del HUD avanzado vive en eyeinsky-editorial-reveal.css
+ * (oculto hasta pedirlo desde Instrumentos; sigue accesible si se pliega). */
+
+body[data-eye-skin='editorial'] .eye-hud-details {
+  border-radius: var(--ei-r-l);
+  background: var(--ei-glass-strong);
+}
+
+body[data-eye-skin='editorial'] .eye-hud-details > summary {
+  color: var(--ei-paper);
+  font: 500 var(--ei-fs-ui) / 1.5 var(--ei-f-ui);
+}
+
+/* ── Capas en línea §6.5 (sin caja) ── */
+body[data-eye-skin='editorial'] .eye-active-layers {
+  top: calc(var(--eye-safe-top) + 64px);
+  left: var(--eye-safe-left);
+  width: min(360px, calc(100vw - 2 * var(--ei-gutter)));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers header {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--ei-hairline);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers header strong {
+  color: var(--ei-paper);
+  font: 400 var(--ei-fs-ui) / 1.3 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers header b {
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-data) / 1 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] [data-eye-active-add] {
+  padding: 0 8px;
+  background: transparent;
+  color: var(--ei-live);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers > p {
+  font-size: var(--ei-fs-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers li {
+  padding: 0 0 0 4px;
+  border: 0;
+  border-bottom: 1px solid var(--ei-hairline);
+  border-radius: 0;
+  background: transparent;
+}
+
+body[data-eye-skin='editorial'] .eye-active-identity i {
+  color: var(--ei-live);
+  font: normal 14px/1 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-active-identity strong {
+  color: var(--ei-paper);
+  font: 400 15px/1.3 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-active-layers li button {
+  background: transparent;
+  color: var(--ei-muted);
+}

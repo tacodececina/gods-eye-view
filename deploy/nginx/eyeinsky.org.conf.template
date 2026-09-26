@@ -12,7 +12,7 @@ server {
     listen 80;
     server_name eyeinsky.org www.eyeinsky.org;
     server_tokens off;
-    location /.well-known/acme-challenge/ { root /opt/eyeinsky/shared/acme; }
+    location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }
     location / { return 301 https://eyeinsky.org$request_uri; }
 }
 
@@ -23,6 +23,8 @@ server {
     ssl_certificate /etc/letsencrypt/live/eyeinsky.org/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/eyeinsky.org/privkey.pem;
     include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-EYEINSKY-Phase beta always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
     return 301 https://eyeinsky.org$request_uri;
 }
 
@@ -38,8 +40,10 @@ server {
     proxy_read_timeout 60s;
     proxy_send_timeout 30s;
     include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-EYEINSKY-Phase beta always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
 
-    location /api/ {
+    location ^~ /api/ {
         limit_req zone=eyeinsky_api burst=20 nodelay;
         limit_req_status 429;
         proxy_pass http://127.0.0.1:4173;
@@ -52,11 +56,15 @@ server {
         proxy_set_header Connection $connection_upgrade_eyeinsky;
         proxy_no_cache 1;
         include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-EYEINSKY-Phase beta always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
         add_header Cache-Control no-store always;
     }
     location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|webp|wasm|glb|gltf|ico|woff2?)$ {
         try_files $uri =404;
         include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-EYEINSKY-Phase beta always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
     location / {
@@ -65,6 +73,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto https;
         include /www/server/nginx/conf/snippets/eyeinsky-security-headers.conf;
+        add_header X-EYEINSKY-Phase beta always;
+        add_header X-Robots-Tag "noindex, nofollow" always;
         add_header Cache-Control no-store always;
     }
 }

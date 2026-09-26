@@ -12,9 +12,27 @@
   role="search"
   aria-label="Buscar un lugar"
 >
-  <span class="eye-search-mark" aria-hidden="true">⌖</span>
+  <svg
+    class="eye-search-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
   <div id="eye-search-host"></div>
-  <kbd>↵</kbd>
+  <button
+    class="eye-glass-surface eye-search-kbd"
+    id="eye-command-open"
+    data-eye-short="CMD"
+    aria-label="Buscar acciones (Ctrl+K o ⌘K)"
+    aria-keyshortcuts="Control+K Meta+K"
+  >
+    <kbd aria-hidden="true">⌘K</kbd>
+  </button>
 </div>
 
 <nav
@@ -28,8 +46,7 @@
     <span aria-hidden="true">◐</span><strong>Vistas</strong>
   </button>
   <button data-eye-view="instruments" aria-pressed="false">
-    <span aria-hidden="true">⌁</span><strong>Instrumentos</strong
-    ><i id="eye-active-layer-count">0</i>
+    <span aria-hidden="true">⌁</span><strong>Instrumentos</strong>
   </button>
   <button data-eye-view="more" aria-pressed="false">
     <span aria-hidden="true">•••</span><strong>Más</strong>
@@ -42,14 +59,6 @@
 >
   <button
     class="eye-glass-surface"
-    id="eye-command-open"
-    data-eye-short="CMD"
-    aria-label="Buscar acciones"
-  >
-    <span aria-hidden="true">⌘</span><b>Acciones</b>
-  </button>
-  <button
-    class="eye-glass-surface"
     id="eye-help"
     data-eye-short="?"
     aria-label="Ayuda y créditos"
@@ -58,52 +67,26 @@
   </button>
 </nav>
 
+<section class="eye-story" aria-live="polite" aria-label="Titular"></section>
+
 <aside
   id="eye-active-layers"
   class="eye-active-layers eye-glass-surface"
   aria-labelledby="eye-active-title"
+  data-empty="true"
 >
   <header>
-    <div>
-      <span class="eye-kicker">CAPAS EN ESCENA</span>
-      <strong id="eye-active-title"
-        >Activas <b data-eye-active-count>0</b></strong
-      >
-    </div>
-    <button data-eye-active-add aria-label="Agregar una capa">Agregar</button>
+    <strong id="eye-active-title"
+      >Capas en escena · <b data-eye-active-count>0</b></strong
+    >
+    <button data-eye-active-add aria-label="Agregar una capa">+ Agregar</button>
   </header>
-  <p data-eye-active-empty>
+  <p data-eye-active-empty hidden>
     Ninguna capa activa. El globo queda listo para explorar.
   </p>
   <ul data-eye-active-list></ul>
+  <div class="eye-active-moon" data-eye-moon-menu hidden></div>
 </aside>
-
-<aside
-  class="eye-signal-glance eye-glass-surface"
-  aria-label="Estado de la fuente sísmica"
->
-  <div>
-    <span class="eye-kicker">SEÑALES / USGS</span
-    ><strong id="eye-source-state" role="status">Sin consultar</strong>
-  </div>
-  <span class="eye-signal-count"><b id="eye-total">—</b> M2.5+</span>
-  <p id="eye-source-detail">Fuente pública · sin consulta completada.</p>
-  <button
-    id="eye-source-plot"
-    class="eye-source-plot"
-    data-eye-view="signals"
-    aria-label="Abrir señales y su actividad reciente"
-  >
-    <svg viewBox="0 0 180 28" aria-hidden="true">
-      <polyline id="eye-source-trend" points="0,24 180,24"></polyline>
-    </svg>
-    <span id="eye-source-trend-label">Sin muestras</span>
-  </button>
-</aside>
-
-<div class="eye-field-reticle" aria-hidden="true">
-  <span></span><i></i><b>N / 000°</b>
-</div>
 
 <nav class="eye-instruments" aria-label="Cámara del globo">
   <button id="eye-zoom-in" aria-label="Acercar">
@@ -114,7 +97,7 @@
     <span aria-hidden="true">◎</span><strong>Global</strong></button
   ><button id="eye-north" aria-label="Orientar al norte">
     <span aria-hidden="true">N</span><strong>Norte</strong></button
-  ><button id="eye-grid" aria-label="Retícula geográfica" aria-pressed="true">
+  ><button id="eye-grid" aria-label="Retícula geográfica" aria-pressed="false">
     <span aria-hidden="true">⊞</span><strong>Retícula</strong></button
   ><button id="eye-clean" aria-label="Vista limpia" aria-pressed="false">
     <span aria-hidden="true">⛶</span><strong>Limpia</strong>
@@ -124,23 +107,26 @@
   Volver a la consola · Esc
 </button>
 
-<aside
-  class="eye-telemetry eye-glass-surface"
-  aria-label="Telemetría de la vista"
->
-  <div><span>COORDENADAS</span><strong id="eye-camera-position">—</strong></div>
-  <div><span>ALTURA</span><strong id="eye-camera-altitude">—</strong></div>
-  <div class="eye-heading-readout">
-    <span>RUMBO</span><strong id="eye-camera-heading">—</strong>
-  </div>
-  <div class="eye-map-readout">
-    <span>MAPA</span><strong id="eye-map-label">NATURAL EARTH · LOCAL</strong>
-  </div>
-  <div class="eye-sector-readout">
-    <span>CAMPO</span><strong id="eye-sector-name">GLOBAL</strong>
-  </div>
-  <button id="eye-share">Compartir ↗</button>
-</aside>
+<footer class="eye-foot">
+  <div class="eye-time-host" data-eye-time-host></div>
+  <aside
+    class="eye-telemetry eye-glass-surface"
+    aria-label="Telemetría de la cámara"
+  >
+    <div data-eye-reading="position">
+      <span>Coordenadas</span><strong id="eye-camera-position">—</strong>
+    </div>
+    <div data-eye-reading="altitude">
+      <span>Altura · elipsoide</span><strong id="eye-camera-altitude">—</strong>
+    </div>
+    <div class="eye-heading-readout" data-eye-reading="heading">
+      <span>Rumbo</span><strong id="eye-camera-heading">—</strong>
+    </div>
+    <div class="eye-map-readout" data-eye-reading="map">
+      <span>Mapa</span><strong id="eye-map-label">NATURAL EARTH · LOCAL</strong>
+    </div>
+  </aside>
+</footer>
 
 <details class="eye-hud-details eye-glass-surface">
   <summary>Datos avanzados de vista</summary>
@@ -162,6 +148,9 @@
   </header>
   <div class="eye-workspace-content">
     <section data-eye-panel="signals" hidden>
+      <p class="eye-source-state">
+        <strong id="eye-source-state" role="status">USGS · Sin consultar</strong>
+      </p>
       <p class="eye-source-description">
         USGS · M2.5+ · últimas 24 horas<br /><small
           >Eventos publicados, sujetos a revisión.</small
@@ -278,9 +267,6 @@
         <button id="eye-instrument-data">
           <strong>Datos avanzados</strong><span>HUD de la escena</span>
         </button>
-        <button id="eye-instrument-layers">
-          <strong>Capas activas</strong><span>Lista de la izquierda</span>
-        </button>
         <button id="eye-instrument-dossier" data-eye-dossier-open>
           <strong>Panel de misión</strong
           ><span>Objetivo, medios y OPS</span>
@@ -299,8 +285,20 @@
         <button data-eye-view="preferences">
           <strong>Cabina y voz</strong><span>Contexto opcional</span>
         </button>
+        <button id="eye-share">
+          <strong>Compartir</strong><span>Enlace público de esta vista</span>
+        </button>
         <button id="eye-more-help">
           <strong>Ayuda y créditos</strong><span>Fuentes y teclado</span>
+        </button>
+        <button class="eye-instrument-proxy" data-eye-instrument-proxy="eye-north">
+          <strong>Norte</strong><span>Orientar la vista al norte</span>
+        </button>
+        <button class="eye-instrument-proxy" data-eye-instrument-proxy="eye-grid">
+          <strong>Retícula</strong><span>Latitud y longitud</span>
+        </button>
+        <button class="eye-instrument-proxy" data-eye-instrument-proxy="eye-clean">
+          <strong>Vista limpia</strong><span>Solo el globo</span>
         </button>
       </div>
     </section>

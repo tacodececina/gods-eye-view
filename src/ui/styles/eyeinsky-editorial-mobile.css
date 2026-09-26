@@ -1,0 +1,490 @@
+/*
+ * EYEINSKY · Piel «Editorial Clean» (T1) — cortes de la app: escritorio
+ * estrecho (≤ 1100 px), barra de pestañas (≤ 820 px, corte legacy) y teléfono
+ * (≤ 650 px o apaisado bajo). Se carga la última.
+ */
+
+/* ── Escritorio estrecho: buscador más corto ── */
+@media (max-width: 1100px) {
+  body[data-eye-skin='editorial'] .eye-search {
+    width: 220px;
+    min-width: 0;
+  }
+}
+
+/* ── Anchura de pestañas (≤ 820 px, corte legacy): barra inferior §7 ── */
+@media (max-width: 820px), (max-height: 520px) and (orientation: landscape) {
+  body[data-eye-skin='editorial'] {
+    --eye-nav-offset: calc(var(--ei-nav-h) + env(safe-area-inset-bottom, 0px));
+  }
+  /* Barra inferior de 4 pestañas: 60 px + zona segura. */
+  body[data-eye-skin='editorial'] .eye-function-dock {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    height: auto;
+    min-height: var(--ei-nav-h);
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    overflow: visible;
+    border-top: 1px solid var(--ei-hairline);
+  }
+  body[data-eye-skin='editorial'][data-eye-scene] .eye-function-dock {
+    background: rgba(2, 5, 5, 0.9);
+  }
+  body[data-eye-skin='editorial'] .eye-function-dock button {
+    min-width: 0;
+    min-height: var(--ei-nav-h);
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 4px;
+    border-radius: 0;
+  }
+  body[data-eye-skin='editorial'] .eye-function-dock button > span {
+    display: block;
+    color: var(--ei-faint);
+    font: 400 16px/1 var(--ei-f-ui);
+  }
+  body[data-eye-skin='editorial'] .eye-function-dock button strong {
+    font-size: 14px;
+  }
+  body[data-eye-skin='editorial']
+    .eye-function-dock
+    button[aria-pressed='true']
+    > span {
+    color: var(--ei-live);
+  }
+  body[data-eye-skin='editorial'] .eye-search {
+    right: calc(var(--eye-safe-right) + 100px);
+    left: calc(var(--eye-safe-left) + 52px);
+    width: auto;
+    min-width: 0;
+  }
+  body[data-eye-skin='editorial'] .eye-orbit-brand > span {
+    display: none;
+  }
+  /* Por encima de la barra y de los créditos (4 + 20 px), y con el borde
+   * superior del dock por debajo del 54 % del alto, donde el recorrido base
+   * arrastra el globo con el dedo (p012 touch-cdp-globe-390x844). */
+  body[data-eye-skin='editorial'] .eye-mission-dock,
+  body[data-eye-skin='editorial'] .eye-workspace {
+    bottom: calc(var(--eye-nav-offset) + 26px);
+  }
+  body[data-eye-skin='editorial'] .eye-telemetry {
+    bottom: calc(var(--eye-nav-offset) + 40px);
+  }
+}
+
+/* ── Teléfono (650 px, corte real de la app) §7 ── */
+@media (max-width: 650px), (max-height: 520px) and (orientation: landscape) {
+  body[data-eye-skin='editorial'] .eye-glass-surface {
+    background: var(--ei-glass-strong);
+  }
+  body[data-eye-skin='editorial'] .eye-orbit-brand {
+    width: auto;
+    padding: 0;
+  }
+  body[data-eye-skin='editorial'] .eye-search {
+    height: 46px;
+    min-height: 46px;
+  }
+  body[data-eye-skin='editorial'] .eye-search #location-search {
+    font-size: 16px !important; /* vence eyeinsky.css:1618 (zoom iOS) */
+  }
+  body[data-eye-skin='editorial'] .eye-search kbd {
+    display: none;
+  }
+  body[data-eye-skin='editorial'] .eye-utility-cluster {
+    top: var(--eye-safe-top);
+    right: var(--eye-safe-right);
+    left: auto;
+  }
+  body[data-eye-skin='editorial'] .eye-utility-cluster button {
+    flex: 0 0 44px;
+  }
+  body[data-eye-skin='editorial'] #key-setup-chip {
+    top: calc(var(--eye-safe-top) + 52px);
+    right: var(--eye-safe-right);
+    left: auto;
+  }
+  body[data-eye-skin='editorial'] .eye-instruments {
+    width: 52px;
+  }
+  body[data-eye-skin='editorial'] .eye-instruments button {
+    width: 44px;
+  }
+  body[data-eye-skin='editorial'] .eye-instruments button > strong {
+    display: none;
+  }
+  /* T5 §7: carril de 3 en el teléfono; Norte, Retícula y Limpia viven en Más. */
+  body[data-eye-skin='editorial'] .eye-instruments #eye-north,
+  body[data-eye-skin='editorial'] .eye-instruments #eye-grid,
+  body[data-eye-skin='editorial'] .eye-instruments #eye-clean {
+    display: none;
+  }
+  /* §6.8: en el teléfono la telemetría no compite con el globo. */
+  body[data-eye-skin='editorial'] .eye-telemetry {
+    display: none;
+  }
+  body[data-eye-skin='editorial'] .eye-active-layers {
+    top: calc(var(--eye-safe-top) + 56px);
+    width: calc(100vw - 2 * var(--ei-gutter) - 60px);
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock,
+  body[data-eye-skin='editorial'] .eye-workspace {
+    border-radius: var(--ei-r-sheet);
+  }
+  body[data-eye-skin='editorial'] #eye-panel-title {
+    font-size: 26px;
+  }
+  body[data-eye-skin='editorial'] .eye-dock-title {
+    font-size: 22px;
+  }
+  body[data-eye-skin='editorial'] .eye-orbit-brand {
+    min-width: 44px;
+    justify-content: center;
+  }
+  body[data-eye-skin='editorial'] #cesium-credits {
+    font-size: 14px !important; /* vence eyeinsky.css:1853 */
+  }
+  /* Id doble: vence en especificidad a command-dock-trays.css:446–455
+     (width automático y max-width de escritorio). §6.10: en teléfono
+     los créditos envuelven en espacios (≤ 2 líneas con la versión corta)
+     dentro del ancho útil; nada queda fuera de pantalla. */
+  body[data-eye-skin='editorial'] #cesium-credits#cesium-credits {
+    --eye-cw: calc(
+      var(--eye-viewport-width) - var(--eye-safe-left) - var(--eye-safe-right)
+    );
+    width: var(--eye-cw) !important; /* vence command-dock-trays.css:454 */
+    max-width: none !important; /* vence command-dock-trays.css:455 */
+    line-height: 1.3 !important; /* vence eyeinsky-editorial-panel.css:320 */
+    white-space: normal;
+  }
+  body[data-eye-skin='editorial'] #cesium-credits .cesium-widget-credits {
+    right: 0; /* el bloque absoluto de Cesium toma el ancho útil y envuelve */
+    white-space: normal;
+  }
+  /* Abrevia, nunca oculta: la versión corta sustituye a la larga (las dos
+     viven en el mismo crédito VIIRS). */
+  body[data-eye-skin='editorial'] .cesium-widget-credits .eye-credit-long {
+    display: none;
+  }
+  body[data-eye-skin='editorial'] .cesium-widget-credits .eye-credit-short {
+    display: inline;
+  }
+  /* Con el crédito VIIRS en pantalla los créditos ocupan 2 líneas: el dock,
+     el espacio de trabajo y la telemetría se apoyan por encima (40 px + 2 px
+     de aire), sin taparlos. El riel del dock cede esos 16 px para que su
+     borde superior no suba (p012 touch-cdp-globe-390x844 arrastra al 54 %). */
+  body[data-eye-skin='editorial']:has(.cesium-widget-credits .eye-credit-short)
+    :is(.eye-mission-dock, .eye-workspace) {
+    bottom: calc(var(--eye-nav-offset) + 42px);
+  }
+  body[data-eye-skin='editorial']:has(.cesium-widget-credits .eye-credit-short)
+    .eye-dock-rail {
+    padding-block: 1px;
+  }
+  body[data-eye-skin='editorial']:has(.cesium-widget-credits .eye-credit-short)
+    .eye-telemetry {
+    bottom: calc(var(--eye-nav-offset) + 56px);
+  }
+  body[data-eye-skin='editorial'] #eye-notice {
+    bottom: calc(var(--eye-nav-offset) + 40px);
+    font-size: 14px;
+  }
+}
+
+/* ── T5 · El móvil se diseña (§7): globo a sangre, una sola hoja, pie en una
+ * línea (reloj + telemetría desplazable) y la barra inferior SIEMPRE visible.
+ * Pila desde abajo: barra (60 px + zona segura) · créditos (≤ 2 líneas) ·
+ * pie (44 px) · hoja. La hoja publica --eye-dock-band (dockBias/tracking). ── */
+@media (max-width: 650px), (max-height: 520px) and (orientation: landscape) {
+  /* --eye-credits-band: alto REAL de los créditos (shell/creditsBand.js). */
+  body[data-eye-skin='editorial'] {
+    --ei-foot-bottom: calc(
+      var(--eye-nav-offset) + var(--eye-credits-band, 38px) + 8px
+    );
+    --ei-sheet-bottom: calc(var(--ei-foot-bottom) + 52px);
+  }
+  /* La regla legacy (eyeinsky.css:1784) escondía la barra con un panel o un
+   * objetivo abiertos: en el teléfono la navegación nunca desaparece. */
+  body[data-eye-skin='editorial'][data-eye-active='true'] .eye-function-dock,
+  body[data-eye-skin='editorial'][data-eye-inspecting='true']
+    .eye-function-dock,
+  body[data-eye-skin='editorial'][data-eye-active='true'] .eye-telemetry,
+  body[data-eye-skin='editorial'][data-eye-inspecting='true'] .eye-telemetry {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Titular arriba, bajo la barra superior; el globo queda a sangre debajo. */
+  body[data-eye-skin='editorial'] .eye-story {
+    /* Bajo la cabecera de «Capas en escena» (que sigue en su sitio). */
+    top: calc(var(--eye-safe-top) + 120px);
+    bottom: auto;
+    width: calc(100% - 2 * var(--ei-gutter) - 60px);
+  }
+  body[data-eye-skin='editorial'] .eye-story-title {
+    font-size: 34px;
+    line-height: 1;
+  }
+  body[data-eye-skin='editorial'] .eye-story-kicker {
+    margin-bottom: 8px;
+  }
+  /* §7: en el teléfono el lede se retira (el globo manda); la procedencia
+   * de las luces sigue a la vista en los créditos («VIIRS 2012 · no en vivo»)
+   * y el lede sigue en la región viva del titular. */
+  body[data-eye-skin='editorial'] .eye-story-lede {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  body[data-eye-skin='editorial'] .eye-search {
+    right: calc(var(--eye-safe-right) + 52px);
+  }
+  /* Capas: nunca bajo la hoja ni el pie; se desplazan si no caben. */
+  body[data-eye-skin='editorial'] .eye-active-layers {
+    width: min(360px, calc(100% - 2 * var(--ei-gutter) - 60px));
+    max-height: calc(
+      100% - var(--ei-sheet-bottom) - 64px - var(--eye-safe-top)
+    );
+  }
+  /* La telemetría ya no se repite en la hoja (V-04): sigue en su línea. */
+  body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+    .eye-telemetry {
+    display: flex;
+  }
+  /* Pie en una sola línea: chip del reloj + telemetría desplazable. */
+  body[data-eye-skin='editorial'] .eye-foot {
+    position: fixed;
+    z-index: 36;
+    right: calc(var(--eye-safe-right) + var(--eye-visual-right, 0px));
+    bottom: calc(var(--ei-foot-bottom) + var(--eye-visual-bottom, 0px));
+    left: calc(var(--eye-safe-left) + var(--eye-visual-left, 0px));
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+  }
+  body[data-eye-skin='editorial'] .eye-foot > * {
+    pointer-events: auto;
+  }
+  body[data-eye-skin='editorial'] .eye-time-host,
+  body[data-eye-skin='editorial'] .eye-telemetry {
+    position: static;
+    max-width: none;
+    transform: none;
+  }
+  body[data-eye-skin='editorial'] .eye-time-host {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body[data-eye-skin='editorial'] .eye-telemetry,
+  body[data-eye-skin='editorial'] .eye-telemetry > [data-eye-reading] {
+    display: flex;
+  }
+  body[data-eye-skin='editorial'] .eye-telemetry {
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+  body[data-eye-skin='editorial'] .eye-telemetry > [data-eye-reading] {
+    flex: 0 0 auto;
+    align-items: baseline;
+    gap: 6px;
+  }
+  body[data-eye-skin='editorial'] .eye-telemetry span {
+    margin: 0;
+  }
+  /* eyeinsky.css:1680 escondía Mapa en el teléfono: sigue en la línea
+   * (desplazable). Compartir ya no vive aquí sino en Más (T3 paso 8): un
+   * control enfocable bajo la máscara quedaba fuera de la vista. */
+  body[data-eye-skin='editorial'] .eye-telemetry button {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+  }
+  /* Zoom 200 % / teclado: el carril y la barra siguen el viewport visual. */
+  body[data-eye-skin='editorial'] .eye-instruments {
+    top: var(--eye-visual-center-y, 50%);
+    right: calc(var(--eye-safe-right) + var(--eye-visual-right, 0px));
+    bottom: auto;
+    transform: translateY(-50%);
+  }
+  body[data-eye-skin='editorial'] .eye-function-dock {
+    right: var(--eye-visual-right, 0px);
+    bottom: var(--eye-visual-bottom, 0px);
+    left: var(--eye-visual-left, 0px);
+  }
+  /* Una sola hoja inferior: el panel contextual y el espacio de trabajo. */
+  body[data-eye-skin='editorial'] .eye-mission-dock,
+  body[data-eye-skin='editorial'] .eye-workspace,
+  body[data-eye-skin='editorial']:has(.cesium-widget-credits .eye-credit-short)
+    :is(.eye-mission-dock, .eye-workspace) {
+    /* La columna del carril de cámara (60 px) queda libre (p31-12). */
+    right: calc(var(--eye-safe-right) + 60px + var(--eye-visual-right, 0px));
+    bottom: calc(var(--ei-sheet-bottom) + var(--eye-visual-bottom, 0px));
+    left: calc(var(--eye-safe-left) + var(--eye-visual-left, 0px));
+    width: auto;
+    max-width: none;
+    max-height: 40vh;
+  }
+  body[data-eye-skin='editorial'] .eye-workspace {
+    top: auto;
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-identity {
+    padding-top: 12px;
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-title {
+    font-size: 26px;
+  }
+  /* 3 columnas que caben: con 2, la hoja crecía una fila y Inspeccionar
+   * quedaba fuera de su área visible (P4-13). Antes los valores de la Luna se
+   * cortaban («381 01…») y las etiquetas se pegaban («DISTANCIA LUZ»): ahora
+   * el hueco es menor, la etiqueta se espacia menos y nada se elide; si un
+   * valor no cabe, se parte en otra línea (reveal.css). */
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalues {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalue dt {
+    letter-spacing: 0.04em;
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalue dd {
+    font-size: 15px;
+  }
+}
+
+/* Teléfono apaisado (alto ≤ 520 px): la hoja va a la derecha, junto al pie,
+ * y se compacta (título, pestañas y acciones; el detalle con MÁS). */
+@media (max-height: 520px) and (orientation: landscape) {
+  body[data-eye-skin='editorial'] .eye-mission-dock,
+  body[data-eye-skin='editorial']:has(.cesium-widget-credits .eye-credit-short)
+    .eye-mission-dock {
+    bottom: calc(var(--ei-foot-bottom) + var(--eye-visual-bottom, 0px));
+    left: auto;
+    width: 380px;
+    max-height: calc(66vh - var(--ei-foot-bottom));
+  }
+  body[data-eye-skin='editorial']:has(#eye-mission-dock:not([hidden]))
+    .eye-foot {
+    right: calc(var(--eye-safe-right) + 456px);
+  }
+}
+
+/* Viewport visual bajo (zoom 200 %, apaisado): panel compacto sin perder
+ * controles (≥ 44 px) ni legibilidad (≥ 13/14 px). Vence la rejilla de la
+ * cabecera corta de P5 (eyeinsky-earth-moon.css, pensada para la tira). */
+body[data-eye-skin='editorial']
+  .eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  ) {
+  display: flex;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  )
+  :is(
+    .eye-dock-kicker,
+    .eye-dock-status,
+    .eye-dock-keyvalues,
+    .eye-dock-camera,
+    .eye-dock-action-reason
+  ) {
+  display: none;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:has(> .eye-dock-header[data-short='true'])
+  .eye-dock-identity {
+  padding-top: 8px;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:has(> .eye-dock-header[data-short='true'])
+  .eye-dock-title {
+  overflow: hidden;
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:has(> .eye-dock-header[data-short='true'])
+  :is(.eye-dock-tabs, .eye-dock-actions, .eye-dock-compass) {
+  margin-top: 6px;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  )
+  > .eye-dock-tabs {
+  flex: 1 1 0;
+}
+body[data-eye-skin='editorial']
+  .eye-mission-dock:not([data-expanded='true']):has(
+    > .eye-dock-header[data-short='true']
+  )
+  .eye-dock-compass {
+  order: 2;
+}
+
+/* Viewport visual < 360 px (zoom 200 % en el teléfono, T5): la barra rotula
+ * solo la pestaña activa (las demás conservan su nombre accesible) y el
+ * carril compacto (Acercar, Alejar, Global) se ancla bajo la barra superior. */
+body[data-eye-skin='editorial'][data-eye-visual-narrow='true']
+  .eye-function-dock
+  button:not([aria-pressed='true'])
+  strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+body[data-eye-skin='editorial'][data-eye-visual-narrow='true']
+  .eye-instruments {
+  top: calc(var(--eye-visual-top, 0px) + 64px);
+  transform: none;
+}
+
+/* Teléfono vertical (T5): la hoja plegada cabe entera sin desplazarse (P4
+ * «riel sin recortes»): sin kicker ni línea de estado de cámara (el estado
+ * del objetivo sigue en OBJETIVO al desplegar) y la brújula en la fila de
+ * pestañas. El detalle completo, con MÁS. */
+@media (max-width: 650px) {
+  body[data-eye-skin='editorial']
+    .eye-mission-dock:not([data-expanded='true'])
+    :is(.eye-dock-kicker, .eye-dock-camera) {
+    display: none;
+  }
+  body[data-eye-skin='editorial']
+    .eye-mission-dock:not([data-expanded='true'])
+    > .eye-dock-tabs {
+    flex: 1 1 0;
+  }
+  body[data-eye-skin='editorial']
+    .eye-mission-dock:not([data-expanded='true'])
+    .eye-dock-compass {
+    order: 2;
+    margin-top: 14px;
+  }
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-keyvalues,
+  body[data-eye-skin='editorial'] .eye-mission-dock .eye-dock-actions {
+    margin-top: 10px;
+  }
+}

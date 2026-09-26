@@ -114,6 +114,7 @@ export function createLifecycle({
         layerState._clickHandler.destroy();
         layerState._clickHandler = null;
       }
+      parts.interaction._removeHover();
       if (layerState._trackedEntityChangedRemove) {
         layerState._trackedEntityChangedRemove();
         layerState._trackedEntityChangedRemove = null;
@@ -137,6 +138,7 @@ export function createLifecycle({
         layerState._clickHandler.destroy();
         layerState._clickHandler = null;
       }
+      parts.interaction._removeHover();
       if (layerState._trackedEntityChangedRemove) {
         layerState._trackedEntityChangedRemove();
         layerState._trackedEntityChangedRemove = null;

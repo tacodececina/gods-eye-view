@@ -11,11 +11,13 @@ import * as credits from '../../data/dataCredits.js';
 /** Construct one layer using the application scene owners and a supplied source. */
 export function createApplicationSatellites({
   source,
+  presentation,
   resolveAsset = (url) =>
     `${import.meta.env?.BASE_URL || '/'}${url.replace(/^\//, '')}`,
 }) {
   return createSatellitesLayer({
     source,
+    presentation,
     modelOptions: { resolveAsset },
     services: {
       credits,

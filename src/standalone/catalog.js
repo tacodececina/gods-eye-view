@@ -2,6 +2,7 @@ import { createSurfaceServices } from '../app/surfaceServices.js';
 import { createApplicationRequestServices } from '../services/requests.js';
 import { createApplicationCatalog } from '../app/constructCatalog.js';
 import { createStandaloneLayerSources } from './layerSources.js';
+import { readGlobeFlags } from '../ui/eyeinskyGlobeFlags.js';
 export { createStandaloneReferenceSources } from './layerSources.js';
 
 /** Create fresh layer instances using the existing standalone source choices. */
@@ -20,7 +21,15 @@ export function createStandaloneCatalog({
       maxRows: import.meta.env?.VITE_AIS_LIVE_MAX_ROWS,
       maxLabels: import.meta.env?.VITE_AIS_LIVE_LABEL_MAX_ROWS,
     },
+    satellitePresentation: satellitePresentationFromFlags(),
   });
+}
+
+/** Piel de satélites de la fase visual (`satStyle`, `satLabels`). */
+function satellitePresentationFromFlags() {
+  const search = globalThis.location?.search ?? '';
+  const flags = readGlobeFlags(search);
+  return { style: flags.satStyle, labels: flags.satLabels };
 }
 
 // Direct compatibility callers share one catalog; application startup supplies its own.

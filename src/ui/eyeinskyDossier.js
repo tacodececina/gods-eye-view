@@ -13,16 +13,18 @@ import { resolveSatelliteChips } from './eyeinskySatelliteChips.js';
 
 /** Etiqueta del tipo de contexto, en la cabecera de la superficie. */
 const KIND_KICKERS = Object.freeze({
-  view: 'VISTA / TIERRA',
-  earthquake: 'INSPECCIONAR / USGS',
-  tracked: 'SEGUIMIENTO / CONTACTO',
-  camera: 'CÁMARA / CCTV',
-  entity: 'INSPECCIONAR / CAPA',
-  moon: 'OBJETIVO / LUNA',
+  view: 'Vista · Tierra',
+  earthquake: 'Sismo · USGS',
+  tracked: 'Objetivo · contacto',
+  camera: 'Cámara · CCTV',
+  entity: 'Objetivo · capa',
+  moon: 'Objetivo · Luna',
 });
 
 /** Cómo se dice cada estado de frescura, sin eufemismos. */
-const STATUS_LABELS = Object.freeze({
+export const DOSSIER_STATUS_LABELS = Object.freeze({
+  // Fase visual T3: la ficha de la vista es la cámara de este instante.
+  camera: 'Lectura de la cámara · ahora',
   ready: 'Observación reciente',
   stale: 'Observación antigua',
   missing: 'Ya no se observa',
@@ -33,6 +35,7 @@ const STATUS_LABELS = Object.freeze({
   // P4-20: SGP4 no dio posición; no se muestra la última pose como válida.
   'propagation-failed': 'Propagación falló (SGP4): sin posición',
 });
+const STATUS_LABELS = DOSSIER_STATUS_LABELS;
 
 /**
  * @param {Document} doc Documento.
@@ -105,6 +108,9 @@ export function mountEyeDossier({
   /** La fuente es pulsable sólo si hay a dónde ir; si no, queda como texto. */
   const renderSource = (context) => {
     sourceLine.replaceChildren();
+    // Una lectura de cámara no tiene fuente que declarar (fase visual T3).
+    sourceLine.hidden = context.status === 'camera';
+    if (sourceLine.hidden) return;
     if (!context.source) {
       sourceLine.append(
         node(doc, 'span', 'Fuente no declarada por el proveedor'),

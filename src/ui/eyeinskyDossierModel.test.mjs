@@ -40,9 +40,21 @@ test('la vista Tierra es el contexto inicial y no inventa valores', () => {
   assert.equal(view.observedAt, null);
   assert.equal(view.fetchedAt, null);
   assert.equal(view.position, null);
-  assert.equal(view.status, 'unreported');
+  // Fase visual T3 (V-05): la ficha de la vista es una LECTURA DE LA CÁMARA
+  // de este instante, no una observación de una fuente; «La fuente no informa
+  // la hora» era falso aquí. Antes: status 'unreported'.
+  assert.equal(view.status, 'camera');
   assert.deepEqual(view.fields, []);
   assert.deepEqual(view.assetIds, []);
+});
+
+test('la lectura de cámara tiene su rótulo en el dock y en el expediente', async () => {
+  const { MISSION_DOCK_STATUS_LABELS } = await import('./eyeinskyMissionDock.js');
+  const { DOSSIER_STATUS_LABELS } = await import('./eyeinskyDossier.js');
+  for (const labels of [MISSION_DOCK_STATUS_LABELS, DOSSIER_STATUS_LABELS]) {
+    assert.equal(labels.camera, 'Lectura de la cámara · ahora');
+    assert.doesNotMatch(labels.camera, /fuente/i);
+  }
 });
 
 test('un contexto sin datos conserva null en vez de ceros inventados', () => {

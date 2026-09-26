@@ -224,11 +224,12 @@ const orbitPathCount = (page) =>
         for (let i = 0; i < p.length; i += 1) walk(p.get(i));
         return;
       }
-      if (
-        p.appearance instanceof C.PolylineColorAppearance &&
-        p.depthFailAppearance instanceof C.PolylineColorAppearance &&
-        p.show
-      )
+      // T6 (fase visual): la órbita editorial es discontinua
+      // (PolylineMaterialAppearance); la legacy, sólida.
+      const polyline = (a) =>
+        a instanceof C.PolylineColorAppearance ||
+        a instanceof C.PolylineMaterialAppearance;
+      if (polyline(p.appearance) && polyline(p.depthFailAppearance) && p.show)
         count += 1;
     };
     walk(window.__godsEyeView.viewer.scene.primitives);

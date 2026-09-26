@@ -15,6 +15,47 @@ export function depthColor(depthKm) {
   return Cesium.Color.YELLOW;
 }
 
+/** Ámbar = magnitud (DESIGN-SYSTEM §2, --ei-amber). */
+const EDITORIAL_QUAKE_COLOR = '#e6b46d';
+const EDITORIAL_QUAKE_MIN_PX = 4;
+
+const isEditorialMarkers = (presentation) =>
+  presentation?.style === 'editorial';
+
+/**
+ * Aspecto del marcador de un sismo por piel (fase visual T4). Editorial: punto
+ * ámbar de `4 + (M − 2.5)·3` px (suelo 4 px) con halo de 6 px a .25; el color
+ * no depende de la profundidad y nunca es rojo. Legacy: disco por profundidad.
+ * @param {{mag: number, depthKm?: number}} quake
+ * @param {{style?: string}} [presentation]
+ * @returns {Readonly<object>}
+ */
+export function quakeMarkerLook({ mag, depthKm = 0 }, presentation) {
+  if (isEditorialMarkers(presentation))
+    return Object.freeze({
+      kind: 'point',
+      pixelSize: Math.max(EDITORIAL_QUAKE_MIN_PX, 4 + (Number(mag) - 2.5) * 3),
+      color: EDITORIAL_QUAKE_COLOR,
+      haloPx: 6,
+      haloAlpha: 0.25,
+    });
+  return Object.freeze({
+    kind: 'ellipse',
+    color: depthColor(depthKm || 0)
+      .toCssHexString()
+      .toUpperCase(),
+  });
+}
+
+/**
+ * ¿Rótulos de magnitud ambientales? En la piel Editorial solo por intención:
+ * el sismo fijado dice su magnitud en su panel, no en el globo en reposo.
+ * @param {{style?: string}} [presentation]
+ * @returns {boolean}
+ */
+export const quakeLabelsAmbient = (presentation) =>
+  !isEditorialMarkers(presentation);
+
 /**
  * Build the source-owned presentation for one ambient magnitude label.
  * Magnitude formatting deliberately remains here instead of moving into the

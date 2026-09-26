@@ -7,12 +7,34 @@ import {
   createEarthquakeOverlayEntry,
   selectEarthquakeOverlayCohort,
   mapAnalystRecord,
+  quakeLabelsAmbient,
+  quakeMarkerLook,
 } from './model.js';
 export * from './model.js';
 export { createUsgsEarthquakeSource } from './source.js';
 
+/**
+ * Punto Editorial de un sismo (T4): ámbar con halo de su propio color. Sin
+ * test de profundidad a distancia: se lee sobre el limbo como el satélite.
+ * @param {{pixelSize:number, color:string, haloPx:number, haloAlpha:number}} look
+ * @returns {Cesium.PointGraphics}
+ */
+function editorialQuakePoint(look) {
+  const color = Cesium.Color.fromCssColorString(look.color);
+  return new Cesium.PointGraphics({
+    pixelSize: look.pixelSize,
+    color: color.withAlpha(0.9),
+    outlineColor: color.withAlpha(look.haloAlpha),
+    outlineWidth: look.haloPx,
+  });
+}
+
 /** Own one earthquake display and its refresh lifecycle. */
-export function createEarthquakesLayer({ source, overlayHost } = {}) {
+export function createEarthquakesLayer({
+  source,
+  overlayHost,
+  presentation,
+} = {}) {
   if (typeof source?.getSnapshot !== 'function')
     throw new TypeError('Earthquakes require a snapshot source');
   if (!overlayHost) throw new TypeError('Earthquakes require an overlay host');
@@ -120,23 +142,30 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
           const outlineAlpha = isSignificant ? 1.0 : 0.8;
 
           const position = Cesium.Cartesian3.fromDegrees(lon, lat);
+          const look = quakeMarkerLook({ mag, depthKm }, presentation);
+          const marker =
+            look.kind === 'point'
+              ? { point: editorialQuakePoint(look) }
+              : {
+                  ellipse: {
+                    // Static axes — see the module header. A CallbackProperty
+                    // here re-tessellates the clamped ground geometry every frame.
+                    semiMajorAxis: baseRadius,
+                    semiMinorAxis: baseRadius,
+                    material: new Cesium.ColorMaterialProperty(
+                      color.withAlpha(fillAlpha),
+                    ),
+                    outline: true,
+                    outlineColor: color.withAlpha(outlineAlpha),
+                    outlineWidth: isSignificant ? 3 : 2,
+                    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                  },
+                };
           nextEntities.push(
             new Cesium.Entity({
               id: `earthquake:${stableId}`,
               position,
-              ellipse: {
-                // Static axes — see the module header. A CallbackProperty here
-                // re-tessellates the clamped ground geometry every frame.
-                semiMajorAxis: baseRadius,
-                semiMinorAxis: baseRadius,
-                material: new Cesium.ColorMaterialProperty(
-                  color.withAlpha(fillAlpha),
-                ),
-                outline: true,
-                outlineColor: color.withAlpha(outlineAlpha),
-                outlineWidth: isSignificant ? 3 : 2,
-                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-              },
+              ...marker,
               properties: {
                 // Analyst seam (additive): the USGS event id (e.g. "us7000abcd").
                 usgsId,
@@ -147,14 +176,16 @@ export function createEarthquakesLayer({ source, overlayHost } = {}) {
               },
             }),
           );
-          overlayEntries.push(
-            createEarthquakeOverlayEntry({
-              id: String(stableId),
-              position,
-              magnitude: mag,
-              accent: color.toCssColorString(),
-            }),
-          );
+          // Editorial (T4): la magnitud se rotula por intención, no en reposo.
+          if (quakeLabelsAmbient(presentation))
+            overlayEntries.push(
+              createEarthquakeOverlayEntry({
+                id: String(stableId),
+                position,
+                magnitude: mag,
+                accent: color.toCssColorString(),
+              }),
+            );
         }
 
         _dataSource.entities.removeAll();

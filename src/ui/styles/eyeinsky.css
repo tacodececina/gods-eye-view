@@ -395,57 +395,6 @@ body.eyeinsky {
   line-height: 1.4;
 }
 
-.eye-field-reticle {
-  position: fixed;
-  z-index: 7;
-  top: 50%;
-  left: 50%;
-  width: 54px;
-  height: 54px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  color: rgb(238 241 233 / 52%);
-}
-
-.eye-field-reticle span {
-  position: absolute;
-  inset: 10px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-
-.eye-field-reticle i::before,
-.eye-field-reticle i::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  content: '';
-  background: currentColor;
-  transform: translate(-50%, -50%);
-}
-
-.eye-field-reticle i::before {
-  width: 54px;
-  height: 1px;
-}
-
-.eye-field-reticle i::after {
-  width: 1px;
-  height: 54px;
-}
-
-.eye-field-reticle b {
-  position: absolute;
-  top: -8px;
-  left: 50%;
-  width: 70px;
-  transform: translateX(-50%);
-  color: var(--text-dim);
-  text-align: center;
-  font: 8px var(--font-mono);
-  font-weight: 400;
-}
-
 .eye-instruments {
   position: fixed;
   z-index: 37;
@@ -1459,8 +1408,7 @@ body.cockpit-mode .eye-hud-details #intel-hud.active {
     .eye-hud-details,
     .eye-workspace,
     .eye-mission-dock,
-    .eye-activity,
-    .eye-field-reticle
+    .eye-activity
   ),
 body.eyeinsky.ui-clean-view
   :is(
@@ -1474,8 +1422,7 @@ body.eyeinsky.ui-clean-view
     .eye-hud-details,
     .eye-workspace,
     .eye-mission-dock,
-    .eye-activity,
-    .eye-field-reticle
+    .eye-activity
   ) {
   display: none !important;
 }
@@ -1700,9 +1647,6 @@ body.eyeinsky.ui-clean-view
     font-size: 14px;
     text-align: center;
   }
-  .eye-field-reticle {
-    opacity: 0.62;
-  }
   .eye-telemetry {
     display: grid;
     right: auto;
@@ -1907,8 +1851,7 @@ body.eyeinsky.ui-clean-view
   .eye-utility-cluster {
     top: calc(var(--eye-safe-top) + 54px);
   }
-  .eye-signal-glance,
-  .eye-field-reticle b {
+  .eye-signal-glance {
     display: none;
   }
   .eye-function-dock {

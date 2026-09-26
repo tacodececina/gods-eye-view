@@ -27,7 +27,8 @@ const centered = (probe) =>
   Math.abs(probe.moonPx.x - probe.canvas.width / 2) <= AIM_CENTER_PX &&
   probe.lastFraming?.inFrame === true;
 const SUSPENDED_LABEL = 'Sin histórico: solo hora real';
-const LIVE_TEXT = /^● EN VIVO \d{2}:\d{2}:\d{2} UTC$/;
+// D5 (fase visual): el rótulo describe el reloj, no los datos.
+const LIVE_TEXT = /^● Reloj en vivo \d{2}:\d{2}:\d{2} UTC$/;
 
 import { targetsOk } from './eyeinsky-p5-dock-tabs.mjs';
 
@@ -54,7 +55,7 @@ export async function checkTimeStripLive({ page, result, check }) {
       LIVE_TEXT.test(strip.text) &&
       strip.tone === 'live' &&
       strip.ariaLive === 'polite' &&
-      strip.announce === 'En vivo',
+      strip.announce === 'Reloj en vivo',
     strip.present
       ? `«${strip.text}» tono ${strip.tone}; aria-live=${strip.ariaLive} «${strip.announce}»`
       : 'no hay [data-eye-time-strip]',
@@ -83,7 +84,7 @@ export async function checkSuspension({ page, result, check }) {
   check(
     'sim-suspends-live-layers',
     sim.strip.tone === 'sim' &&
-      /^◆ SIMULACIÓN \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC ×60$/.test(
+      /^◆ Simulación ×60 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/.test(
         sim.strip.text,
       ) &&
       !sim.enabled.includes('earthquakes') &&
@@ -141,7 +142,7 @@ async function checkAim(page, result, check, before) {
       aim.lastFraming.kind === 'aim' &&
       moved <= 1 &&
       aim.reticle === 'on' &&
-      aim.kicker === 'OBJETIVO / LUNA',
+      aim.kicker === 'Objetivo · Luna',
     `Luna en ${JSON.stringify(aim.moonPx)} (centro x ${aim.canvas.width / 2}, sobre el dock: ${aim.lastFraming?.inFrame}); desvío de la mirada ${aim.angleDeg?.toFixed(3)}° (giro al área libre); la cámara se movió ${moved.toFixed(3)} m; «${aim.kicker}»; retícula ${aim.reticle}`,
     ['P5-12'],
   );
