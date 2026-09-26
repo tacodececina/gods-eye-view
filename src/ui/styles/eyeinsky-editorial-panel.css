@@ -1,0 +1,349 @@
+/*
+ * EYEINSKY · Piel «Editorial Clean» (T1) — panel contextual, tira TIEMPO,
+ * atribuciones y avisos. Mismas reglas que eyeinsky-editorial.css: todo bajo
+ * body[data-eye-skin='editorial'] y cada «important» cita la regla que vence.
+ */
+
+/* ── Panel contextual §6.4 (dock y espacio de trabajo) ── */
+body[data-eye-skin='editorial'] .eye-mission-dock,
+body[data-eye-skin='editorial'] .eye-workspace,
+body[data-eye-skin='editorial'] dialog {
+  border: 1px solid var(--ei-hairline);
+  border-radius: var(--ei-r-l);
+  background: var(--ei-glass-strong);
+  box-shadow: var(--ei-shadow-panel);
+  backdrop-filter: var(--ei-blur-panel);
+  -webkit-backdrop-filter: var(--ei-blur-panel);
+}
+
+body[data-eye-skin='editorial'] .eye-panel-heading,
+body[data-eye-skin='editorial'] .eye-dock-header,
+body[data-eye-skin='editorial'] .eye-dock-tabs,
+body[data-eye-skin='editorial'] .eye-list-toolbar,
+body[data-eye-skin='editorial'] .eye-dossier-fields > div {
+  border-color: var(--ei-hairline);
+}
+
+body[data-eye-skin='editorial'] #eye-panel-title,
+body[data-eye-skin='editorial'] .eye-dock-title,
+body[data-eye-skin='editorial'] .eye-dossier-title,
+body[data-eye-skin='editorial'] dialog h2 {
+  color: var(--ei-paper);
+  font-family: var(--ei-f-display);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+body[data-eye-skin='editorial'] #eye-panel-title {
+  font-size: 30px;
+  line-height: 1.05;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-title {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+body[data-eye-skin='editorial'] .eye-dossier-title {
+  font-size: 22px;
+}
+
+body[data-eye-skin='editorial'] .eye-panel-heading button,
+body[data-eye-skin='editorial'] .eye-dock-close {
+  border: 0;
+  background: transparent;
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-status,
+body[data-eye-skin='editorial'] .eye-dock-camera-detail,
+body[data-eye-skin='editorial'] .eye-source-description {
+  color: var(--ei-muted);
+  font: 400 var(--ei-fs-data) / 1.4 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-status[data-status='missing'] {
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-camera,
+body[data-eye-skin='editorial'] .eye-dock-keyvalue {
+  border-left-color: var(--ei-hairline);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-camera-badge,
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dt,
+body[data-eye-skin='editorial'] .eye-dossier-fields dt,
+body[data-eye-skin='editorial'] .eye-mission-dock .eye-kicker {
+  color: var(--ei-faint);
+  font: 500 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial']
+  .eye-mission-dock[data-camera-status='following']
+  .eye-dock-camera-badge {
+  color: var(--ei-live);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dd,
+body[data-eye-skin='editorial'] .eye-dossier-fields dd {
+  color: var(--ei-paper);
+  font: 400 15px/1.35 var(--ei-f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-keyvalue dd[data-eye-value='text'] {
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-compass {
+  border: 1px solid var(--ei-hairline-strong);
+  border-radius: var(--ei-r-pill);
+  background: transparent;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-needle {
+  color: var(--ei-amber);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-heading-text {
+  color: var(--ei-muted);
+  font: 400 var(--ei-fs-data) / 1 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-action,
+body[data-eye-skin='editorial'] .eye-dossier-action,
+body[data-eye-skin='editorial'] .eye-route-grid button,
+body[data-eye-skin='editorial'] .eye-time-button,
+body[data-eye-skin='editorial'] .eye-moon-action {
+  border: 1px solid transparent;
+  border-radius: var(--ei-r-act);
+  background: var(--ei-fill);
+  color: var(--ei-paper);
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-action[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--ei-fill-press);
+  color: var(--ei-live);
+}
+
+/* Inspeccionar es la acción primaria §6.4: tinta sobre papel. */
+body[data-eye-skin='editorial'] [data-eye-dock-action='inspect'] {
+  background: var(--ei-paper);
+  color: var(--ei-ink);
+  font-weight: 600;
+}
+
+body[data-eye-skin='editorial'] [data-eye-dock-action='inspect']:disabled {
+  background: var(--ei-fill);
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ei-muted);
+  font: 500 var(--ei-fs-label) / 1.2 var(--ei-f-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial'] .eye-dock-tab[aria-selected='true'] {
+  border-bottom-color: var(--ei-live);
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial'] .eye-dock-tab-badge {
+  background: var(--ei-fill-hover);
+  color: var(--ei-paper);
+  font: 500 var(--ei-fs-label) / 1.4 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-sat-chip {
+  border-color: var(--ei-hairline-strong);
+  border-radius: var(--ei-r-chip);
+  background: transparent;
+  color: var(--ei-muted);
+  font: 500 var(--ei-fs-label) / 1.4 var(--ei-f-ui);
+  letter-spacing: 0.1em;
+}
+
+body[data-eye-skin='editorial'] .eye-signal-list button {
+  border-color: var(--ei-hairline);
+  background: transparent;
+}
+
+body[data-eye-skin='editorial'] .eye-signal-list button[aria-pressed='true'] {
+  border-left-color: var(--ei-live);
+  background: var(--ei-hover);
+}
+
+body[data-eye-skin='editorial'] .eye-mag {
+  color: var(--ei-amber);
+  font: 400 26px/1 var(--ei-f-display);
+}
+
+body[data-eye-skin='editorial'] .eye-signal-list small {
+  color: var(--ei-faint);
+  font: 400 var(--ei-fs-label) / 1.6 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-route-grid strong {
+  color: var(--ei-paper);
+  font-weight: 500;
+}
+
+/* ── Tira TIEMPO §6.7: mono solo para la hora; verde vivo, ámbar simulación ── */
+body[data-eye-skin='editorial'] .eye-time-strip {
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-time-readout {
+  letter-spacing: 0;
+}
+
+body[data-eye-skin='editorial'] .eye-time-icon,
+body[data-eye-skin='editorial'] .eye-time-label {
+  color: var(--ei-live);
+  font: 500 var(--ei-fs-label) / 1.2 var(--ei-f-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body[data-eye-skin='editorial'] .eye-time-detail {
+  color: var(--ei-paper);
+  font: 400 var(--ei-fs-ui) / 1.2 var(--ei-f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-eye-skin='editorial'] .eye-time-strip[data-tone='sim'] .eye-time-icon,
+body[data-eye-skin='editorial']
+  .eye-time-strip[data-tone='sim']
+  .eye-time-label {
+  color: var(--ei-amber);
+}
+
+body[data-eye-skin='editorial']
+  .eye-time-strip[data-tone='sim']
+  .eye-time-detail {
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial']
+  .eye-time-strip[data-tone='paused']
+  .eye-time-icon,
+body[data-eye-skin='editorial']
+  .eye-time-strip[data-tone='paused']
+  .eye-time-label {
+  color: var(--ei-amber);
+}
+
+body[data-eye-skin='editorial'] .eye-time-button,
+body[data-eye-skin='editorial'] .eye-moon-action {
+  font: 500 var(--ei-fs-data) / 1 var(--ei-f-ui);
+  letter-spacing: 0.06em;
+}
+
+body[data-eye-skin='editorial'] .eye-time-button[aria-pressed='true'],
+body[data-eye-skin='editorial'] .eye-moon-action[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--ei-fill-press);
+  color: var(--ei-amber);
+}
+
+body[data-eye-skin='editorial'] .eye-time-chip {
+  border: 1px solid var(--ei-hairline-strong);
+  border-radius: var(--ei-r-pill);
+  background: var(--ei-fill);
+  color: var(--ei-paper);
+  font: 400 var(--ei-fs-ui) / 1 var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial']
+  .eye-dock-header[data-compact='true']
+  .eye-time-chip {
+  border-color: var(--ei-hairline-strong);
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial']
+  .eye-dock-header[data-compact='true']
+  .eye-time-chip[data-tone='sim'] {
+  color: var(--ei-amber);
+}
+
+/* Avisos de sincronía (tráfico, CCTV): vidrio neutro, texto legible. */
+body[data-eye-skin='editorial'] #traffic-sync-chip,
+body[data-eye-skin='editorial'] #cctv-sync-chip {
+  border-color: var(--ei-hairline);
+  border-radius: var(--ei-r-pill);
+  background: var(--ei-glass-strong);
+  box-shadow: none;
+  color: var(--ei-muted);
+  font: 400 var(--ei-fs-label) / 1.3 var(--ei-f-ui);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+body[data-eye-skin='editorial'] #traffic-sync-label,
+body[data-eye-skin='editorial'] #cctv-sync-label {
+  color: var(--ei-muted);
+}
+
+body[data-eye-skin='editorial'] #traffic-sync-progress,
+body[data-eye-skin='editorial'] #cctv-sync-progress {
+  color: var(--ei-paper);
+  font-family: var(--ei-f-mono);
+}
+
+body[data-eye-skin='editorial'] .eye-time-suspension,
+body[data-eye-skin='editorial'] .eye-time-notes {
+  font-family: var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] .eye-moon-reticle-legend {
+  font-family: var(--ei-f-ui);
+}
+
+/* ── Atribuciones §6.10: legibles (≥ 12/14 px) y siempre pulsables ── */
+body[data-eye-skin='editorial'] #cesium-credits {
+  bottom: calc(
+    4px + var(--eye-nav-offset, 0px) + var(--eye-visual-bottom)
+  ) !important; /* vence eyeinsky.css:1396 */
+  color: var(--ei-muted);
+  font: 400 12px/1.4 var(--ei-f-ui) !important; /* vence eyeinsky.css:1399 */
+}
+
+body[data-eye-skin='editorial'] #cesium-credits a {
+  color: var(--ei-paper);
+}
+
+body[data-eye-skin='editorial'] #cesium-credits .cesium-widget-credits,
+body[data-eye-skin='editorial'] #cesium-credits a,
+body[data-eye-skin='editorial'] #cesium-credits span {
+  font-size: inherit;
+}
+
+body[data-eye-skin='editorial'] #cesium-credits img {
+  max-height: 16px;
+  opacity: 0.8;
+}
+
+body[data-eye-skin='editorial'] #eye-notice,
+body[data-eye-skin='editorial'] #toast {
+  border: 1px solid var(--ei-hairline);
+  border-radius: var(--ei-r-pill);
+  background: var(--ei-glass-strong);
+  color: var(--ei-muted);
+  font: 400 var(--ei-fs-ui) / 1.4 var(--ei-f-ui);
+}
+
+body[data-eye-skin='editorial'] #global-loading-status {
+  font: 400 var(--ei-fs-label) / 1.4 var(--ei-f-ui);
+}

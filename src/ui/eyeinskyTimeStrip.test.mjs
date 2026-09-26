@@ -28,11 +28,12 @@ const clock = (patch = {}) => ({
   ...patch,
 });
 
-test('EN VIVO: «● EN VIVO hh:mm:ss UTC», tono vivo y AHORA deshabilitado con motivo', () => {
+test('D5 · vivo: «● Reloj en vivo hh:mm:ss UTC», tono vivo y AHORA deshabilitado con motivo', () => {
   const strip = resolveTimeStrip(clock());
-  assert.equal(strip.text, '● EN VIVO 14:32:05 UTC');
+  assert.equal(strip.text, '● Reloj en vivo 14:32:05 UTC');
+  assert.equal(strip.label, 'Reloj en vivo');
   assert.equal(strip.tone, 'live');
-  assert.equal(strip.announcement, 'En vivo');
+  assert.equal(strip.announcement, 'Reloj en vivo');
   assert.equal(strip.now.enabled, false);
   assert.equal(strip.now.hint, 'Ya estás en la hora real');
   assert.equal(strip.pause.label, 'PAUSA');
@@ -55,7 +56,7 @@ test('EN VIVO: «● EN VIVO hh:mm:ss UTC», tono vivo y AHORA deshabilitado con
   assert.ok(Object.isFrozen(strip));
 });
 
-test('SIMULACIÓN: «◆ SIMULACIÓN <fecha> UTC ×N» en ámbar; AVANCE recorre 1→60→600→3600', () => {
+test('D5 · simulación: «◆ Simulación ×N <fecha> UTC» en ámbar; AVANCE recorre 1→60→600→3600', () => {
   const strip = resolveTimeStrip(
     clock({
       mode: 'simulated',
@@ -65,7 +66,8 @@ test('SIMULACIÓN: «◆ SIMULACIÓN <fecha> UTC ×N» en ámbar; AVANCE recorre
       driftMs: 1e10,
     }),
   );
-  assert.equal(strip.text, '◆ SIMULACIÓN 2027-03-14 06:00 UTC ×3600');
+  assert.equal(strip.text, '◆ Simulación ×3600 2027-03-14 06:00 UTC');
+  assert.equal(strip.label, 'Simulación ×3600');
   assert.equal(strip.tone, 'sim');
   assert.equal(strip.announcement, 'Simulación ×3600');
   assert.equal(strip.now.enabled, true);
@@ -89,12 +91,13 @@ test('SIMULACIÓN: «◆ SIMULACIÓN <fecha> UTC ×N» en ámbar; AVANCE recorre
   assert.equal(nextAdvanceMultiplier(clock({ mode: 'paused' })), 60);
 });
 
-test('PAUSA: «❚❚ PAUSA · <motivo>» y, sin motivo, la época; el botón pasa a REANUDAR', () => {
+test('D5 · pausa: «❚❚ En pausa · <motivo>» y, sin motivo, la época; el botón pasa a REANUDAR', () => {
   const reasoned = resolveTimeStrip(
     clock({ mode: 'paused', isLive: false, reason: 'fuera de efemérides' }),
   );
-  assert.equal(reasoned.text, '❚❚ PAUSA · fuera de efemérides');
-  assert.equal(reasoned.announcement, 'Pausa: fuera de efemérides');
+  assert.equal(reasoned.text, '❚❚ En pausa · fuera de efemérides');
+  assert.equal(reasoned.label, 'En pausa');
+  assert.equal(reasoned.announcement, 'En pausa: fuera de efemérides');
   assert.equal(reasoned.tone, 'paused');
   assert.equal(reasoned.pause.label, 'REANUDAR');
   assert.equal('pressed' in reasoned.pause, false);
@@ -107,8 +110,8 @@ test('PAUSA: «❚❚ PAUSA · <motivo>» y, sin motivo, la época; el botón pa
       currentIso: '2027-03-14T06:00:00.000Z',
     }),
   );
-  assert.equal(plain.text, '❚❚ PAUSA · 2027-03-14 06:00:00 UTC');
-  assert.equal(plain.announcement, 'Pausa');
+  assert.equal(plain.text, '❚❚ En pausa · 2027-03-14 06:00:00 UTC');
+  assert.equal(plain.announcement, 'En pausa');
 });
 
 test('fuera de «vivo»: simulado siempre; pausa solo si se aleja > 60 s de la pared', () => {
@@ -232,7 +235,7 @@ test('PAUSA desde vivo > 60 s: se anuncia la suspensión y se ofrecen REANUDAR y
   });
   assert.equal(
     strip.announcement,
-    'Pausa. Capas en vivo suspendidas: la pausa supera 60 s',
+    'En pausa. Capas en vivo suspendidas: la pausa supera 60 s',
     'aria-live polite dice el cambio',
   );
   assert.ok(Object.isFrozen(strip.suspensionNotice));
@@ -272,4 +275,14 @@ test('umbral por parámetro (arnés): 2 s en vez de 60 s, y el texto lo dice', (
     strip.suspensionNotice.text,
     'Capas en vivo suspendidas: la pausa supera 2 s',
   );
+});
+
+test('D5 · honestidad: en modo vivo con deriva ≥ 5 s no dice «en vivo» hasta resincronizar', () => {
+  const drifting = resolveTimeStrip(clock({ driftMs: -7_000 }));
+  assert.equal(drifting.tone, 'live');
+  assert.equal(drifting.label, 'Reloj resincronizando');
+  assert.equal(drifting.text, '● Reloj resincronizando 14:32:05 UTC');
+  assert.doesNotMatch(drifting.text, /en vivo/i);
+  const edge = resolveTimeStrip(clock({ driftMs: 4_999 }));
+  assert.equal(edge.label, 'Reloj en vivo');
 });

@@ -24,6 +24,16 @@ export const ISS_OVERLAY_SOURCE_OPTIONS = Object.freeze({
   solveIntervalMs: 125,
 });
 
+/** Rótulo por intención (hover) de la piel Editorial: uno como mucho. */
+export const HOVER_OVERLAY_SOURCE_ID = 'satellites-hover';
+
+export const HOVER_OVERLAY_SOURCE_OPTIONS = Object.freeze({
+  cohortLimit: 1,
+  collisionCapacity: 1,
+  moving: true,
+  solveIntervalMs: 125,
+});
+
 export const ORBIT_PATH_STEPS = 180;
 // points per orbital path
 
@@ -132,6 +142,28 @@ export const TRACK_VIEW_FROM_HIGH_SCALE = 4;
  */
 
 export const POINT_OUTLINE = Cesium.Color.WHITE.withAlpha(0.3);
+
+/**
+ * Escala del punto por distancia de cámara (fase visual T2): a la altura
+ * Global (~20 900 km) un satélite mide ≥ 4 px, el doble de una estrella del
+ * SkyBox sobrio (≤ 2 px), sin dejar de encogerse a lo lejos. Antes
+ * (1e6→1.5, 2e7→0.6) quedaba en ~3 px, confundible con una estrella.
+ */
+export const SAT_POINT_SCALE = Object.freeze({
+  near: 1e6,
+  nearValue: 1.5,
+  far: 4e7,
+  farValue: 0.8,
+});
+
+/** NearFarScalar nuevo (Cesium muta los que recibe por referencia). */
+export const satPointScaleByDistance = () =>
+  new Cesium.NearFarScalar(
+    SAT_POINT_SCALE.near,
+    SAT_POINT_SCALE.nearValue,
+    SAT_POINT_SCALE.far,
+    SAT_POINT_SCALE.farValue,
+  );
 
 export const _classColor = (group) =>
   Cesium.Color.fromCssColorString(satelliteClassColor(group));
@@ -372,3 +404,25 @@ export const SAT_HULL_HIT_MIN_COARSE_PX = 24;
  */
 
 export const SAT_MODEL_LOAD_TIMEOUT_MS = 20000;
+
+/**
+ * Altura a partir de la cual la escena es «lejana» (espejo de
+ * `EYE_SCENE_FAR_ENTER_M` en src/ui/eyeinskyScenePolicy.js; una capa no
+ * importa de la UI).
+ */
+export const SAT_LABEL_FAR_M = 8_600_000;
+/** Por debajo de esta altura caben los rótulos de cercanía. */
+export const SAT_LABEL_NEAR_M = 1_000_000;
+
+/**
+ * Presupuesto de rótulos ambientales de satélite por altura de cámara (plan
+ * §2.5): 0 en Global, ≤ 3 (ISS/estaciones) en órbita media, ≤ 8 cerca. Una
+ * altura desconocida no rotula.
+ * @param {number} heightM
+ * @returns {number}
+ */
+export function satelliteLabelBudget(heightM) {
+  const height = Number(heightM);
+  if (!Number.isFinite(height) || height >= SAT_LABEL_FAR_M) return 0;
+  return height >= SAT_LABEL_NEAR_M ? 3 : 8;
+}

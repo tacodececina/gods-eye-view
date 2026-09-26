@@ -1,6 +1,12 @@
 import * as Cesium from 'cesium';
 import { isPointerFree } from '../../data/inputOwnership.js';
 import { PICK_STACK_LIMIT, resolveStackHost } from './pickHost.js';
+import {
+  HOVER_OVERLAY_SOURCE_ID,
+  HOVER_OVERLAY_SOURCE_OPTIONS,
+} from './policy.js';
+import { createHoverLabel } from './hoverLabel.js';
+import { EDITORIAL_SAT_COLORS, satelliteHoverEnabled } from './presentation.js';
 
 export function createInteraction({
   state: layerState,
@@ -94,8 +100,83 @@ export function createInteraction({
     parts.tracking._trackSatellite(noradId, { origin: 'user' });
   }
 
+  /** Rótulo del satélite bajo el ratón (piel Editorial, rótulos por intención). */
+  function _hoverEntryFor(noradId) {
+    if (noradId === layerState._trackedNorad) return null;
+    const point = layerState._points.get(noradId);
+    const sat = layerState._catalog.get(noradId);
+    if (!point?.position || !sat || point.show === false) return null;
+    return {
+      id: String(noradId),
+      position: () => layerState._points.get(noradId)?.position || null,
+      variant: 'label',
+      title: sat.name?.trim() || `SAT-${noradId}`,
+      typeface: 'editorial',
+      accent: EDITORIAL_SAT_COLORS.live,
+      priority: 900,
+      collisionGroup: 'ambient-label',
+      paintLane: 'ambient-label',
+      interactive: false,
+      gapPx: 12,
+      verticalOnly: true,
+      placement: 'above',
+      edgeFade: 'none',
+      horizonCull: true,
+      terrainOcclusion: false,
+    };
+  }
+
+  function _installHover(viewer) {
+    if (layerState._hover || !satelliteHoverEnabled(layerState._presentation))
+      return;
+    const canvas = viewer.scene.canvas;
+    const host = layerState._overlayHost;
+    const hover = createHoverLabel({
+      pick: (x, y) =>
+        layerState._enabled
+          ? _pickedNorad(viewer.scene.pick(new Cesium.Cartesian2(x, y)))
+          : null,
+      entryFor: _hoverEntryFor,
+      publish: (entries) => {
+        host.setEntries(
+          HOVER_OVERLAY_SOURCE_ID,
+          entries,
+          HOVER_OVERLAY_SOURCE_OPTIONS,
+        );
+        host.setVisible(HOVER_OVERLAY_SOURCE_ID, true);
+      },
+      clear: () => {
+        host.clearSource(HOVER_OVERLAY_SOURCE_ID);
+        host.setVisible(HOVER_OVERLAY_SOURCE_ID, false);
+      },
+    });
+    const onMove = (event) =>
+      hover.onPointerMove({
+        pointerType: event.pointerType,
+        x: event.offsetX,
+        y: event.offsetY,
+      });
+    const onLeave = () => hover.reset();
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerleave', onLeave);
+    layerState._hover = {
+      reset: hover.reset,
+      destroy() {
+        canvas.removeEventListener('pointermove', onMove);
+        canvas.removeEventListener('pointerleave', onLeave);
+        hover.destroy();
+      },
+    };
+  }
+
+  function _removeHover() {
+    layerState._hover?.destroy();
+    layerState._hover = null;
+  }
+
   function _installClickHandler(viewer) {
     if (layerState._clickHandler) return; // already installed
+    _installHover(viewer);
 
     // Cross-layer untrack (H2, mirror of flights): if ANOTHER layer (flights,
     // military, …) grabs the follow-camera, drop our tracking so the orbit ring /
@@ -119,6 +200,7 @@ export function createInteraction({
   }
   return {
     _onKeyDown,
+    _removeHover,
     _installClickHandler,
     _handleClick,
     _onTrackedEntityChanged,

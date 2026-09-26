@@ -64,9 +64,9 @@ test('si la configuración falla, el viewer se destruye y el reloj se suelta', (
   class BrokenViewer extends FakeViewer {
     constructor(...args) {
       super(...args);
-      Object.defineProperty(this.scene, 'skyAtmosphere', {
+      Object.defineProperty(this.scene, 'globe', {
         get() {
-          throw new Error('sin atmósfera');
+          throw new Error('sin globo');
         },
       });
     }
@@ -84,9 +84,35 @@ test('si la configuración falla, el viewer se destruye y el reloj se suelta', (
           }
         },
       }),
-    /sin atmósfera/,
+    /sin globo/,
   );
   assert.equal(built.destroyed, true);
   assert.equal(getViewerSceneClock(built), null);
   assert.equal(built.clock.onTick.numberOfListeners, 0);
+});
+
+test('T2: el viewer no escribe skyAtmosphere (el halo tiene un solo dueño)', () => {
+  const writes = [];
+  class WatchedViewer extends FakeViewer {
+    constructor(...args) {
+      super(...args);
+      this.scene.skyAtmosphere = new Proxy(
+        {},
+        {
+          set(target, key, value) {
+            writes.push(key);
+            target[key] = value;
+            return true;
+          },
+        },
+      );
+    }
+  }
+  const viewer = createApplicationViewer({
+    container: 'c',
+    creditContainer: {},
+    Viewer: WatchedViewer,
+  });
+  assert.deepEqual(writes, []);
+  unbindViewerSceneClock(viewer);
 });

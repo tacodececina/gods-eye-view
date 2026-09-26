@@ -1,10 +1,30 @@
 import * as Cesium from 'cesium';
 import { gstime } from 'satellite.js';
-import { ISS_NORAD, POSITION_UPDATE_MS, RING_ROTATION_MS } from './policy.js';
+import { POSITION_UPDATE_MS, RING_ROTATION_MS } from './policy.js';
+import { orbitPathLook, trackedPointColor } from './presentation.js';
 import {
   resolvePointModelHandoff,
   trackedCardClearance,
 } from './pointHandoff.js';
+
+/**
+ * Apariencia del anillo: color por vértice (legacy) o material discontinuo
+ * (Editorial: 1,5 px en verde, con su versión tenue tras la Tierra).
+ * @param {{dashed: boolean}} path orbitPathLook().
+ * @param {Cesium.Color} color
+ */
+function orbitAppearance(path, color) {
+  if (!path.dashed)
+    return new Cesium.PolylineColorAppearance({ translucent: true });
+  return new Cesium.PolylineMaterialAppearance({
+    translucent: true,
+    material: Cesium.Material.fromType('PolylineDash', {
+      color,
+      gapColor: Cesium.Color.TRANSPARENT,
+      dashLength: 14,
+    }),
+  });
+}
 
 export function createRendering({
   state: layerState,
@@ -40,7 +60,7 @@ export function createRendering({
    * bright where above the horizon, dimmed where behind the globe.
    */
 
-  function _showOrbitPath(noradId, color) {
+  function _showOrbitPath(noradId, look) {
     if (layerState._orbitPaths.has(noradId)) return; // already showing
 
     const sat = layerState._catalog.get(noradId);
@@ -50,28 +70,29 @@ export function createRendering({
     const basePositions = parts.orbits.computeOrbitPath(sat.satrec, bakeDate);
     if (basePositions.length < 2) return;
 
-    const pathColor = color || Cesium.Color.CYAN;
-
+    const path = look || orbitPathLook(layerState._presentation, {});
     const primitive = new Cesium.Primitive({
       geometryInstances: new Cesium.GeometryInstance({
         geometry: new Cesium.PolylineGeometry({
           positions: basePositions,
-          width: noradId === ISS_NORAD ? 2.5 : 2.0,
-          vertexFormat: Cesium.PolylineColorAppearance.VERTEX_FORMAT,
+          width: path.width,
+          vertexFormat: path.dashed
+            ? Cesium.PolylineMaterialAppearance.VERTEX_FORMAT
+            : Cesium.PolylineColorAppearance.VERTEX_FORMAT,
         }),
-        attributes: {
-          color: Cesium.ColorGeometryInstanceAttribute.fromColor(
-            pathColor.withAlpha(0.6),
-          ),
-          depthFailColor: Cesium.ColorGeometryInstanceAttribute.fromColor(
-            pathColor.withAlpha(0.35),
-          ),
-        },
+        attributes: path.dashed
+          ? undefined
+          : {
+              color: Cesium.ColorGeometryInstanceAttribute.fromColor(
+                path.color,
+              ),
+              depthFailColor: Cesium.ColorGeometryInstanceAttribute.fromColor(
+                path.depthFailColor,
+              ),
+            },
       }),
-      appearance: new Cesium.PolylineColorAppearance({ translucent: true }),
-      depthFailAppearance: new Cesium.PolylineColorAppearance({
-        translucent: true,
-      }),
+      appearance: orbitAppearance(path, path.color),
+      depthFailAppearance: orbitAppearance(path, path.depthFailColor),
       asynchronous: false, // build this frame — no async-rebuild blink window
       allowPicking: false, // ring clicks fall through to satellites/deselect
     });
@@ -257,7 +278,9 @@ export function createRendering({
     if (layerState._trackedHandoffKey === key) return;
     layerState._trackedHandoffKey = key;
     graphic.pixelSize = handoff.pointSize;
-    graphic.color = Cesium.Color.YELLOW.withAlpha(handoff.pointAlpha);
+    graphic.color = trackedPointColor(layerState._presentation).withAlpha(
+      handoff.pointAlpha,
+    );
     graphic.outlineWidth = handoff.reticle ? 0 : 2;
   }
 

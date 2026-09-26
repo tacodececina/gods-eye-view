@@ -3,8 +3,9 @@ import {
   CATALOG_GROUPS,
   CORE_ELEMENT_FORMAT,
   ISS_NORAD,
-  POINT_STYLES,
+  satPointScaleByDistance,
 } from './policy.js';
+import { orbitPathLook } from './presentation.js';
 import {
   catalogRecordFromElement,
   dedupeElementsByNorad,
@@ -64,7 +65,7 @@ export function createIngestion({
       color: style.color,
       outlineColor: style.outlineColor,
       outlineWidth: style.outlineWidth,
-      scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 2e7, 0.6),
+      scaleByDistance: satPointScaleByDistance(),
       id: noradId,
     });
     layerState._points.set(noradId, point);
@@ -155,7 +156,10 @@ export function createIngestion({
 
         // Show ISS orbital path by default
         if (layerState._catalog.has(ISS_NORAD)) {
-          parts.rendering._showOrbitPath(ISS_NORAD, POINT_STYLES.iss.color);
+          parts.rendering._showOrbitPath(
+            ISS_NORAD,
+            orbitPathLook(layerState._presentation, { iss: true }),
+          );
           const issPath = layerState._orbitPaths.get(ISS_NORAD);
           if (issPath) issPath.primitive.show = layerState._params.showOrbits;
 

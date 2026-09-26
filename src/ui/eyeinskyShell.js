@@ -39,6 +39,8 @@ import {
 import { mountEarthMoonBridge } from './shell/earthMoonBridge.js';
 import { createShareHelp, mountCommands } from './shell/shellCommands.js';
 import { mountDebugHandle } from './shell/shellDebug.js';
+import { mountIntro } from './shell/homeView.js';
+import { readGlobeFlags } from './eyeinskyGlobeFlags.js';
 
 const MAX_SHARED_HASH_LENGTH = 12000;
 const OSM_CREDIT_HTML =
@@ -100,6 +102,26 @@ function mountCockpitTelemetry(defer) {
   });
   defer(() => cockpitObserver.disconnect());
   return advancedTelemetry;
+}
+
+/**
+ * Flags de la fase visual (§2.1) publicados en `body`: la piel
+ * (`data-eye-skin`), el globo y la pose de inicio. Se retiran al desmontar.
+ * @param {(dispose: () => void) => void} defer Registro de limpieza.
+ * @returns {Readonly<Record<string,string>>} Flags resueltos.
+ */
+function mountVisualFlags(defer) {
+  const flags = readGlobeFlags(location.search);
+  const { dataset } = document.body;
+  dataset.eyeSkin = flags.skin;
+  dataset.eyeGlobe = flags.globe;
+  dataset.eyeHomePose = flags.homePose;
+  defer(() => {
+    delete dataset.eyeSkin;
+    delete dataset.eyeGlobe;
+    delete dataset.eyeHomePose;
+  });
+  return flags;
 }
 
 /** Atribución OSM estática y rótulo del mapa activo en la telemetría. */
@@ -166,6 +188,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     { dataManager } = data;
   const lifetime = new UiLifetime();
   defer(() => lifetime.destroy());
+  const flags = mountVisualFlags(defer);
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const shell = {
     viewer,
@@ -176,6 +199,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
     defer,
     lifetime,
     reduced,
+    flags,
     state: createShellState(),
   };
   defer(
@@ -189,7 +213,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   const releaseIcons = mountEyeIcons();
   defer(releaseIcons);
   defer(mountEyeinskyLanguage());
-  defer(mountEyeScenePolicy(viewer));
+  defer(mountEyeScenePolicy(viewer, document.body, { flags }));
   const motion = mountImmersiveMotion({
     root: document.body,
     signal,
@@ -239,6 +263,7 @@ export function mountEyeinsky({ scene, controls, data, tools, signal, defer }) {
   mountLayerSurfaces(shell, advancedTelemetry);
   mountAttributionAndMap(shell);
   shell.syncLayers();
+  mountIntro(shell);
   restoreSharedView(shell);
   shell.paintFeed();
   return mountDebugHandle(shell);

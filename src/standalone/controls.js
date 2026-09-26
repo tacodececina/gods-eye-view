@@ -1,21 +1,20 @@
 import { createApplicationControls } from '../app/controls.js';
 import { getStandaloneCatalog } from './catalog.js';
-import * as Cesium from 'cesium';
 import { EyeinskyHud } from '../ui/eyeinskyHud.js';
 import { prepareEyeShell } from '../ui/eyeinskyShell.js';
+import { readGlobeFlags } from '../ui/eyeinskyGlobeFlags.js';
+import { resolveHomePose, setHomeView } from '../ui/shell/homeView.js';
 export function createStandaloneControls(options) {
   prepareEyeShell();
   return createApplicationControls({
     services: { IntelHUD: EyeinskyHud, workspaceLayout: true },
     initialView(viewer) {
-      viewer.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(
-          -92,
-          18,
-          innerWidth < 650 ? 26000000 : 18000000,
-        ),
-        orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 },
-      });
+      // La pose Global (legacy o solar, §2.3) sale de un solo sitio; la
+      // entrada animada, si la hay, la monta el shell.
+      setHomeView(
+        viewer,
+        resolveHomePose(viewer, readGlobeFlags(location.search)),
+      );
       return () => viewer.camera.cancelFlight();
     },
     catalog: options?.catalog ?? getStandaloneCatalog(),

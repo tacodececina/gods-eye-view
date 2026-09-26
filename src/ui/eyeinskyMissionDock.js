@@ -381,13 +381,16 @@ export function mountEyeMissionDock({
       for (const field of view.keyValues) {
         const item = node(doc, 'div', '', 'eye-dock-keyvalue');
         item.append(node(doc, 'dt', field.label));
-        item.append(
-          node(
-            doc,
-            'dd',
-            field.unit ? `${field.value} ${field.unit}` : field.value,
-          ),
+        const value = node(
+          doc,
+          'dd',
+          field.unit ? `${field.value} ${field.unit}` : field.value,
         );
+        // Mono solo para números: un valor sin cifras (mapa, clase) es texto.
+        value.dataset.eyeValue = /\d/.test(value.textContent)
+          ? 'number'
+          : 'text';
+        item.append(value);
         keyValues.append(item);
       }
       keyValues.hidden = view.keyValues.length === 0;

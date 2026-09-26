@@ -4,6 +4,7 @@
  */
 import { planTargetCameraTransition } from '../../navigationPolicy.js';
 import { $ } from './shellDom.js';
+import { resolveHomePose } from './homeView.js';
 
 const SECTORS = {
   global: { lat: 18, lon: -92, alt: 18000000 },
@@ -62,16 +63,18 @@ export function createCamera(shell) {
   function sector(id) {
     const pose = SECTORS[id];
     if (!pose) return;
-    camera(
-      {
-        ...pose,
-        alt:
-          id === 'global' && innerWidth < MOBILE_GLOBAL_WIDTH
-            ? MOBILE_GLOBAL_ALT
-            : pose.alt,
-      },
-      { targetId: `sector:${id}` },
-    );
+    // Global = la pose de inicio (solar/tilt/legacy, §2.3), del Sol de escena.
+    const target =
+      id === 'global' && shell.flags?.homePose !== 'legacy'
+        ? resolveHomePose(viewer, shell.flags)
+        : {
+            ...pose,
+            alt:
+              id === 'global' && innerWidth < MOBILE_GLOBAL_WIDTH
+                ? MOBILE_GLOBAL_ALT
+                : pose.alt,
+          };
+    camera(target, { targetId: `sector:${id}` });
     $('eye-sector-name').textContent =
       id === 'global' ? 'GLOBAL' : SECTOR_NAMES[id];
   }

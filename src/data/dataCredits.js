@@ -225,6 +225,20 @@ export const DATA_CREDITS = [
       'part of NASA’s Earth Observing System Data and Information System (EOSDIS)',
   },
   {
+    key: 'gibs-night',
+    html:
+      'Night lights: NASA GIBS, “Earth at Night (2012, VIIRS, Suomi NPP)” — a 2012 composite, not live. ' +
+      'We acknowledge the use of imagery provided by services from NASA’s Global Imagery Browse Services (GIBS), ' +
+      'part of NASA’s Earth Science Data and Information System (ESDIS) ' +
+      '(<a href="https://nasa-gibs.github.io/gibs-api-docs/" target="_blank" rel="noopener">GIBS</a>)',
+  },
+  {
+    key: 'sky-bsc5',
+    html:
+      'Star field: Yale Bright Star Catalogue, 5th rev. ed. (Hoffleit &amp; Warren 1991, NSSDC/ADC; ' +
+      '<a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50" target="_blank" rel="noopener">CDS V/50</a>), stars to V 5.0',
+  },
+  {
     key: 'drivebc-cctv',
     html:
       'CCTV cameras &amp; frames (British Columbia): ' +

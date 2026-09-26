@@ -54,11 +54,14 @@ async function readyPage(context, viewport, reducedMotion = false) {
       { name: 'prefers-reduced-motion', value: 'reduce' },
     ]);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  // Fase visual T2: con entrada animada (?intro=1 / ?globe=editorial) se
+  // espera a que termine el vuelo; sin ella `data-eye-intro` nace en «done».
   await page.waitForFunction(
     () =>
       window.__godsEyeView?.viewer &&
       window.__eyeinsky &&
-      document.querySelector('#loading-screen')?.classList.contains('hidden'),
+      document.querySelector('#loading-screen')?.classList.contains('hidden') &&
+      document.body.dataset.eyeIntro === 'done',
     { timeout: 90_000 },
   );
   await new Promise((resolve) => setTimeout(resolve, 700));

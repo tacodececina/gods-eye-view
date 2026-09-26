@@ -335,9 +335,13 @@ function readoutFitProbe() {
       cw: el.clientWidth,
     }));
   const readout = strip.querySelector('.eye-time-readout');
-  const rate = [...strip.querySelectorAll('.eye-time-piece')].find((p) =>
-    p.textContent.startsWith('×'),
-  );
+  // D5 (fase visual): el ritmo va en el rótulo («Simulación ×3600»); antes
+  // era una pieza del detalle. Mismo criterio: que se vea entero en la tira.
+  const label = strip.querySelector('.eye-time-label');
+  const rate =
+    [...strip.querySelectorAll('.eye-time-piece')].find((p) =>
+      p.textContent.startsWith('×'),
+    ) ?? (label?.textContent.includes('×') ? label : null);
   const box = (el) => el?.getBoundingClientRect();
   const rateInside =
     rate && visible(readout)

@@ -199,7 +199,7 @@ export async function checkOutOfRangePause(context) {
       blocked.length > 0 &&
         probe.clock.mode === 'paused' &&
         probe.clock.reason === 'fuera de efemérides' &&
-        probe.strip.text === '❚❚ PAUSA · fuera de efemérides' &&
+        probe.strip.text === '❚❚ En pausa · fuera de efemérides' &&
         probe.moon.status === 'out-of-range' &&
         probe.moon.positionFixedM === null &&
         probe.reason === 'No disponible: Fecha fuera de rango',
@@ -247,7 +247,7 @@ export async function checkDateField({ page, result, check }) {
       accepted.strip.error === '' &&
       accepted.clock.mode === 'paused' &&
       accepted.clock.currentIso === '2027-03-14T06:00:00.000Z' &&
-      accepted.strip.text === '❚❚ PAUSA · 2027-03-14 06:00:00 UTC',
+      accepted.strip.text === '❚❚ En pausa · 2027-03-14 06:00:00 UTC',
     `vacío → «${rejected.strip.error}» (${rejected.clock.mode}); 2027-03-14T06:00 → «${accepted.strip.text}» (${accepted.clock.mode} ${accepted.clock.currentIso})`,
     ['P5-04'],
   );

@@ -298,6 +298,14 @@ body.cockpit-mode #cockpit-cloud-effects.active {
 #cesium-credits .cesium-credit-expand-link {
   color: rgba(232, 234, 237, 0.7);
 }
+/* Credits that carry a phone abbreviation (e.g. VIIRS night lights) render
+   both variants; only the long one shows unless a narrow-screen rule swaps
+   them. The attribution is abbreviated, never hidden. Two classes beat
+   Cesium's injected `.cesium-credit-textContainer * { display: inline }`. */
+.cesium-widget-credits .eye-credit-short,
+.cesium-credit-lightbox .eye-credit-short {
+  display: none;
+}
 
 /* Keep the ALPR source overflow reachable even after its brief on-map credit
    collapses. Wrap whole entries only while the optional layer is on. */

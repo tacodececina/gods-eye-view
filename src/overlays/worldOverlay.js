@@ -453,6 +453,7 @@ export function normalizeOverlayEntry(sourceId, entry) {
       ? entry.details.map((line) => String(line))
       : [],
     accent: entry.accent || WORLD_OVERLAY_STYLE.accent,
+    typeface: entry.typeface === 'editorial' ? 'editorial' : 'mono',
     paintLane: entry.paintLane,
     priority: Number.isFinite(Number(entry.priority))
       ? Number(entry.priority)

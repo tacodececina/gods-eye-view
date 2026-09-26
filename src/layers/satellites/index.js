@@ -10,12 +10,20 @@ import { createLifecycle } from './lifecycle.js';
 import { createIngestion } from './ingestion.js';
 import { createState } from './state.js';
 import { createModelsHost } from './modelsHost.js';
+import { resolveSatellitePresentation } from './presentation.js';
 
 /** Construct one layer with its own scene state and supplied application services. */
-export function createSatellitesLayer({ services, source, modelOptions = {} }) {
+export function createSatellitesLayer({
+  services,
+  source,
+  modelOptions = {},
+  presentation,
+}) {
   if (typeof source?.readGroup !== 'function')
     throw new TypeError('A satellites source is required');
   const state = createState({ services });
+  // Piel de la capa (fase visual T4): legacy salvo satStyle/satLabels.
+  state._presentation = resolveSatellitePresentation(presentation);
   const parts = {};
   const context = { state, services, parts, source, modelOptions };
   parts.controls = createControls(context);

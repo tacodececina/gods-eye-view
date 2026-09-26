@@ -5,7 +5,24 @@
  * fetching, Cesium scene queries, or source selection policy belongs here.
  */
 
-import { WORLD_OVERLAY_STYLE } from './worldOverlayTokens.js';
+import {
+  WORLD_OVERLAY_EDITORIAL_TYPE,
+  WORLD_OVERLAY_STYLE,
+} from './worldOverlayTokens.js';
+
+const MONO_FONTS = Object.freeze({
+  label: WORLD_OVERLAY_STYLE.fontLabel,
+  title: WORLD_OVERLAY_STYLE.fontTitle,
+  detail: WORLD_OVERLAY_STYLE.fontDetail,
+  trackedTitle: WORLD_OVERLAY_STYLE.fontTrackedTitle,
+  trackedDetail: WORLD_OVERLAY_STYLE.fontTrackedDetail,
+});
+
+/** Font set for an entry: Editorial Grotesk on opt-in, mono otherwise. */
+const fontsFor = (entry) =>
+  entry?.typeface === 'editorial'
+    ? WORLD_OVERLAY_EDITORIAL_TYPE.fonts
+    : MONO_FONTS;
 
 // Two high-cardinality infrastructure sources share this cache; 1024 avoids
 // repeated O(n) eviction scans while keeping host-lifetime retention bounded.
@@ -319,15 +336,16 @@ export function measureOverlayEntry(ctx, entry, out = {}) {
   const selected = variant === 'selected';
   const tracked = variant === 'tracked';
   const tactical = entry?.cardStyle === 'tactical';
+  const fonts = fontsFor(entry);
   const titleFont = tracked
-    ? WORLD_OVERLAY_STYLE.fontTrackedTitle
+    ? fonts.trackedTitle
     : selected
       ? WORLD_OVERLAY_STYLE.fontSelected
-      : WORLD_OVERLAY_STYLE.fontTitle;
+      : fonts.title;
   let titleWidth = measureWorldOverlayText(
     ctx,
     entry?.title || '',
-    variant === 'label' ? WORLD_OVERLAY_STYLE.fontLabel : titleFont,
+    variant === 'label' ? fonts.label : titleFont,
   );
   if (variant === 'track' && details[0]) {
     titleWidth = measureWorldOverlayText(
@@ -343,9 +361,7 @@ export function measureOverlayEntry(ctx, entry, out = {}) {
       measureWorldOverlayText(
         ctx,
         details[i],
-        tracked
-          ? WORLD_OVERLAY_STYLE.fontTrackedDetail
-          : WORLD_OVERLAY_STYLE.fontDetail,
+        tracked ? fonts.trackedDetail : fonts.detail,
       ),
     );
   }
@@ -631,7 +647,9 @@ function drawCardChrome(
   roundedRectPath(ctx, x, y, w, h);
   ctx.fillStyle = selected
     ? WORLD_OVERLAY_STYLE.selectedBackground
-    : WORLD_OVERLAY_STYLE.background;
+    : entry.typeface === 'editorial'
+      ? WORLD_OVERLAY_EDITORIAL_TYPE.labelPlate
+      : WORLD_OVERLAY_STYLE.background;
   ctx.fill();
   ctx.strokeStyle = selected
     ? WORLD_OVERLAY_STYLE.selectedBorder
@@ -852,7 +870,7 @@ export function paintLabel(ctx, entry, placement, alpha = 1) {
   ctx.globalAlpha = alpha;
   drawCardChrome(ctx, entry, placement, false);
   ctx.fillStyle = WORLD_OVERLAY_STYLE.title;
-  ctx.font = WORLD_OVERLAY_STYLE.fontLabel;
+  ctx.font = fontsFor(entry).label;
   ctx.textBaseline = 'top';
   ctx.fillText(
     String(entry.title || ''),
@@ -1020,11 +1038,12 @@ export function paintTracked(ctx, entry, placement, alpha = 1) {
   ctx.textBaseline = 'alphabetic';
   const centerX = x + w / 2;
   const titleBaseline = y + layout.padY + layout.titleH - 2;
+  const fonts = fontsFor(entry);
   ctx.fillStyle = WORLD_OVERLAY_STYLE.title;
-  ctx.font = WORLD_OVERLAY_STYLE.fontTrackedTitle;
+  ctx.font = fonts.trackedTitle;
   ctx.fillText(String(entry.title || ''), centerX, titleBaseline);
   ctx.fillStyle = WORLD_OVERLAY_STYLE.detail;
-  ctx.font = WORLD_OVERLAY_STYLE.fontTrackedDetail;
+  ctx.font = fonts.trackedDetail;
   for (let i = 0; i < details.length; i++) {
     ctx.fillText(
       String(details[i]),

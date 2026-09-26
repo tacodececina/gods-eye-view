@@ -42,11 +42,9 @@ export function createApplicationViewer({
     viewer.targetFrameRate = 60;
     viewer.allowDataSourcesToSuspendAnimation = false;
     bindViewerSceneClock(viewer);
+    // El halo (skyAtmosphere) tiene un solo dueño: la política de escena
+    // de EYEINSKY (src/ui/eyeinskyScenePolicy.js), no el viewer.
     viewer.scene.globe.show = false;
-    viewer.scene.skyAtmosphere.show = true;
-    viewer.scene.skyAtmosphere.atmosphereLightIntensity = 18;
-    viewer.scene.skyAtmosphere.saturationShift = -0.12;
-    viewer.scene.skyAtmosphere.brightnessShift = -0.08;
     return viewer;
   } catch (error) {
     unbindViewerSceneClock(viewer);

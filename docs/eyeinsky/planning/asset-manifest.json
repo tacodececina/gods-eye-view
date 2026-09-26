@@ -76,5 +76,65 @@
     "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg",
     "sha256": "f7130a1822681fa7512d7dcfd40db8c10b9ba4f06777910348698260ed7a2170",
     "bytes": 457942
+  },
+  {
+    "file": "public/identity/fonts/InstrumentSerif-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/instrumentserif/InstrumentSerif-Regular.ttf",
+    "sha256": "498efd461f6ddfcb7a111bf9a565709d2085d48201d501ead960d93e84ffbb88",
+    "bytes": 70012
+  },
+  {
+    "file": "public/identity/fonts/InstrumentSerif-Italic.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/instrumentserif/InstrumentSerif-Italic.ttf",
+    "sha256": "08939b8bdf534afec24ae0ef5e03f948940cd9a8fe08e7fecbad040e62327385",
+    "bytes": 71592
+  },
+  {
+    "file": "public/identity/fonts/instrumentserif-OFL.txt",
+    "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/instrumentserif/OFL.txt",
+    "sha256": "129ed7618959716959f2941fdd5b49e0ad6e6c1d78726761786a00253d865521",
+    "bytes": 4405
+  },
+  {
+    "file": "public/identity/fonts/IBMPlexMono-Medium.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/0b58fb370093f9a9f4ff785d94405710b79de67c/ofl/ibmplexmono/IBMPlexMono-Medium.ttf",
+    "sha256": "a9b4c49bb299e05b5f6c481e7fb5e78943d2793249a0c8874ab574a2d1ea6755",
+    "bytes": 136704
+  },
+  {
+    "file": "public/sky/px.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "86e19112fc1e092d084ee9df02e4956a92c5c6b3b37879f29b9712a9af7d6636",
+    "bytes": 2729
+  },
+  {
+    "file": "public/sky/nx.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "8d706e54efd2495baff63c9fa9e9ddd689d0bc8a6bb674c8ee36f7e6feaa5468",
+    "bytes": 2732
+  },
+  {
+    "file": "public/sky/py.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "9ac5567e85278265c1ebefcda7cd6e2d0975a26fb7ae480c4b0147dcb25c6d83",
+    "bytes": 3919
+  },
+  {
+    "file": "public/sky/ny.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "650c510c25b7de853897d177d13f8c9434da156b645b6cfc179c0a1a2cd7ceae",
+    "bytes": 3645
+  },
+  {
+    "file": "public/sky/pz.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "07200853b5b9b576683e7ac635c83520040b53600bee7569d9f964ad16df4e29",
+    "bytes": 3318
+  },
+  {
+    "file": "public/sky/nz.png",
+    "url": "generated: node scripts/eyeinsky-skybox.mjs --catalog <CDS V/50 catalog.gz sha256 3dc44b1e90be8fbe5bcc7656032560f51275f985c7e3f783c9028e1838ec7bed>",
+    "sha256": "c1807a4e80cfec8d62e3bb166f5e7407fcf0674d2e57f110c5c7125dde2a828c",
+    "bytes": 4003
   }
 ]

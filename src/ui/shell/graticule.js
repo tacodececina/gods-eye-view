@@ -39,11 +39,18 @@ function addGraticuleLines(grid) {
  * @returns {void}
  */
 export function mountGraticule({ viewer, lifetime, defer }) {
-  const grid = new Cesium.CustomDataSource('eyeinsky-graticule');
-  viewer.dataSources.add(grid);
-  defer(() => viewer.dataSources.remove(grid, true));
-  addGraticuleLines(grid);
+  // V-17: arranca apagada y sin entidades; se construye al primer clic.
+  let grid = null;
+  defer(() => {
+    if (grid) viewer.dataSources.remove(grid, true);
+  });
   lifetime.listen($('eye-grid'), 'click', () => {
+    if (!grid) {
+      grid = new Cesium.CustomDataSource('eyeinsky-graticule');
+      grid.show = false;
+      addGraticuleLines(grid);
+      viewer.dataSources.add(grid);
+    }
     grid.show = !grid.show;
     $('eye-grid').setAttribute('aria-pressed', String(grid.show));
     viewer.scene.requestRender();

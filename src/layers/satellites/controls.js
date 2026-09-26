@@ -4,7 +4,8 @@ import {
   satelliteClassLegend,
 } from '../../data/satelliteClass.js';
 import * as Cesium from 'cesium';
-import { ISS_NORAD, POINT_STYLES } from './policy.js';
+import { ISS_NORAD } from './policy.js';
+import { pointStyleFor, satelliteDetectionEnabled } from './presentation.js';
 
 export function createControls({ state: layerState, services, parts, source }) {
   const { isExplicitLayerStateOrigin } = services.layerState;
@@ -17,8 +18,7 @@ export function createControls({ state: layerState, services, parts, source }) {
    */
 
   function _pointStyleFor(noradId, group) {
-    if (noradId === ISS_NORAD) return POINT_STYLES.iss;
-    return POINT_STYLES[group] || POINT_STYLES.visual;
+    return pointStyleFor(noradId, group, layerState._presentation);
   }
 
   /** Tell the manager to re-render this layer's row (chip state / legend counts). */
@@ -121,6 +121,8 @@ export function createControls({ state: layerState, services, parts, source }) {
     getDetectableObjects(options = {}) {
       if (!layerState._pointCollection || !layerState._pointCollection.show)
         return [];
+      // Rótulos por intención: sin corchetes ni rótulos de detección (§9).
+      if (!satelliteDetectionEnabled(layerState._presentation)) return [];
       // Dense extras are points-only: excluded from the detection overlay.
       const eligibleCount = Math.max(
         1,

@@ -30,6 +30,22 @@ export const WORLD_OVERLAY_STYLE = Object.freeze({
   leaderWidth: 1.35,
 });
 
+/**
+ * Editorial skin typography for entries that opt in with
+ * `typeface: 'editorial'` (visual phase T4): Space Grotesk, never mono, and a
+ * compact-label plate in --ei-bg at .8. Entries without it keep the mono set.
+ */
+export const WORLD_OVERLAY_EDITORIAL_TYPE = Object.freeze({
+  fonts: Object.freeze({
+    label: '500 13px "Space Grotesk", system-ui, sans-serif',
+    title: '500 13px "Space Grotesk", system-ui, sans-serif',
+    detail: '400 12px "Space Grotesk", system-ui, sans-serif',
+    trackedTitle: '500 14px "Space Grotesk", system-ui, sans-serif',
+    trackedDetail: '400 12px "Space Grotesk", system-ui, sans-serif',
+  }),
+  labelPlate: 'rgba(7, 17, 16, 0.8)',
+});
+
 /** CCTV's field-tested thumbnail-card overrides on top of shared card chrome. */
 export const CCTV_THUMBNAIL_STYLE = Object.freeze({
   padding: 4,

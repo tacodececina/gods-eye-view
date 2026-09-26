@@ -5,6 +5,7 @@ import {
   DENSE_GROUP_PATH,
   POINT_STYLES,
   DENSE_CREATE_CHUNK,
+  satPointScaleByDistance,
 } from './policy.js';
 import {
   catalogRecordFromElement,
@@ -143,7 +144,7 @@ export function createCatalog({ state: layerState, services, parts, source }) {
             color: style.color,
             outlineColor: style.outlineColor,
             outlineWidth: style.outlineWidth,
-            scaleByDistance: new Cesium.NearFarScalar(1e6, 1.5, 2e7, 0.6),
+            scaleByDistance: satPointScaleByDistance(),
             id: noradId,
           });
           layerState._points.set(noradId, point);

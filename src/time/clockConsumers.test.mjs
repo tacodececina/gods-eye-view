@@ -47,7 +47,8 @@ export const CLOCK_CONSUMERS = Object.freeze({
 /**
  * Lecturas permitidas fuera de la lista: el propio reloj (sin límite), un
  * comentario y los lectores de TIEMPO DE ESCENA que añade P5 (marco precargado
- * en cada tick, anillo con el time del fotograma y SUN EL del HUD).
+ * en cada tick, anillo con el time del fotograma y SUN EL del HUD) y la fase
+ * visual (pose de inicio con el Sol de escena).
  */
 const OTHER_READERS = Object.freeze({
   'cameraVerbs.js': [/^\s*\/\/ Wall-clock dt: clock\.currentTime FREEZES/],
@@ -55,6 +56,8 @@ const OTHER_READERS = Object.freeze({
   'app/sceneTime.js': [/frames\.check\(clock\.currentTime\)/],
   'celestialRing.js': [/_draw\(time = this\.viewer\.clock\.currentTime\)/],
   'hud.js': [/const time = this\.viewer\?\.clock\?\.currentTime;/],
+  // Fase visual T2: la pose Global sale del Sol del tiempo de ESCENA (P5).
+  'ui/shell/homeView.js': [/^\s*viewer\.clock\.currentTime,$/],
 });
 const READ_PATTERN = /clock\??\.currentTime/;
 

@@ -153,6 +153,7 @@ export function createTrackedOverlayEntry(entity) {
       ? model.details.map((line) => String(line))
       : [],
     accent: model.accent || WORLD_OVERLAY_STYLE.accent,
+    typeface: model.typeface,
     cardStyle: model.cardStyle,
     selected: model.selected === true,
     leaderStyle: model.leaderStyle,

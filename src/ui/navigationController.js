@@ -380,7 +380,7 @@ export class NavigationController {
         this.viewer.camera.flyTo({
           ...options,
           duration: stage.duration,
-          easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
+          easingFunction: stage.easing ?? Cesium.EasingFunction.CUBIC_IN_OUT,
           complete: () => resolve(true),
           cancel: () => resolve(false),
         });

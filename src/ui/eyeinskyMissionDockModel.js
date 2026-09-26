@@ -453,31 +453,41 @@ function suspensionNotice(
   });
 }
 
-/** Rótulo, detalle y anuncio de cada modo. */
+/**
+ * Deriva máxima para llamar «en vivo» al reloj (plan: `shouldAnimate &&
+ * multiplier === 1 && deriva < 5 s`). Más allá, el modo vivo se está
+ * resincronizando y se dice.
+ */
+export const LIVE_LABEL_MAX_DRIFT_MS = 5_000;
+
+/** Rótulo, detalle y anuncio de cada modo (D5: el rótulo describe el reloj). */
 function stripWording(clock) {
   const { date, minutes, seconds } = isoParts(clock?.currentIso);
   if (clock?.mode === 'simulated')
     return {
       tone: 'sim',
       icon: '◆',
-      label: 'SIMULACIÓN',
-      detail: `${date} ${minutes} UTC ×${clock.multiplier}`,
+      label: `Simulación ×${clock.multiplier}`,
+      detail: `${date} ${minutes} UTC`,
       announcement: `Simulación ×${clock.multiplier}`,
     };
   if (clock?.mode === 'paused')
     return {
       tone: 'paused',
       icon: '❚❚',
-      label: 'PAUSA',
+      label: 'En pausa',
       detail: `· ${clock.reason || `${date} ${seconds} UTC`}`,
-      announcement: clock.reason ? `Pausa: ${clock.reason}` : 'Pausa',
+      announcement: clock.reason ? `En pausa: ${clock.reason}` : 'En pausa',
     };
+  const inSync =
+    Math.abs(Number(clock?.driftMs) || 0) < LIVE_LABEL_MAX_DRIFT_MS;
+  const label = inSync ? 'Reloj en vivo' : 'Reloj resincronizando';
   return {
     tone: 'live',
     icon: '●',
-    label: 'EN VIVO',
+    label,
     detail: `${seconds} UTC`,
-    announcement: 'En vivo',
+    announcement: label,
   };
 }
 

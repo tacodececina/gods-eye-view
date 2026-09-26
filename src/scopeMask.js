@@ -54,9 +54,22 @@ export const IRIS_SCOPE_APPEARANCE = Object.freeze({
   nearAlpha: 0.46,
 });
 
+/**
+ * Editorial skin (visual phase §9: no visor treatment). The Earth is the only
+ * thing that glows, so the mask paints nothing at any altitude and a share
+ * override cannot bring a veil or a keyhole edge back.
+ */
+export const EDITORIAL_SCOPE_APPEARANCE = Object.freeze({
+  id: 'editorial',
+  color: Object.freeze({ r: 2, g: 5, b: 5 }),
+  farAlpha: 0,
+  nearAlpha: 0,
+});
+
 const SCOPE_APPEARANCES = Object.freeze({
   default: DEFAULT_SCOPE_APPEARANCE,
   iris: IRIS_SCOPE_APPEARANCE,
+  editorial: EDITORIAL_SCOPE_APPEARANCE,
 });
 /**
  * Default edge feather as a fraction of the keyhole radius.
@@ -184,8 +197,7 @@ export function scopeTerminusAlphaForAppearance(
 function resolveScopeAppearance(value) {
   if (typeof value === 'string')
     return SCOPE_APPEARANCES[value] || DEFAULT_SCOPE_APPEARANCE;
-  if (value === IRIS_SCOPE_APPEARANCE || value === DEFAULT_SCOPE_APPEARANCE)
-    return value;
+  if (Object.values(SCOPE_APPEARANCES).includes(value)) return value;
   return DEFAULT_SCOPE_APPEARANCE;
 }
 
@@ -439,7 +451,7 @@ function draw() {
   // backing-store resize + clear (a full-viewport allocation) that used to run
   // on every disabled draw. The last painted mask is cleared exactly once, on
   // the transition, and after that a disabled mask does no canvas work at all.
-  if (!_enabled) {
+  if (!_enabled || !(_terminusAlpha > 0)) {
     if (!_painted) return;
     const clearCtx = _canvas.getContext('2d');
     if (clearCtx) {

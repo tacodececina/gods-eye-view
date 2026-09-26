@@ -25,6 +25,7 @@ import {
   SCOPE_TERMINUS_NEAR_M,
   SCOPE_TERMINUS_QUANTUM,
   IRIS_SCOPE_APPEARANCE,
+  EDITORIAL_SCOPE_APPEARANCE,
   _resetScopeMaskForTest,
 } from './scopeMask.js';
 import { KEYHOLE_OUTER_RADIUS } from './celestialRing.js';
@@ -400,6 +401,40 @@ test('installing the Iris profile paints its real canvas color and maps share ov
       0.97,
       'share serialization keeps its existing logical value',
     );
+  } finally {
+    destroyScopeMask();
+    dom.restore();
+  }
+});
+
+test('the Editorial profile paints no veil and no keyhole edge (Tierra es lo único que brilla)', () => {
+  assert.equal(EDITORIAL_SCOPE_APPEARANCE.id, 'editorial');
+  for (const height of [30_000_000, 18_000_000, 8_000_000, 1_000])
+    assert.equal(
+      scopeTerminusAlphaForAppearance(height, EDITORIAL_SCOPE_APPEARANCE),
+      0,
+      `editorial terminus must be transparent at ${height} m`,
+    );
+  const dom = stubScopeMaskDom({ width: 1600, height: 900, dpr: 1 });
+  try {
+    installScopeMask(
+      {
+        container: dom.container,
+        camera: { positionCartographic: { height: 18_000_000 } },
+      },
+      { appearance: 'editorial' },
+    );
+    assert.equal(getScopeTerminusAlpha(), 0);
+    setScopeTerminusOverride(1);
+    setScopeMaskFeather(0);
+    setScopeMaskFeather(0.11);
+    assert.equal(
+      dom.ops.fills,
+      0,
+      'no fill of any kind: not the veil, not the hard crop, not a share override',
+    );
+    assert.equal(dom.gradientStops().length, 0);
+    assert.equal(dom.fillStyles().length, 0);
   } finally {
     destroyScopeMask();
     dom.restore();

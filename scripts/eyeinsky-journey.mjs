@@ -334,7 +334,8 @@ try {
     'reduced motion + grid',
     await page.$eval(
       '#eye-grid',
-      (e) => e.getAttribute('aria-pressed') === 'false',
+      // §1.1: la retícula arranca apagada; el clic la enciende.
+      (e) => e.getAttribute('aria-pressed') === 'true',
     ),
   );
   await page.click('#eye-clean');
