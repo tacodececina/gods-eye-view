@@ -381,3 +381,13 @@ body[data-eye-skin='editorial'] .eye-time-strip [data-eye-value='number'] {
 body[data-eye-skin='editorial'] .eye-time-chip {
   gap: 0.4em;
 }
+
+/* T3 §6.5: el panel de trabajo mide lo que su contenido, no toda la columna. */
+@media (min-width: 651px) {
+  body[data-eye-skin='editorial'] .eye-workspace {
+    bottom: auto;
+    max-height: calc(
+      var(--eye-viewport-height, 100vh) - var(--eye-safe-top) - 66px - 120px
+    );
+  }
+}

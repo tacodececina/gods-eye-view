@@ -77,11 +77,11 @@ test('con objetivo el titular es el objetivo, con su kicker', () => {
   const story = resolveStory({
     clock: LIVE,
     flags: EDITORIAL,
-    target: { title: 'ISS (ZARYA)', kicker: 'SEGUIMIENTO / CONTACTO' },
+    target: { title: 'ISS (ZARYA)', kicker: 'Objetivo · contacto' },
   });
   assert.equal(story.mode, 'target');
   assert.deepEqual([...story.lines], ['ISS (ZARYA)']);
-  assert.equal(story.kicker, 'SEGUIMIENTO / CONTACTO');
+  assert.equal(story.kicker, 'Objetivo · contacto');
   assert.equal(story.announcement, 'Objetivo: ISS (ZARYA)');
 });
 
@@ -122,7 +122,7 @@ test('mountEyeStory pinta una vez por cambio y no anuncia cada segundo', () => {
   clock = { ...LIVE, currentIso: '2026-09-25T18:04:12.000Z' };
   story.render();
   assert.equal(host.children, first, 'un segundo más no repinta');
-  story.setTarget({ title: 'Luna', kicker: 'OBJETIVO / LUNA' });
+  story.setTarget({ title: 'Luna', kicker: 'Objetivo · Luna' });
   assert.equal(host.dataset.mode, 'target');
   assert.notEqual(host.children, first);
   story.destroy();

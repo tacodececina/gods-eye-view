@@ -119,6 +119,12 @@
   body[data-eye-skin='editorial'] .eye-instruments button > strong {
     display: none;
   }
+  /* T5 §7: carril de 3 en el teléfono; Norte, Retícula y Limpia viven en Más. */
+  body[data-eye-skin='editorial'] .eye-instruments #eye-north,
+  body[data-eye-skin='editorial'] .eye-instruments #eye-grid,
+  body[data-eye-skin='editorial'] .eye-instruments #eye-clean {
+    display: none;
+  }
   /* §6.8: en el teléfono la telemetría no compite con el globo. */
   body[data-eye-skin='editorial'] .eye-telemetry {
     display: none;

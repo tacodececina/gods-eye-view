@@ -7,13 +7,13 @@ import { $ } from './shellDom.js';
 const MOBILE_QUERY = '(max-width:650px)';
 
 export const VIEW_TITLES = {
-  signals: ['02 / SEÑALES', 'Registro sísmico'],
-  operations: ['03 / OPERACIÓN', 'Continuidad de trabajo'],
+  signals: ['SEÑALES', 'Registro sísmico'],
+  operations: ['OPERACIÓN', 'Continuidad de trabajo'],
   catalog: ['INSTRUMENTOS / FUENTES', 'Capas y disponibilidad'],
-  instruments: ['02 / INSTRUMENTOS', 'Funciones de observación'],
-  more: ['04 / MÁS', 'Herramientas de la consola'],
-  display: ['01 / EXPLORAR', 'Apariencia y destinos'],
-  director: ['03 / OPERACIÓN', 'Director de escenas'],
+  instruments: ['INSTRUMENTOS', 'Funciones de observación'],
+  more: ['MÁS', 'Herramientas de la consola'],
+  display: ['EXPLORAR', 'Apariencia y destinos'],
+  director: ['OPERACIÓN', 'Director de escenas'],
   sensors: ['FUENTES / MEDIOS', 'Cámaras y radio'],
   preferences: ['CONFIGURACIÓN', 'Preferencias y cabina'],
 };

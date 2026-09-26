@@ -13,12 +13,12 @@ import { resolveSatelliteChips } from './eyeinskySatelliteChips.js';
 
 /** Etiqueta del tipo de contexto, en la cabecera de la superficie. */
 const KIND_KICKERS = Object.freeze({
-  view: 'VISTA / TIERRA',
-  earthquake: 'INSPECCIONAR / USGS',
-  tracked: 'SEGUIMIENTO / CONTACTO',
-  camera: 'CÁMARA / CCTV',
-  entity: 'INSPECCIONAR / CAPA',
-  moon: 'OBJETIVO / LUNA',
+  view: 'Vista · Tierra',
+  earthquake: 'Sismo · USGS',
+  tracked: 'Objetivo · contacto',
+  camera: 'Cámara · CCTV',
+  entity: 'Objetivo · capa',
+  moon: 'Objetivo · Luna',
 });
 
 /** Cómo se dice cada estado de frescura, sin eufemismos. */

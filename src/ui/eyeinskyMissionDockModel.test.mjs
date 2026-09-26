@@ -15,7 +15,10 @@ import {
   normalizeContext,
 } from './eyeinskyDossierModel.js';
 import { satelliteRecord } from '../testSupport/satelliteContextRecord.mjs';
-import { createActivityState, reduceActivity } from './eyeinskyActivityModel.js';
+import {
+  createActivityState,
+  reduceActivity,
+} from './eyeinskyActivityModel.js';
 import {
   buildMissionDockView,
   createMissionDockState,
@@ -111,15 +114,12 @@ test('the OPS pane badge counts real work, never a decorative number', () => {
 
 test('camera status separates "selected" from "the camera is on it"', () => {
   const tracked = trackedContext();
-  assert.deepEqual(
-    resolveCameraStatus({ context: tracked, following: true }),
-    {
-      id: 'following',
-      label: 'CÁMARA / SIGUIENDO',
-      detail: 'La cámara sigue a TEST123.',
-      visible: true,
-    },
-  );
+  assert.deepEqual(resolveCameraStatus({ context: tracked, following: true }), {
+    id: 'following',
+    label: 'CÁMARA / SIGUIENDO',
+    detail: 'La cámara sigue a TEST123.',
+    visible: true,
+  });
   assert.deepEqual(
     resolveCameraStatus({ context: tracked, following: false }),
     {
@@ -290,7 +290,10 @@ test('pane selection survives a refresh and falls back when a pane disappears', 
   assert.equal(expanded.expanded, true);
   assert.equal(expanded.pane, 'medios', 'expanding never changes the pane');
   assert.equal(reduceMissionDock(expanded, { type: 'expand' }), expanded);
-  assert.equal(reduceMissionDock(expanded, { type: 'collapse' }).expanded, false);
+  assert.equal(
+    reduceMissionDock(expanded, { type: 'collapse' }).expanded,
+    false,
+  );
 });
 
 test('the dock view composes the real dossier and activity state', () => {
@@ -305,7 +308,7 @@ test('the dock view composes the real dossier and activity state', () => {
 
   assert.equal(view.visible, true);
   assert.equal(view.title, 'TEST123');
-  assert.equal(view.kicker, 'SEGUIMIENTO / CONTACTO');
+  assert.equal(view.kicker, 'Objetivo · contacto');
   assert.equal(view.contextKey, 'flights:ae1fa4');
   assert.equal(view.camera.id, 'following');
   assert.deepEqual(paneIds(view.panes), ['objetivo', 'ops']);
@@ -368,7 +371,10 @@ test('a suspended or closed dossier keeps the dock off screen', () => {
     ...createDossierState(trackedContext()),
     visibility: 'closed',
   });
-  assert.equal(buildMissionDockView({ ...base, dossier: closed }).visible, false);
+  assert.equal(
+    buildMissionDockView({ ...base, dossier: closed }).visible,
+    false,
+  );
 });
 
 // ─── P4 T5 · INSPECCIONAR / ÓRBITA sobre el satélite seguido ───
@@ -460,10 +466,11 @@ test('the satellite rail reads ALT · ÉPOCA · MODELO', () => {
     ],
   );
   assert.equal(view.layerId, 'satellites');
-  assert.deepEqual(
-    satelliteView({ assetId: null }).keyValues.at(-1),
-    { label: 'MODELO', value: 'SIN MODELO', unit: null },
-  );
+  assert.deepEqual(satelliteView({ assetId: null }).keyValues.at(-1), {
+    label: 'MODELO',
+    value: 'SIN MODELO',
+    unit: null,
+  });
 });
 
 test('a disabled INSPECCIONAR publishes its reason as visible text for the rail', () => {
@@ -486,9 +493,14 @@ test('a disabled INSPECCIONAR publishes its reason as visible text for the rail'
 
 test('P5: concordancia — «Luna sigue seleccionada»', async () => {
   const { buildMoonContext } = await import('./eyeinskyMoonDockModel.js');
-  const moon = normalizeContext(buildMoonContext({ enabled: true, status: 'loading' }));
+  const moon = normalizeContext(
+    buildMoonContext({ enabled: true, status: 'loading' }),
+  );
   assert.equal(
-    resolveCameraStatus({ context: { ...moon, title: 'Luna' }, following: false }).detail,
+    resolveCameraStatus({
+      context: { ...moon, title: 'Luna' },
+      following: false,
+    }).detail,
     'Luna sigue seleccionada; la cámara es tuya.',
   );
 });

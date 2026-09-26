@@ -31,12 +31,12 @@ export const MISSION_DOCK_KEY_VALUE_LIMIT = 3;
 
 /** Rótulo del tipo de contexto, en la cabecera del dock. */
 const KIND_KICKERS = Object.freeze({
-  view: 'VISTA / TIERRA',
-  earthquake: 'INSPECCIONAR / USGS',
-  tracked: 'SEGUIMIENTO / CONTACTO',
-  camera: 'CÁMARA / CCTV',
-  entity: 'INSPECCIONAR / CAPA',
-  moon: 'OBJETIVO / LUNA',
+  view: 'Vista · Tierra',
+  earthquake: 'Sismo · USGS',
+  tracked: 'Objetivo · contacto',
+  camera: 'Cámara · CCTV',
+  entity: 'Objetivo · capa',
+  moon: 'Objetivo · Luna',
 });
 
 const PANE_LABELS = Object.freeze({

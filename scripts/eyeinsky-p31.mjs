@@ -88,16 +88,20 @@ async function ready(page) {
  */
 async function openMissionPanel(page) {
   const open = await page.evaluate(
-    () => document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+    () =>
+      document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
   );
   if (open) return;
   await page.evaluate(() => {
-    document.querySelector('.eye-function-dock [data-eye-view="instruments"]').click();
+    document
+      .querySelector('.eye-function-dock [data-eye-view="instruments"]')
+      .click();
   });
   await page.waitForSelector('#eye-instrument-dossier', { visible: true });
   await page.click('#eye-instrument-dossier');
   await page.waitForFunction(
-    () => document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
+    () =>
+      document.getElementById('eye-mission-dock')?.dataset.visible === 'true',
     { timeout: 10_000 },
   );
   await new Promise((resolve) => setTimeout(resolve, 600));
@@ -390,8 +394,7 @@ try {
     if (!viewer || !layer) return { skipped: 'sin viewer o capa de vuelos' };
 
     if (
-      typeof layer.testing?._setTrackedFlightRefreshStateForTest !==
-      'function'
+      typeof layer.testing?._setTrackedFlightRefreshStateForTest !== 'function'
     )
       return { skipped: 'la capa activa no expone su fixture de tracking' };
 
@@ -735,7 +738,9 @@ try {
         // Deja libre al menos un tercio de la altura para arrastrar el globo.
         globeHeadroom: Math.round(box.top),
         headroomRatio: Number((box.top / window.innerHeight).toFixed(2)),
-        smallestControl: Number.isFinite(smallest) ? Math.round(smallest) : null,
+        smallestControl: Number.isFinite(smallest)
+          ? Math.round(smallest)
+          : null,
         unreachable,
         hitsInstruments: intersects(dockRect, rect('.eye-instruments')),
         hitsAddLayer: intersects(dockRect, rect('[data-eye-active-add]')),
@@ -760,9 +765,8 @@ try {
 
   // ─── P31-13 · Desmontar y remontar deja un solo dueño de eventos ───
   const teardown = await page.evaluate(async () => {
-    const { mountEyeMissionDock } = await import(
-      '/src/ui/eyeinskyMissionDock.js'
-    );
+    const { mountEyeMissionDock } =
+      await import('/src/ui/eyeinskyMissionDock.js');
     const frame = document.createElement('iframe');
     frame.hidden = true;
     document.body.append(frame);
@@ -779,7 +783,7 @@ try {
       contextKind: 'view',
       generation: 1,
       title: 'Vista · Tierra',
-      kicker: 'VISTA / TIERRA',
+      kicker: 'Vista · Tierra',
       status: 'ready',
       observedAt: null,
       localUpdatedAt: null,
@@ -852,6 +856,8 @@ try {
   result.passed = result.checks.filter((entry) => entry.ok).length;
   result.failed = result.checks.length - result.passed;
   await fs.writeFile(resultPath, `${JSON.stringify(result, null, 2)}\n`);
-  console.log(`\n${result.passed} ok · ${result.failed} fallan → ${resultPath}`);
+  console.log(
+    `\n${result.passed} ok · ${result.failed} fallan → ${resultPath}`,
+  );
 }
 if (result.failed > 0) process.exitCode = 1;

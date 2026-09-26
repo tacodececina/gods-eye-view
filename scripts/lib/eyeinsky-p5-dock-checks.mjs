@@ -142,7 +142,7 @@ async function checkAim(page, result, check, before) {
       aim.lastFraming.kind === 'aim' &&
       moved <= 1 &&
       aim.reticle === 'on' &&
-      aim.kicker === 'OBJETIVO / LUNA',
+      aim.kicker === 'Objetivo · Luna',
     `Luna en ${JSON.stringify(aim.moonPx)} (centro x ${aim.canvas.width / 2}, sobre el dock: ${aim.lastFraming?.inFrame}); desvío de la mirada ${aim.angleDeg?.toFixed(3)}° (giro al área libre); la cámara se movió ${moved.toFixed(3)} m; «${aim.kicker}»; retícula ${aim.reticle}`,
     ['P5-12'],
   );
