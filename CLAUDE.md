@@ -123,7 +123,7 @@ arregla la causa; no se salta ni se silencia.
 - **P6 (Luna explorable):** siguiente. **P7:** pendiente.
 - Bhote Koshi: aplazado; reintroducirlo exige fase propia.
 
-Fuente de verdad del estado: `EYEINSKY-SESSION.md` y `docs/eyeinsky/FASES.md`.
+Fuente de verdad del estado: `docs/eyeinsky/ROADMAP.md` (roadmap y pendientes, léelo primero), `EYEINSKY-SESSION.md` y `docs/eyeinsky/FASES.md`.
 
 ## Producción
 
